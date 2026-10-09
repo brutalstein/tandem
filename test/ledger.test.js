@@ -30,6 +30,15 @@ test('I3: dependencies gate start; failed dependency skips; unknown dependency r
   assert.equal(ledger.get(pd, c.id).status, 'skipped');
 });
 
+test('an unverified dependency never unblocks downstream work', () => {
+  const pd = proj();
+  const a = ledger.submit(pd, job({ mode: 'implement' }));
+  const b = ledger.submit(pd, job({ after: [a.id] }));
+  assert.ok(ledger.tryAcquire(pd, a.id, { maxParallel: 2 }).acquired);
+  ledger.patch(pd, a.id, { status: 'unverified' });
+  assert.match(ledger.tryAcquire(pd, b.id, { maxParallel: 2 }).skip, /ended unverified/);
+});
+
 test('I2: global slot limit; fair share lets the earlier ready job go first', () => {
   const pd = proj();
   const a = ledger.submit(pd, job({ mode: 'ask' }));
