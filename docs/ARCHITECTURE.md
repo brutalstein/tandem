@@ -46,7 +46,7 @@ Terminal states:
    - Implement jobs choose their isolation here:
      - `inplace` writes to your working tree under a path claim;
      - `worktree` writes to an isolated copy;
-     - `auto` edits in place if no writer holds the paths, otherwise isolates. `worktree` is the safer default.
+     - `auto` (the default) edits in place if no writer holds the paths, otherwise isolates. `worktree` isolates every job, at a setup cost per job (see BENCHMARKS.md).
 2. **Routing.** `catalog` → eligible rungs; `policy.decide` → escalation plan. The plan is stored with the job.
 3. **Execution.**
    - `codex exec --json` runs with `-m`, effort, the sandbox (`workspace-write` or `read-only`), an output schema and, by default, lean flags.
@@ -54,13 +54,15 @@ Terminal states:
    - The job holds a lease that is renewed every 15 s; a lease expires after 60 s without renewal.
 4. **Verification.**
    - Implement jobs run the check: `verify`, or auto-detected `npm test`, `pytest`, `cargo test` or `go test`.
-   - Test definitions and tracked/untracked test-file contents are fingerprinted before and after. Changes downgrade the result.
+   - Test definitions and tracked/untracked test-file contents are fingerprinted before and after. Modifying or deleting an existing test, or adding a `conftest.py`, downgrades the result; adding new tests does not.
+   - In-place jobs are audited against a snapshot of the whole working state taken at start, so a second edit to an already-dirty file is seen. Paths written meanwhile by other Tandem jobs (in-place claims, integrations) are not attributed to the job. Edits made meanwhile by you or by Claude through a shell cannot be told apart from the job's. Files ignored by `.gitignore` are not audited. Out-of-scope changes make the result `unverified` (never `verified`), and Tandem reverts nothing in place.
    - A failed check feeds the failure output into the next attempt. On the same model the thread is resumed; on a new model the prompt is fresh plus a summary.
 5. **Integration (worktree jobs).**
    - Planning is three-way per file: base = snapshot, ours = your current file, theirs = job result.
    - All-or-nothing: a conflict anywhere means nothing is written.
    - Each write re-checks that your file still equals the planned "ours". A race rolls back the files already written, but only those still holding what Tandem wrote.
    - If your tree changed since the snapshot, the check runs again after integration. A failure reverts the integration.
+   - **Crash consistency.** Before the first write, the planned actions and your prior file contents are journaled under `projects/<project>/integrations/<job>.json`; the journal is removed only when the outcome is final (after any re-check). If the owner dies part-way, the next Tandem start on that project restores every file that still holds exactly what was written, removes stray temporary files, keeps the worktree and records a `recovery` note on the job. Covered by a test that kills a real process during re-verification. Not covered: power loss or an OS crash (writes are not fsync'd).
 6. **Learning and sharing.**
    - The outcome is appended to the routing evidence.
    - Codex findings go to memory as *tentative* entries with provenance (`codex:<model>:<job>`). Claude confirms or retires them.
@@ -80,14 +82,15 @@ Terminal states:
 Deadlock freedom: claims are taken all at once (no hold-and-wait), and `after` may only name earlier jobs, so the wait-for graph is acyclic.
 
 Additional coordination:
-- Claude's own Edit and Write calls on claimed paths are denied by `hooks/guard.js`.
+- Claude's own Edit and Write calls on claimed paths are denied by `hooks/guard.js`. Writes Claude makes through a shell command (Bash) are not intercepted.
 - An in-place job's prompt lists the paths other running jobs are changing, so it does not duplicate their work.
 
 ## Filesystem safety
 
 - **Snapshot.** The snapshot is built in a temporary index file (`GIT_INDEX_FILE`), started from a copy of the real index. HEAD, the index, branches, the stash and your files are never modified. `.gitignore` is respected.
-- **Worktree location.** Worktrees live only under the plugin data directory (`worktrees/<project>/<job>`).
-- **Dependency links.** Dependency directories are not linked by default: writable junctions/symlinks would expose the original project during execution. Explicit opt-in via `TANDEM_WORKTREE_LINKS` accepts this risk. The links are recorded in the ledger.
+- **Worktree location.** Worktrees live only under the plugin data directory (`worktrees/<project>/<job>-<random>`); an existing directory is never reused or deleted. Removal and discard accept only a direct child of that project's directory that is not itself a link.
+- **Integration paths.** Every component of a destination and source path is checked with `lstat`: a symlink or junction anywhere, a path escaping the repository, or a directory target makes it a conflict. Each file is replaced atomically (temporary file + rename, retried while Windows reports the file busy). A race on a parent directory between the check and the rename remains possible; closing it needs OS-level primitives Node does not expose.
+- **Dependency links.** Dependency folders (`node_modules`, `.venv`, `venv`; `worktree_links` option, `none` to disable) are linked into the worktree (a junction on Windows, a symlink elsewhere), so checks can run there without reinstalling. Writes through a link reach your real folder, the same exposure an in-place job has. Link names must be plain folder names. The links are recorded in the ledger.
   - **Removal never deletes through a link.** On Windows, `git worktree remove --force` follows junctions and deletes the target's contents; this deleted a real `node_modules` during development. Tandem therefore removes links first, then deletes the worktree with Node's `rm` (which does not follow links), then runs `git worktree prune`.
   - **Surviving worktrees hold no links.** A worktree that outlives its job (kept after a conflict, or left by a crashed session and reaped) has its links removed. If you clean it up yourself with `git worktree remove --force`, that cannot reach your project either.
   - Tests cover removal, kept worktrees followed by a user's `git worktree remove --force`, and crash reaping.
@@ -111,10 +114,18 @@ projects/<name>-<hash>/
   ledger.json                    jobs, claims, leases (v2; v1 jobs.json imported)
   router-evidence.json           routing observations (v2; v1 router stats migrated)
   memory.json                    shared memory (v2; v1 migrated)
-worktrees/<project>/<job>/       isolated worktrees (transient, or kept on conflict)
+  integrations/<job>.json        journal of an integration in progress (crash recovery)
+worktrees/<project>/<job>-<rnd>/ isolated worktrees (transient, or kept on conflict)
 ```
 
-All JSON writes are locked transactions (lock file with owner PID, stale-lock breaking). A temporary file is renamed into place, and the previous good copy is kept as `.bak`. A corrupted file is recovered from `.bak` and the recovery is logged.
+All JSON writes are locked transactions. A temporary file is renamed into place, and the previous good copy is kept as `.bak`. A corrupted file is recovered from `.bak` and the recovery is logged.
+
+Locks: the lock file holds `<pid> <time> <token>`.
+- A lock is stale when its owner is dead or it is older than 30 s. The age bound keeps a reused PID from blocking every writer; transactions take milliseconds, so a live owner only crosses it when suspended.
+- A stale lock is moved aside and verified before deletion, and put back if it turned out to be a new owner's.
+- Before committing, a transaction checks that it still holds its lock; if not, it is discarded and re-run on fresh state (up to 5 times). Release deletes only the caller's own lock.
+- Remaining window: a stall of more than 30 s exactly between that check and the rename can still lose one update.
+- Tested with 8 processes × 100 transactions with crash-left locks planted meanwhile (no update lost).
 
 ## Memory
 

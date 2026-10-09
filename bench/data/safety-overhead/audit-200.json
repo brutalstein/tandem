@@ -1,0 +1,45 @@
+{
+  "server": "server",
+  "files": 200,
+  "reps": 5,
+  "platform": "win32 10.0.26200",
+  "node": "v24.11.0",
+  "ms": {
+    "gitStatus": {
+      "median": 34.1,
+      "min": 33.7,
+      "max": 38.5
+    },
+    "snapshot": {
+      "median": 162,
+      "min": 158.3,
+      "max": 189.4
+    },
+    "testFingerprint": {
+      "median": 33.9,
+      "min": 33.2,
+      "max": 36.4
+    },
+    "worktreeCreateRemove": {
+      "median": 424.5,
+      "min": 413.7,
+      "max": 451.1
+    },
+    "plan20": {
+      "median": 624.4
+    },
+    "apply20": {
+      "median": 30.4
+    },
+    "ledgerTxn": {
+      "median": 3,
+      "min": 2.7,
+      "max": 3.4
+    },
+    "concurrentWrites": {
+      "median": 0.3,
+      "min": 0.3,
+      "max": 0.5
+    }
+  }
+}

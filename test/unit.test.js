@@ -442,3 +442,22 @@ test('store: 8 processes × 100 transactions with crash-left locks planted meanw
   assert.equal(store.readJson(f).n, 800);
   assert.deepEqual(fs.readdirSync(path.dirname(f)).filter(n => n.endsWith('.stale') || n.endsWith('.tmp')), []);
 });
+
+test('testFingerprint never hashes through a link; errors.log rotates at its limit', () => {
+  const root = H.repo(null, { 'tests/a.test.js': 'real' });
+  const outside = path.join(H.TMP, `outside-${Date.now()}`);
+  H.write(outside, { 'secret.js': 'outside content', 'd/x.js': 'x' });
+  fs.symlinkSync(path.join(outside, 'd'), path.join(root, 'tests', 'linkdir'), process.platform === 'win32' ? 'junction' : 'dir');
+  let fileLink = true;
+  try { fs.symlinkSync(path.join(outside, 'secret.js'), path.join(root, 'tests', 'link.test.js'), 'file'); } catch { fileLink = false; } // needs privilege on Windows
+  const fp = verify.testFingerprint(root);
+  assert.equal(fp['tests/a.test.js'].length, 40);
+  if (fileLink) assert.equal(fp['tests/link.test.js'], 'symlink');
+  assert.ok(!Object.values(fp).includes(store.sha1(Buffer.from('outside content'))));
+  const log = path.join(process.env.TANDEM_DATA, 'errors.log');
+  store.mkdirp(path.dirname(log)); fs.writeFileSync(log, 'x'.repeat(256 * 1024));
+  store.logError('test', 'rotate me');
+  assert.ok(fs.existsSync(log + '.1') && !fs.existsSync(log), 'rotated after the crossing write');
+  store.logError('test', 'fresh');
+  assert.match(fs.readFileSync(log, 'utf8'), /fresh/);
+});

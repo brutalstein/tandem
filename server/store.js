@@ -39,10 +39,13 @@ function pidAlive(pid) {
 function logError(where, err) {
   try {
     const f = path.join(mkdirp(DATA), 'errors.log');
-    if (fs.existsSync(f) && fs.statSync(f).size > 256 * 1024) fs.renameSync(f, f + '.1');
     const raw = String(err && err.stack || err).split('\n').slice(0, 4).join(' | ');
     const safe = require('./security').redactSecrets(raw).text;
-    fs.appendFileSync(f, `${new Date().toISOString()} ${where}: ${safe}\n`);
+    // Rotate after the write that crossed the limit, judged on the open descriptor (no check-then-use on the path).
+    const fd = fs.openSync(f, 'a');
+    let full;
+    try { fs.writeSync(fd, `${new Date().toISOString()} ${where}: ${safe}\n`); full = fs.fstatSync(fd).size > 256 * 1024; } finally { fs.closeSync(fd); }
+    if (full) fs.renameSync(f, f + '.1');
   } catch {}
 }
 

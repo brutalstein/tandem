@@ -1,0 +1,35 @@
+{
+  "server": "..\\empty\\server",
+  "files": 20000,
+  "reps": 5,
+  "platform": "win32 10.0.26200",
+  "node": "v24.11.0",
+  "ms": {
+    "gitStatus": {
+      "median": 41.7,
+      "min": 40.9,
+      "max": 44.8
+    },
+    "snapshot": {
+      "median": 176.3,
+      "min": 171.9,
+      "max": 196.4
+    },
+    "worktreeCreateRemove": {
+      "median": 8702.2,
+      "min": 8484.5,
+      "max": 8933.3
+    },
+    "plan20": {
+      "median": 640.9
+    },
+    "apply20": {
+      "median": 8.2
+    },
+    "ledgerTxn": {
+      "median": 2.4,
+      "min": 2.2,
+      "max": 3
+    }
+  }
+}

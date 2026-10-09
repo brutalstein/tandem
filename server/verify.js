@@ -51,14 +51,24 @@ function testFingerprint(dir) {
     }).toString('utf8').split(String.fromCharCode(0)) : walk(dir);
   } catch (e) { return { __scan_error__: String(e.message).slice(0, 200) }; }
   for (const rel of new Set(names.filter(p => TEST_FILE.test(p) || CONFTEST.test(p)))) {
-    const full = path.join(dir, rel);
-    try {
-      const st = fs.lstatSync(full);
-      fp[rel] = st.isSymbolicLink() ? 'symlink' : st.isFile() ? sha1(fs.readFileSync(full)) : 'not-a-file';
-    } catch (e) { fp[rel] = 'error:' + e.code; }
+    fp[rel] = hashNoFollow(path.join(dir, rel));
   }
   return fp;
 }
+// Hash what is at `full` without following a link: O_NOFOLLOW where the OS has it; on Windows the
+// opened handle is compared with the path's own lstat, so a link swapped in between is still reported.
+function hashNoFollow(full) {
+  let fd;
+  try {
+    fd = fs.openSync(full, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+    const st = fs.fstatSync(fd), l = fs.lstatSync(full);
+    if (l.isSymbolicLink() || l.ino !== st.ino || l.dev !== st.dev) return 'symlink';
+    return st.isFile() ? sha1(fs.readFileSync(fd)) : 'not-a-file';
+  } catch (e) {
+    return e.code === 'ELOOP' ? 'symlink' : e.code === 'EISDIR' ? 'not-a-file' : 'error:' + e.code;
+  } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+
 // Outside git (allow_non_git): list files without descending into links or dependency folders.
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.venv', 'venv', '__pycache__', 'target']);
 function walk(root, rel = '', out = []) {
