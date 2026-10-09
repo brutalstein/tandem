@@ -9,6 +9,26 @@ Primary environment, 2026-10-09:
 
 Secondary environment: WSL 2, Ubuntu 24.04.4 LTS, Node 22.22.2, Git 2.43.0.
 
+## Safety-hardening branch audit (2026-10-09)
+
+Independent audit of PR #1 (`hardening/safety-and-integrity-v2`) on the local branch `audit/hardening-v2`. The PR's code had passed only syntax parsing before this audit. Every defect below was reproduced with a test that failed on the PR code before it was fixed (details in CHANGELOG.md).
+
+| Check | Result |
+|---|---|
+| `npm test`, Windows 11, Node 24.11.0 | 81 / 81 pass |
+| `npm test`, WSL 2 Ubuntu 24.04, Node 22.22.2 | 80 pass, 0 fail, 1 skipped (Windows-only share-lock test) |
+| Filesystem suites with every temp, repo and worktree directory inside OneDrive | 47 / 47 pass (worktree, orchestrator, ledger) |
+| `npm run validate` (strict) | pass |
+| `node test/install-smoke.js` (real Claude Code 2.1.281) | 12 / 12 pass |
+| Real Codex integration, `bench/data/real-integration-audit.json` | 9 / 9 pass, including a new check: an isolated job that adds a test file is verified with linked dependencies and integrated |
+| Real Claude Code session vs a running in-place job | Claude's Edit of the claimed file was denied by the guard; the unclaimed file was edited (haiku, $0.037) |
+| Lock stress: 8 processes × 100 transactions with crash-left locks planted | no update lost (5 runs); 12 × 150 with a crash lock after half of all transactions: no update lost, no transaction aborted (5 runs) |
+| Owner process killed during post-integration re-verification | next start restored the written file, kept the worktree, annotated the job |
+
+Real Codex run, 2026-10-09 13:22 UTC, codex-cli 0.154.0: every job routed to `gpt-6-astra@low` on a cold start; about 292k input tokens (211k cached) and 2.5k output tokens over the implement, ask, resume and MCP checks; about 2.2 minutes of job time.
+
+Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the fixed code (no local CodeQL; runs on push), several real Claude sessions delegating to Codex at the same time (covered by the multi-process ledger and lock stress tests), power-loss consistency.
+
 ## Facts established by observation (not assumed)
 
 | Finding | How verified | Consequence |
@@ -24,7 +44,7 @@ Secondary environment: WSL 2, Ubuntu 24.04.4 LTS, Node 22.22.2, Git 2.43.0.
 
 ## Automated tests: simulated Codex (`npm test`)
 
-There are 62 tests. They run the real orchestrator, ledger, worktree, policy, MCP server and hooks. Only the Codex CLI is replaced, by `test/fake-codex.js`.
+At the 2.0.0 commit on main there were 62 tests (the hardening branch has 81; see the audit section above). They run the real orchestrator, ledger, worktree, policy, MCP server and hooks. Only the Codex CLI is replaced, by `test/fake-codex.js`.
 
 | Platform | Result |
 |---|---|
@@ -104,4 +124,4 @@ The Codex account reached its usage limit during the benchmark.
 - **GitHub Actions workflows.** Never executed, because nothing was pushed.
 - **Real-provider behaviour after the routing calibration.** Pending the scheduled benchmark (see [BENCHMARKS.md](BENCHMARKS.md)).
 - **Several real Claude Code sessions on one project at the same time.** Covered by the 6-process ledger stress test, not by real sessions.
-- **The PreToolUse guard denying a real Claude edit in v2.** Verified in v1 in a real session; in v2 only through the hook-level tests.
+- ~~The PreToolUse guard denying a real Claude edit in v2~~: verified on the hardening branch (audit section above).

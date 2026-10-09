@@ -33,6 +33,28 @@ The hooks cost 5–11 ms above bare Node start. The v2 MCP server starts about 9
 
 ![overhead](charts/overhead.svg)
 
+## 1b. Safety overhead per job: main vs the hardening branch (deterministic)
+
+`node bench/safety-overhead.js --server <server dir> --files <n>`. Medians in ms over 5 repetitions, Windows 11, Node 24.11.0, on a generated repository (10 % test files, 2 KB each, one dirty file, an ignored `node_modules`). No provider is called. Data: `bench/data/safety-overhead/`.
+
+| Operation | main, 200 files | branch, 200 | main, 20,000 files | branch, 20,000 |
+|---|---:|---:|---:|---:|
+| git status | 33.4 | 34.1 | 41.7 | 46.9 |
+| working-state snapshot | 149.5 | 162 | 176.3 | 195.2 |
+| test-file fingerprint | – | 33.9 | – | 214.8 |
+| worktree create + remove | 414.3 | 424.5 | 8702.2 | 8920.6 |
+| integration plan, 20 files | 629.1 | 624.4 | 640.9 | 674.2 |
+| integration apply, 20 files (journaled on the branch) | 7.7 | 30.4 | 8.2 | 30.4 |
+| ledger transaction | 2.2 | 3 | 2.4 | 2.9 |
+| concurrent-writes lookup | – | 0.3 | – | 0.3 |
+
+What a job pays on top of main:
+- **In place, with a check:** two snapshots and two test fingerprints instead of two `git status` calls: about +0.3 s at 200 files, +0.7 s at 20,000.
+- **Isolated, with a check:** two test fingerprints and the journal: about +0.1 s at 200 files, +0.45 s at 20,000.
+- **Isolation itself** costs 0.4 s at 200 files and 8.9 s at 20,000 per job, which is why the default stays `auto` (isolate only when another job holds the paths) rather than isolating every job.
+
+A Codex turn takes 10–45 s in the real runs, so the added cost is small next to it.
+
 ## 2. Routing simulation (deterministic, synthetic worlds)
 
 `node bench/router-sim.js --seeds 30 --out bench/data/router-sim.json`.
