@@ -377,6 +377,21 @@ test('testFingerprint detects modifications to tracked and untracked tests; addi
   assert.deepEqual(Object.keys(verify.testFingerprint(plain)), ['tests/t.py'], 'outside git: walked, dependencies skipped');
 });
 
+test('independent verification policy blocks changed tests and honors foreign ownership', () => {
+  const ti = require('../server/test-integrity');
+  const root = H.repo(null, { 'src/worker.test.js': 'assert true', 'src/a.js': 'original' });
+  const before = verify.testFingerprint(root);
+  const defs = verify.fingerprint(root);
+  assert.equal(ti.blocked(ti.inspect(root, defs, before)), false);
+  H.write(root, { 'src/worker.test.js': 'assert false', 'src/a.js': 'changed' });
+  const now = ti.inspect(root, defs, before);
+  assert.equal(ti.blocked(now), true);
+  assert.deepEqual(now.changedTests, ['src/worker.test.js']);
+  assert.match(ti.reason(now), /changed tests: src\/worker.test.js/);
+  const concurrent = ti.inspect(root, defs, before, ['src/worker.test.js'], (a, b) => a === b);
+  assert.equal(ti.blocked(concurrent), false, 'another recorded job owns this changed test');
+});
+
 test('verify: detection, fingerprint of scripts only, deleted tests, timeout', async () => {
   const dir = H.repo(null, { 'package.json': JSON.stringify({ scripts: { test: 'node t.js' }, dependencies: { a: '1' } }) });
   assert.equal(verify.detect(dir), 'npm test --silent');
@@ -392,6 +407,25 @@ test('verify: detection, fingerprint of scripts only, deleted tests, timeout', a
   const bg = await verify.run(`node -e "require('child_process').spawn(process.execPath,['-e','setTimeout(()=>{},8000)'],{stdio:['ignore','inherit','inherit'],detached:true}).unref()"`, dir, 30000);
   assert.equal(bg.ok, true, 'a leftover background process does not hang verification');
   assert.ok(bg.ms < 6000, `took ${bg.ms} ms`);
+});
+
+test('retryBusy only retries transient filesystem errors within a monotonic deadline', () => {
+  const store = require('../server/store');
+  let attempts = 0;
+  assert.equal(store.retryBusy(() => {
+    if (++attempts < 3) throw Object.assign(new Error('temporary sharing violation'), { code: 'EPERM' });
+    return 'ok';
+  }, 1500), 'ok');
+  assert.equal(attempts, 3);
+  assert.throws(() => store.retryBusy(() => {
+    throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+  }, 1500), /disk full/);
+  const before = process.hrtime.bigint();
+  assert.throws(() => store.retryBusy(() => {
+    throw Object.assign(new Error('persistent lock'), { code: 'EBUSY' });
+  }, 80), /persistent lock/);
+  const elapsed = Number(process.hrtime.bigint() - before) / 1e6;
+  assert.ok(elapsed >= 50 && elapsed < 1000, 'contention retries must be bounded');
 });
 
 test('store: stale lock from a dead process is broken; live lock waits', () => {

@@ -73,11 +73,17 @@ function readJson(file, fallback) {
 }
 
 // Windows: rename and delete fail transiently while a reader, editor, indexer or AV scanner holds the file.
-function retryBusy(fn) {
-  for (let i = 0; ; i++) {
+// Use a monotonic deadline for transient Windows file-sharing contention.
+function retryBusy(fn, timeoutMs = 1000) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 0 || timeoutMs > 30000)
+    throw new Error('invalid busy-retry timeout');
+  const deadline = process.hrtime.bigint() + BigInt(Math.ceil(timeoutMs * 1e6));
+  for (let attempts = 0; ; attempts++) {
     try { return fn(); } catch (e) {
-      if (i >= 40 || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
-      sleepMs(25);
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
+      const remainingMs = Number(deadline - process.hrtime.bigint()) / 1e6;
+      if (remainingMs <= 0) throw e;
+      sleepMs(Math.min(remainingMs, Math.min(25 + attempts * 5, 125)));
     }
   }
 }
@@ -104,7 +110,9 @@ function holdsLock(lock, token) {
 // lock that was judged stale (another waiter broke it and a new owner took it meanwhile), put it back.
 function breakLock(lock, seen) {
   const tomb = `${lock}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.stale`;
-  try { fs.renameSync(lock, tomb); } catch { return; }
+  // On Windows AV/indexers may transiently deny renaming the stale lock.
+  // Never unlink an unexamined lock; the moved content is validated below.
+  try { retryBusy(() => fs.renameSync(lock, tomb), 1500); } catch { return; }
   try {
     if (fs.readFileSync(tomb, 'utf8') !== seen) { try { fs.linkSync(tomb, lock); } catch {} }
   } finally { try { fs.unlinkSync(tomb); } catch {} }
@@ -114,7 +122,10 @@ function withLock(file, fn) {
   const lock = file + '.lock';
   mkdirp(path.dirname(file));
   const token = crypto.randomBytes(8).toString('hex');
-  const deadline = Date.now() + 20000;
+  // Wait past the 30s stale-owner threshold: PID reuse and briefly surviving
+  // Windows process handles can otherwise make every waiter fail at 20s without
+  // ever reaching the allowed stale-lock recovery point.
+  const deadline = Date.now() + LOCK_STALE_MS + 10000;
   for (let wait = 2; ; wait = Math.min(wait * 2, 40)) {
     try {
       const fd = fs.openSync(lock, 'wx');
@@ -129,7 +140,11 @@ function withLock(file, fn) {
         const age = Date.now() - (t || fs.statSync(lock).mtimeMs);
         if ((pid && !pidAlive(pid)) || age > LOCK_STALE_MS) breakLock(lock, seen);
       } catch {}
-      if (Date.now() > deadline) throw new Error(`lock timeout: ${lock}`);
+      if (Date.now() > deadline) {
+        let holder = 'unreadable';
+        try { holder = fs.readFileSync(lock, 'utf8').slice(0, 80); } catch {}
+        throw new Error(`lock timeout: ${lock} (holder ${holder})`);
+      }
       sleepMs(wait);
     }
   }

@@ -93,6 +93,25 @@ test('auth failure and transient errors', async () => {
   assert.equal(t.attempts[0].model + t.attempts[0].effort, t.attempts[1].model + t.attempts[1].effort);
 });
 
+test('one orchestrator safely handles duplicate j1 ids from separate repositories', async () => {
+  clean();
+  const a = H.repo({ default: { action: 'hang' } });
+  const b = H.repo({ default: { action: 'ok' } });
+  const o = orch({ maxParallel: 2 });
+  const first = o.submit({ cwd: a, task: 'slow job in A', mode: 'ask', difficulty: 'trivial' });
+  const second = o.submit({ cwd: b, task: 'quick job in B', mode: 'ask', difficulty: 'trivial' });
+  assert.equal(first.job.id, 'j1');
+  assert.equal(second.job.id, 'j1');
+  assert.equal(o.live.size, 2, 'two independent repositories must not overwrite each other');
+  assert.throws(() => o.getLive('j1'), /ambiguous/);
+  assert.equal(o.getLive('j1', o.ctx(a).projDir).job.root, a);
+  assert.equal(o.getLive('j1', o.ctx(b).projDir).job.root, b);
+  assert.equal(o.cancel('j1', null, o.ctx(a).projDir), true);
+  const [rA, rB] = await Promise.all([first.promise, second.promise]);
+  assert.equal(rA.status, 'cancelled');
+  assert.equal(rB.status, 'answered', 'cancelling project A must not affect project B');
+});
+
 test('finished job cache stays bounded without removing running entries', () => {
   const o = orch();
   for (let i = 0; i < 200; i++) o.live.set('done' + i, { settled: true, job: { id: 'done' + i } });

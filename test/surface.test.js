@@ -115,6 +115,23 @@ test('MCP server: protocol, validation, framing, dry-run, status, progress', asy
   } finally { s.close(); }
 });
 
+test('MCP waits are project-scoped when multiple repositories use the same job id', async () => {
+  H.resetEnv();
+  const repoA = H.repo({ default: { action: 'ok' } });
+  const repoB = H.repo({ default: { action: 'ok' } });
+  const s = server(repoA);
+  try {
+    await s.rpc('initialize', {});
+    assert.match(await s.text('codex_run', { cwd: repoA, task: 'inspect A', mode: 'ask', difficulty: 'trivial', wait: false }), /job j1/);
+    assert.match(await s.text('codex_run', { cwd: repoB, task: 'inspect B', mode: 'ask', difficulty: 'trivial', wait: false }), /job j1/);
+    const ambiguous = await s.call('codex_wait', { ids: ['j1'], timeout_s: 1 });
+    assert.equal(ambiguous.isError, true, 'ambiguous cross-project wait must not select an unrelated job');
+    assert.match(ambiguous.content[0].text, /ambiguous job/);
+    assert.match(await s.text('codex_wait', { ids: ['j1'], cwd: repoA, timeout_s: 20 }), /ANSWERED/);
+    assert.match(await s.text('codex_wait', { ids: ['j1'], cwd: repoB, timeout_s: 20 }), /ANSWERED/);
+  } finally { s.close(); }
+});
+
 test('MCP server: kept worktree is reported and can be discarded', async () => {
   H.resetEnv();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'b.txt': 'out of scope' }] }, { 'a.txt': 'old' });

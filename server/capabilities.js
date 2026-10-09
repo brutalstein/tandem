@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { writeJson, withLock } = require('./store');
 
 const HOME = process.env.TANDEM_HOME || os.homedir(); // overridable so tests never read the developer's skills
 const MAX_SKILL_BYTES = 256 * 1024;
@@ -53,11 +54,25 @@ function locations(root) {
   return L;
 }
 
-function readLock(root) { try { return JSON.parse(fs.readFileSync(path.join(root, '.agents', 'skills', 'tandem-lock.json'), 'utf8')).skills || {}; } catch { return {}; } }
+// A partially written skill lock must never be treated as an empty allow-list:
+ // doing so loses ownership records and makes safe rollback impossible. Read the
+ // last good backup, but fail closed if both copies exist and are invalid.
+function readLock(root) {
+  const file = path.join(root, '.agents', 'skills', 'tandem-lock.json');
+  if (!fs.existsSync(file) && !fs.existsSync(file + '.bak')) return {};
+  for (const p of [file, file + '.bak']) {
+    try {
+      const d = JSON.parse(fs.readFileSync(p, 'utf8'));
+      if (d && d.v === 1 && d.skills && typeof d.skills === 'object' && !Array.isArray(d.skills)) return d.skills;
+    } catch {}
+  }
+  throw new Error('Tandem skill lock is corrupt; refusing changes. Restore tandem-lock.json or its .bak');
+}
 
 // Inventory, deduplicated by name (first location wins: project before user before plugin) and by content.
 function scan(root, platforms = ['codex', 'claude']) {
-  const lock = readLock(root);
+  let lock;
+  try { lock = readLock(root); } catch { lock = {}; } // discovery remains available; mutations fail closed
   const seen = new Map(), hashes = new Set(), dupes = [];
   for (const loc of locations(root).filter(l => platforms.includes(l.platform))) {
     let names;
@@ -149,9 +164,12 @@ function treeHash(dir, files) {
   for (const f of [...files].sort()) h.update(f + '\0').update(fs.readFileSync(path.join(dir, f))).update('\0');
   return h.digest('hex');
 }
-const writeLock = (root, lock) => { fs.mkdirSync(SKILLS(root), { recursive: true }); fs.writeFileSync(LOCK(root), JSON.stringify({ v: 1, skills: lock }, null, 2) + '\n'); };
+const writeLock = (root, lock) => {
+  fs.mkdirSync(SKILLS(root), { recursive: true });
+  writeJson(LOCK(root), { v: 1, skills: lock });
+};
 
-function install(root, src, { source, ref = null, allowScripts = false, force = false }) {
+function installUnlocked(root, src, { source, ref = null, allowScripts = false, force = false }) {
   if (!fs.existsSync(path.join(src, 'SKILL.md'))) throw new Error(`no SKILL.md in ${src}`);
   const fm = frontMatter(fs.readFileSync(path.join(src, 'SKILL.md'), 'utf8'));
   const name = fm.name || path.basename(src);
@@ -184,7 +202,7 @@ function verifyInstalled(root) {
   });
 }
 
-function uninstall(root, name) {
+function uninstallUnlocked(root, name) {
   const lock = readLock(root);
   if (!lock[name]) throw new Error(`${name} was not installed by tandem`);
   fs.rmSync(path.join(SKILLS(root), name), { recursive: true, force: true });
@@ -193,7 +211,7 @@ function uninstall(root, name) {
   writeLock(root, lock);
 }
 
-function rollback(root, name) {
+function rollbackUnlocked(root, name) {
   const lock = readLock(root), e = lock[name];
   const dir = path.join(SKILLS(root), name), prev = path.join(SKILLS(root), `.${name}.prev`);
   if (!e || !e.prev || !fs.existsSync(prev)) throw new Error(`no previous version of ${name} to roll back to`);
@@ -203,5 +221,12 @@ function rollback(root, name) {
   writeLock(root, lock);
   return lock[name];
 }
+
+// Skill directory moves and their ownership manifest form one transaction. A
+// project-scoped cross-process lock prevents concurrent installs/rollbacks/uninstalls
+// from deleting each other's active or previous versions.
+function install(root, src, opts) { return withLock(LOCK(root), () => installUnlocked(root, src, opts)); }
+function uninstall(root, name) { return withLock(LOCK(root), () => uninstallUnlocked(root, name)); }
+function rollback(root, name) { return withLock(LOCK(root), () => rollbackUnlocked(root, name)); }
 
 module.exports = { frontMatter, locations, scan, select, usage, readLock, tokens, install, verifyInstalled, uninstall, rollback };

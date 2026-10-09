@@ -17,11 +17,12 @@ const { frame } = require('./security');
 const VERSION = require('../.claude-plugin/plugin.json').version;
 const cfg = config();
 store.publishDataDir();
-const progressTokens = new Map(); // jobId -> progressToken of the call waiting on it
+const progressTokens = new Map(); // project+job -> progressToken
+const progressKey = (projDir, id) => projDir + ':' + id;
 let progressCount = 0;
 const orch = new Orchestrator(cfg, {
-  onProgress: (id, message) => {
-    const token = progressTokens.get(id);
+  onProgress: (id, message, projDir) => {
+    const token = progressTokens.get(progressKey(projDir, id));
     if (token !== undefined) send({ jsonrpc: '2.0', method: 'notifications/progress', params: { progressToken: token, progress: ++progressCount, message: `${id} ${message}` } });
   },
 });
@@ -58,7 +59,7 @@ const TOOLS = [
   {
     name: 'codex_wait',
     description: 'Wait for background Codex jobs started by this session and return their results.',
-    inputSchema: { type: 'object', properties: { ids: strs('Job ids (default: all unfinished jobs of this session).'), timeout_s: { type: 'integer', minimum: 1, description: 'Max wait (default 540).' } } },
+    inputSchema: { type: 'object', properties: { ids: strs('Job ids (default: all unfinished jobs of this session).'), cwd: str('Project directory to disambiguate job IDs.'), timeout_s: { type: 'integer', minimum: 1, description: 'Max wait (default 540).' } } },
   },
   {
     name: 'codex_jobs',
@@ -129,11 +130,20 @@ const { formatJob, k, list } = require('./format');
 const checkpoint = require('./checkpoint');
 const capabilities = require('./capabilities');
 
-async function waitFor(ids, timeoutMs) {
-  const want = ids && ids.length ? ids : [...orch.live.entries()].filter(([, e]) => !e.settled).map(([id]) => id);
-  await orch.wait(want, timeoutMs);
-  return want.map(id => {
-    const e = orch.live.get(id);
+function liveEntries(ids, cwd) {
+  const pd = cwd === undefined ? null : orch.ctx(cwd).projDir;
+  if (ids && ids.length) return ids.map(id => ({ id, e: orch.getLive(id, pd) }));
+  return [...orch.live.values()].filter(e => !e.settled && (!pd || e.projDir === pd))
+    .map(e => ({ id: e.job.id, e }));
+}
+
+async function waitFor(entries, timeoutMs) {
+  const targets = entries.filter(x => x.e).map(x => x.e.promise);
+  let timer;
+  try {
+    await Promise.race([Promise.all(targets), new Promise(r => { timer = setTimeout(r, timeoutMs); })]);
+  } finally { clearTimeout(timer); }
+  return entries.map(({ id, e }) => {
     if (!e) return `job ${id} was not started by this session (see codex_jobs)`;
     return e.settled ? formatJob(e.job) : `job ${id} still running; call codex_wait again`;
   }).join('\n\n') || 'no unfinished jobs in this session';
@@ -190,22 +200,26 @@ const handlers = {
   async codex_run(a, meta) {
     if (a.dry_run) return plan(a);
     const { job, promise } = orch.submit(a);
-    if (meta && meta.progressToken !== undefined) progressTokens.set(job.id, meta.progressToken);
+    const pd = orch.ctx(a.cwd).projDir;
+    if (a.wait !== false && meta && meta.progressToken !== undefined)
+      progressTokens.set(progressKey(pd, job.id), meta.progressToken);
     if (a.wait === false) return `job ${job.id} queued (${job.mode}, ${job.difficulty}). Collect with codex_wait.`;
     let timer;
     const finished = await Promise.race([promise, new Promise(r => { timer = setTimeout(() => r(null), FOREGROUND_CAP_MS); })]);
     clearTimeout(timer);
-    progressTokens.delete(job.id);
+    progressTokens.delete(progressKey(pd, job.id));
     return finished ? formatJob(finished) : `job ${job.id} still running after ${FOREGROUND_CAP_MS / 60000} min; collect with codex_wait.`;
   },
   async codex_wait(a, meta) {
-    const ids = a.ids || [...orch.live.keys()];
-    if (meta && meta.progressToken !== undefined) for (const id of ids) progressTokens.set(id, meta.progressToken);
-    try { return await waitFor(a.ids, Math.min((a.timeout_s || 540) * 1000, FOREGROUND_CAP_MS)); } finally { for (const id of ids) progressTokens.delete(id); }
+    const entries = liveEntries(a.ids, a.cwd);
+    if (meta && meta.progressToken !== undefined)
+      for (const { e } of entries) if (e) progressTokens.set(progressKey(e.projDir, e.job.id), meta.progressToken);
+    try { return await waitFor(entries, Math.min((a.timeout_s || 540) * 1000, FOREGROUND_CAP_MS)); }
+    finally { for (const { e } of entries) if (e) progressTokens.delete(progressKey(e.projDir, e.job.id)); }
   },
   async codex_jobs(a) {
     const { root, projDir } = orch.ctx(a.cwd);
-    if (a.cancel) return orch.cancel(a.cancel) ? `cancelling ${a.cancel}` : `job ${a.cancel} is not running in this session`;
+    if (a.cancel) return orch.cancel(a.cancel, null, projDir) ? `cancelling ${a.cancel}` : `job ${a.cancel} is not running in this session`;
     if (a.show) { const j = ledger.get(projDir, a.show); return j ? formatJob(j, true) : `no job ${a.show}`; }
     if (a.resume) {
       const { job } = orch.resume(a.resume, a.cwd);

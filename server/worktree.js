@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync, spawnSync } = require('child_process');
-const { DATA, mkdirp, projectKey, renameRetry, retryBusy, writeJson, readJson, withLock } = require('./store');
+const { DATA, mkdirp, projectKey, retryBusy, writeJson, readJson, withLock } = require('./store');
 
 // Refuse path traversal and symlink/junction traversal, including in existing parents.
 // Lexical confinement alone is insufficient: fs.readFileSync/writeFileSync follow links.
@@ -202,7 +202,15 @@ function atomicReplace(root, relative, content, expected) {
       const st = fs.statSync(dst);
       if (st.isFile()) fs.chmodSync(tmp, st.mode);
     } catch (e) { if (e.code !== 'ENOENT') throw e; }
-    renameRetry(tmp, dst); // Windows: an editor, indexer or OneDrive briefly holding the file blocks replacement
+    // Windows handles without delete sharing (editors, AV, sync clients) may block
+    // replacement for several seconds. Preserve the expected contents and recheck
+    // ownership + symlink boundaries on EVERY retry, not only before the first.
+    retryBusy(() => {
+      safeTarget(root, relative);
+      if (!same(read(dst), expected)) throw Object.assign(
+        new Error(relative + ' changed while waiting for replacement'), { code: 'RACE' });
+      fs.renameSync(tmp, dst);
+    }, process.platform === 'win32' ? 10000 : 1000);
   } finally { try { fs.unlinkSync(tmp); } catch {} }
 }
 
