@@ -358,6 +358,14 @@ test('memory: concurrent writers from 4 processes lose nothing', () => {
 });
 
 // ---------------- verify / store ----------------
+test('testFingerprint detects modifications to tracked and untracked tests', () => {
+  const root = H.repo(null, { 'src/a.test.js': 'original', 'main.js': 'original' });
+  const a = verify.testFingerprint(root);
+  H.write(root, { 'src/a.test.js': 'weakened', 'extra.test.js': 'new', 'main.js': 'changed' });
+  const b = verify.testFingerprint(root);
+  assert.deepEqual(verify.testChanges(a, b).sort(), ['extra.test.js', 'src/a.test.js']);
+});
+
 test('verify: detection, fingerprint of scripts only, deleted tests, timeout', async () => {
   const dir = H.repo(null, { 'package.json': JSON.stringify({ scripts: { test: 'node t.js' }, dependencies: { a: '1' } }) });
   assert.equal(verify.detect(dir), 'npm test --silent');
