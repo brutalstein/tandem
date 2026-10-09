@@ -99,6 +99,17 @@ test('integrity: a pass obtained by editing the test definition is not "verified
   assert.deepEqual(j.result.integrity.verifyDefinitionChanged, ['package.json']);
 });
 
+test('in-place scope audit detects edits to already-dirty tracked files', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'b.txt': 'overwrite' }] },
+    { 'a.txt': 'old', 'b.txt': 'base' });
+  H.write(dir, { 'b.txt': 'existing user edit' });
+  const j = await run(orch(), { cwd: dir, task: 'edit a only', mode: 'implement', difficulty: 'normal',
+    paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
+  assert.equal(j.status, 'failed_verification');
+  assert.deepEqual(j.result.outOfScope, ['b.txt']);
+});
+
 test('test content tampering cannot yield verified even when the configured check passes', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },
