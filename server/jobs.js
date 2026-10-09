@@ -359,6 +359,26 @@ class Orchestrator {
       if (job.mode !== 'implement') { if (report.status !== 'done') obs(false, false); break; }
       if (report.status === 'blocked') { obs(false, false); break; }
       if (!verifyCmd) { if (report.status !== 'done') obs(false, false); break; }
+      // PRE-EXECUTION integrity check: never run an altered test command or a modified
+      // pre-existing test with the user's full privileges. A post-run warning is too late
+      // to prevent malicious package scripts or test fixtures from executing.
+      const preDefinitions = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
+      const preTestsNow = verify.testFingerprint(workdir);
+      const preTests = verify.testChanges(testsBefore, preTestsNow);
+      const scanFailed = Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(preTestsNow, '__scan_error__');
+      if (preDefinitions.length || preTests.length || scanFailed) {
+        verification = {
+          command: verifyCmd, ok: false, code: null, ms: 0,
+          environment: 'verification preflight blocked: test definitions or existing tests changed; review changes before running code with local user privileges',
+          tail: [
+            preDefinitions.length && 'changed definitions: ' + preDefinitions.join(', '),
+            preTests.length && 'changed tests: ' + preTests.join(', '),
+            scanFailed && 'test-file fingerprint scan failed',
+          ].filter(Boolean).join('; '),
+        };
+        this.onProgress(job.id, 'verification blocked: test integrity preflight failed');
+        break;
+      }
       this.onProgress(job.id, `verifying: ${verifyCmd}`);
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;
