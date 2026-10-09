@@ -333,7 +333,8 @@ class Orchestrator {
         status = 'conflict';
         result.integration = { conflicts: result.outOfScope.map(p => ({ path: p, reason: 'outside assigned scope' })) };
       }
-      const integrable = ['verified', 'unverified'].includes(status) && !result.outOfScope.length;
+      // Never auto-integrate work that altered tests or verification definitions.
+      const integrable = ['verified', 'unverified'].includes(status) && !result.outOfScope.length && !(x.integrity && Object.keys(x.integrity).length);
       if (integrable && changes.length) {
         // Integrate under a short path claim; wait for any in-place writer on those paths.
         let acq, delay = 100;
