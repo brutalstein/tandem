@@ -15,7 +15,7 @@ Tandem runs locally inside Claude Code and starts the official Codex CLI. It add
 | Boundary | What Tandem does |
 |---|---|
 | Codex sandbox | `workspace-write` for implement jobs, `read-only` for ask and review. Tandem never passes `--dangerously-bypass-approvals-and-sandbox` or similar flags, and never edits `~/.codex/config.toml`. |
-| Claude Code permissions | Every Tandem tool call, including the `verify` command, goes through Claude Code's permission system. |
+| Claude Code permissions | Claude Code controls permission for the Tandem MCP tool invocation; subsequent verification commands are executed by Tandem with the local user's rights. There may be no separate approval for each verification subprocess. Treat custom `verify` strings and repository test scripts as trusted-code execution. |
 | Untrusted model output | Codex summaries and findings are sanitised (control and bidi characters removed), secret-redacted, length-limited, and returned to Claude inside an explicit "untrusted model output" frame. Findings enter memory only as *tentative* entries. |
 | Paths | Tool arguments are validated server-side; `paths` must stay inside the repository (`..` and absolute paths elsewhere are rejected). Integration rejects existing symlinks/junctions in changed source and destination paths. These checks are defense-in-depth and do not eliminate all filesystem race conditions. |
 | Prompts | Prompts reach Codex on stdin, never on a command line. |
