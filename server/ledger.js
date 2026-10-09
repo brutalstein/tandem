@@ -57,7 +57,7 @@ function reap(doc, now) {
       j.status = 'interrupted';
       j.finished = now;
       j.note = j.worktree ? `owner died; worktree kept at ${j.worktree.path}` : 'owner died; any partial in-place changes were left untouched';
-      if (j.worktree) { try { require('./worktree').unlinkLinks(j.worktree); } catch {} } // lazy: keeps the guard hook's fast path light
+      if (j.worktree) { try { require('./worktree').unlinkLinks(j.worktree, j.root); } catch {} } // lazy: keeps the guard hook's fast path light
       reaped.push(j.id);
     }
   }
