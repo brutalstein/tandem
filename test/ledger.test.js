@@ -87,7 +87,7 @@ test('reaping a crashed worktree job unlinks its dependency links (the user dir 
   const pd = proj();
   const target = store.mkdirp(path.join(H.TMP, 'ledger', `deps${k}`, 'm'));
   fs.writeFileSync(path.join(target, 'f.js'), 'keep');
-  const wtPath = store.mkdirp(path.join(H.TMP, 'ledger', `wt${k}`));
+  const wtPath = store.mkdirp(path.join(store.DATA, 'worktrees', store.projectKey(H.TMP), `jcrash${k}`));
   fs.symlinkSync(path.dirname(target), path.join(wtPath, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const a = ledger.submit(pd, job({ paths: ['x'] }));
   ledger.tryAcquire(pd, a.id, { maxParallel: 2, isolationPref: 'worktree' });
