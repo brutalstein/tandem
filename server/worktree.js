@@ -22,7 +22,7 @@ const { DATA, mkdirp, projectKey } = require('./store');
 // Lexical confinement alone is insufficient: fs.readFileSync/writeFileSync follow links.
 // This is defense-in-depth against accidental and model-created links, not an OS sandbox.
 function safeTarget(root, relative) {
-  if (typeof relative !== 'string' || !relative || relative.includes('\\0') || path.isAbsolute(relative))
+  if (typeof relative !== 'string' || !relative || relative.includes(String.fromCharCode(0)) || path.isAbsolute(relative))
     throw new Error('invalid integration path');
   const resolvedRoot = path.resolve(root);
   const target = path.resolve(resolvedRoot, relative);
