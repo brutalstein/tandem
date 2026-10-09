@@ -126,6 +126,28 @@ test('skill lock survives corruption through the last good backup; double corrup
   assert.ok(fs.existsSync(path.join(root, '.agents', 'skills', 'checkpoint-skill')), 'corrupt metadata never deletes user files');
 });
 
+test('concurrent skill installs cannot corrupt the registry or overwrite a different process', async () => {
+  const root = H.repo();
+  const src = path.join(H.TMP, 'concurrent-skill');
+  skill(src, 'name: one-owner\ndescription: Single-owner skill installation');
+  const js = [
+    'const c=require(' + JSON.stringify(path.join(H.ROOT, 'server', 'capabilities.js')) + ');',
+    'try { c.install(' + JSON.stringify(root) + ',' + JSON.stringify(src) + ',{source:"fixture"}); process.exit(0); }',
+    'catch (e) { if (/--force/.test(e.message)) process.exit(2); console.error(e); process.exit(3); }',
+  ].join('\n');
+  const spawn = require('child_process').spawn;
+  const children = Array.from({ length: 4 }, () => spawn(process.execPath, ['-e', js], { stdio: ['ignore', 'pipe', 'pipe'], env: process.env }));
+  const codes = await Promise.all(children.map(child => new Promise((resolve, reject) => {
+    let stderr = '';
+    child.stderr.on('data', d => { stderr += String(d); });
+    child.on('error', reject);
+    child.on('close', code => resolve({ code, stderr }));
+  })));
+  assert.deepEqual(codes.map(x => x.code).sort(), [0, 2, 2, 2], JSON.stringify(codes));
+  assert.deepEqual(cap.verifyInstalled(root), [{ name: 'one-owner', ok: true, reason: null }]);
+  assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', 'tandem-lock.json.lock')), false);
+});
+
 test('CLI: a git source must be pinned to a commit and is fetched at exactly that commit', () => {
   const root = H.repo();
   const srcRepo = H.repo(null, { 'skills/hello/SKILL.md': '---\nname: hello\ndescription: Say hello politely\n---\n' });
