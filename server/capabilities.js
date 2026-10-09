@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { writeJson } = require('./store');
+const { writeJson, withLock } = require('./store');
 
 const HOME = process.env.TANDEM_HOME || os.homedir(); // overridable so tests never read the developer's skills
 const MAX_SKILL_BYTES = 256 * 1024;
@@ -169,7 +169,7 @@ const writeLock = (root, lock) => {
   writeJson(LOCK(root), { v: 1, skills: lock });
 };
 
-function install(root, src, { source, ref = null, allowScripts = false, force = false }) {
+function installUnlocked(root, src, { source, ref = null, allowScripts = false, force = false }) {
   if (!fs.existsSync(path.join(src, 'SKILL.md'))) throw new Error(`no SKILL.md in ${src}`);
   const fm = frontMatter(fs.readFileSync(path.join(src, 'SKILL.md'), 'utf8'));
   const name = fm.name || path.basename(src);
@@ -202,7 +202,7 @@ function verifyInstalled(root) {
   });
 }
 
-function uninstall(root, name) {
+function uninstallUnlocked(root, name) {
   const lock = readLock(root);
   if (!lock[name]) throw new Error(`${name} was not installed by tandem`);
   fs.rmSync(path.join(SKILLS(root), name), { recursive: true, force: true });
@@ -211,7 +211,7 @@ function uninstall(root, name) {
   writeLock(root, lock);
 }
 
-function rollback(root, name) {
+function rollbackUnlocked(root, name) {
   const lock = readLock(root), e = lock[name];
   const dir = path.join(SKILLS(root), name), prev = path.join(SKILLS(root), `.${name}.prev`);
   if (!e || !e.prev || !fs.existsSync(prev)) throw new Error(`no previous version of ${name} to roll back to`);
@@ -221,5 +221,12 @@ function rollback(root, name) {
   writeLock(root, lock);
   return lock[name];
 }
+
+// Skill directory moves and their ownership manifest form one transaction. A
+// project-scoped cross-process lock prevents concurrent installs/rollbacks/uninstalls
+// from deleting each other's active or previous versions.
+function install(root, src, opts) { return withLock(LOCK(root), () => installUnlocked(root, src, opts)); }
+function uninstall(root, name) { return withLock(LOCK(root), () => uninstallUnlocked(root, name)); }
+function rollback(root, name) { return withLock(LOCK(root), () => rollbackUnlocked(root, name)); }
 
 module.exports = { frontMatter, locations, scan, select, usage, readLock, tokens, install, verifyInstalled, uninstall, rollback };
