@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync, spawnSync } = require('child_process');
-const { DATA, mkdirp, projectKey } = require('./store');
+const { DATA, mkdirp, projectKey, renameRetry, retryBusy, writeJson, readJson, withLock } = require('./store');
 
 // Refuse path traversal and symlink/junction traversal, including in existing parents.
 // Lexical confinement alone is insufficient: fs.readFileSync/writeFileSync follow links.
@@ -98,7 +98,8 @@ function validLinkName(name) {
 }
 
 function create(root, jobId, base, links = []) {
-  const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), jobId);
+  // Unique per run: job ids restart if the ledger is lost, and an existing directory may hold interrupted work.
+  const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), `${jobId}-${crypto.randomBytes(3).toString('hex')}`);
   if (fs.existsSync(dir)) throw new Error('worktree already exists; refusing to discard interrupted work: ' + dir);
   git(root, ['worktree', 'add', '--detach', '--quiet', dir, base]);
   const linked = [];
@@ -182,7 +183,7 @@ function plan(root, wt, changed) {
 function atomicReplace(root, relative, content, expected) {
   const dst = safeTarget(root, relative);
   if (!same(read(dst), expected)) throw new Error(relative + ' changed during integration');
-  if (content === null) { fs.rmSync(dst, { force: true }); return; }
+  if (content === null) { retryBusy(() => fs.rmSync(dst, { force: true })); return; }
   mkdirp(path.dirname(dst));
   safeTarget(root, relative); // reject parents that became links while making directories
   const tmp = dst + '.tandem-' + crypto.randomBytes(8).toString('hex') + '.tmp';
@@ -196,7 +197,7 @@ function atomicReplace(root, relative, content, expected) {
       const st = fs.statSync(dst);
       if (st.isFile()) fs.chmodSync(tmp, st.mode);
     } catch (e) { if (e.code !== 'ENOENT') throw e; }
-    fs.renameSync(tmp, dst);
+    renameRetry(tmp, dst); // Windows: an editor, indexer or OneDrive briefly holding the file blocks replacement
   } finally { try { fs.unlinkSync(tmp); } catch {} }
 }
 
@@ -228,6 +229,33 @@ function revert(root, actions) {
   return restored;
 }
 
+// Crash consistency of a multi-file integration. The planned actions, with the user's prior content,
+// are journaled before the first write; the caller removes the journal once the outcome is final.
+// A journal left by a dead owner means the integration stopped part-way: recover() undoes it with
+// revert(), which restores only files that still hold exactly what was written.
+const enc = b => (b === null ? null : b.toString('base64'));
+const dec = s => (s === null ? null : Buffer.from(s, 'base64'));
+function journal(file, root, wtPath, actions) {
+  writeJson(file, { root, worktree: wtPath, actions: actions.map(a => ({ path: a.path, ours: enc(a.ours), write: enc(a.write) })) });
+}
+function recover(file) {
+  return withLock(file, () => {
+    const j = readJson(file, null);
+    if (!j) return null;
+    const actions = j.actions.map(a => ({ path: a.path, ours: dec(a.ours), write: dec(a.write) }));
+    for (const a of actions) { // temporary files of a replacement cut short
+      try {
+        const dst = safeTarget(j.root, a.path), prefix = path.basename(dst) + '.tandem-';
+        for (const n of fs.readdirSync(path.dirname(dst))) if (n.startsWith(prefix) && n.endsWith('.tmp')) fs.rmSync(path.join(path.dirname(dst), n), { force: true });
+      } catch {}
+    }
+    const restored = revert(j.root, actions);
+    const changedSince = actions.filter(a => !restored.includes(a.path) && !same(read(path.join(j.root, a.path)), a.ours)).map(a => a.path);
+    for (const f of [file, file + '.bak']) fs.rmSync(f, { force: true });
+    return { restored, changedSince, worktree: j.worktree };
+  });
+}
+
 function integrate(root, wt, changed) {
   const p = plan(root, wt, changed);
   if (p.conflicts.length) return { applied: [], conflicts: p.conflicts };
@@ -257,4 +285,4 @@ function remove(root, wt) {
 // Has the user's working state moved since `tree` was snapshotted?
 function drifted(root, tree, links) { try { return snapshot(root, links).tree !== tree; } catch { return true; } }
 
-module.exports = { snapshot, diffTrees, create, changes, plan, apply, revert, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };
+module.exports = { snapshot, diffTrees, create, changes, plan, apply, revert, journal, recover, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };

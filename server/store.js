@@ -58,15 +58,16 @@ function readJson(file, fallback) {
   }
 }
 
-function renameRetry(from, to) {
-  // Windows: rename fails transiently while a reader or AV scanner holds the target.
+// Windows: rename and delete fail transiently while a reader, editor, indexer or AV scanner holds the file.
+function retryBusy(fn) {
   for (let i = 0; ; i++) {
-    try { fs.renameSync(from, to); return; } catch (e) {
+    try { return fn(); } catch (e) {
       if (i >= 40 || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
       sleepMs(25);
     }
   }
 }
+const renameRetry = (from, to) => retryBusy(() => fs.renameSync(from, to));
 
 function writeJson(file, obj) {
   mkdirp(path.dirname(file));
@@ -138,4 +139,4 @@ function update(file, fallback, mutator, migrate) {
 
 function sha1(buf) { return crypto.createHash('sha1').update(buf).digest('hex'); }
 
-module.exports = { DATA, mkdirp, projectRoot, projectKey, projectDir, isGitRepo, readJson, writeJson, withLock, update, pidAlive, sleepMs, logError, sha1 };
+module.exports = { DATA, mkdirp, projectRoot, projectKey, projectDir, isGitRepo, readJson, writeJson, withLock, update, pidAlive, sleepMs, retryBusy, renameRetry, logError, sha1 };

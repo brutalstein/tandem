@@ -324,3 +324,28 @@ test('coordination: a worker is told what concurrent writers are changing (no du
   assert.match(p, /Other agents are changing these paths right now; do not modify them: lib\/x\.js/);
   assert.doesNotMatch(H.calls(dir).find(c => c.prompt.includes('TASK-ISO')).prompt, /Other agents/, 'own scope is never listed as forbidden');
 });
+
+test('owner killed mid-integration (post-verification): the next start restores the files, keeps the worktree', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok', delayMs: 800 }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old', 'b.txt': 'b' });
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), 'SLOW\n');
+  H.write(dir, { SLOW: '' }); // ignored: absent from the worktree, so the check is slow only in the main tree
+  const check = `node -e "const fs=require('fs');if(fs.existsSync('SLOW'))setTimeout(()=>{},60000);else process.exit(fs.readFileSync('a.txt','utf8')==='good'?0:1)"`;
+  const spec = { cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: check, isolation: 'worktree' };
+  const child = require('child_process').spawn(process.execPath, ['-e',
+    `const { Orchestrator } = require(${JSON.stringify(path.join(H.ROOT, 'server', 'jobs.js'))});
+     new Orchestrator(${JSON.stringify(H.CFG)}).submit(${JSON.stringify(spec)}).promise.then(() => process.exit(0));`], { stdio: 'ignore' });
+  const exited = new Promise(r => child.once('exit', r));
+  await waitFor(() => H.calls(dir).length >= 1);
+  H.write(dir, { 'b.txt': 'user edit' }); // drift: the integrated tree must be re-verified
+  await waitFor(() => H.read(dir, 'a.txt') === 'good', 30000); // integrated; re-verification now running
+  codex.killTree(child);
+  await exited;
+  const j = orch().list(dir).find(x => x.task === 'fix a');
+  assert.equal(j.status, 'interrupted');
+  assert.deepEqual(j.recovery.restored, ['a.txt']);
+  assert.equal(H.read(dir, 'a.txt'), 'old', 'unconfirmed integration undone');
+  assert.equal(H.read(dir, 'b.txt'), 'user edit', 'user work untouched');
+  assert.equal(H.read(j.worktree.path, 'a.txt'), 'good', 'result kept for review');
+  assert.equal(fs.readdirSync(path.join(store.projectDir(dir), 'integrations')).length, 0);
+});

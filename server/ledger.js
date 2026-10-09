@@ -149,6 +149,11 @@ function patch(projDir, id, fields) {
   });
 }
 
+// Record facts on a job that has ended (e.g. crash recovery done by another session). Not owner-fenced.
+function annotate(projDir, id, fields) {
+  return txn(projDir, doc => { const j = doc.jobs[id]; if (j && !ACTIVE.has(j.status)) Object.assign(j, fields); return !!j; });
+}
+
 function heartbeat(projDir, ids) {
   return txn(projDir, doc => {
     let n = 0;
@@ -194,4 +199,4 @@ function concurrentWrites(projDir, id) {
   return [...new Set(paths)];
 }
 
-module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, heartbeat, list, get, heldClaims, concurrentWrites, overlaps, anyOverlap, migrate, reap };
+module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, annotate, heartbeat, list, get, heldClaims, concurrentWrites, overlaps, anyOverlap, migrate, reap };

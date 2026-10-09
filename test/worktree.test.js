@@ -165,3 +165,50 @@ test('a worktree that outlives its job holds no dependency link, so `git worktre
   H.git(root, 'worktree', 'remove', '--force', w.path); // what a user would run (follows junctions on Windows)
   assert.equal(H.read(root, 'node_modules/m/index.js'), 'mod', 'user dependencies intact');
 });
+
+test('create never reuses or deletes an existing directory: a reused job id gets a fresh worktree', () => {
+  const root = H.repo(null, { 'a.txt': 'a\n' });
+  const snap = wt.snapshot(root, []);
+  const one = wt.create(root, 'jdup', snap.commit, []);
+  H.write(one.path, { 'kept.txt': 'interrupted work' });
+  const two = wt.create(root, 'jdup', snap.commit, []); // e.g. job ids restarted after the ledger was lost
+  assert.notEqual(two.path, one.path);
+  assert.equal(H.read(one.path, 'kept.txt'), 'interrupted work');
+  assert.doesNotThrow(() => wt.assertManaged(root, two.path));
+  wt.remove(root, one); wt.remove(root, two);
+});
+
+test('Windows: replacing a file another program holds open without delete sharing waits, then lands', { skip: process.platform !== 'win32' }, async () => {
+  const root = H.repo(null, { 'a.txt': 'base\n' });
+  const file = path.join(root, 'a.txt');
+  // FileShare ReadWrite (no Delete), as many editors, indexers and sync clients open files.
+  const ps = require('child_process').spawn('powershell', ['-NoProfile', '-Command',
+    `$f=[System.IO.File]::Open('${file}','Open','Read','ReadWrite'); 'held'; Start-Sleep -Milliseconds 500; $f.Close()`]);
+  await new Promise((resolve, reject) => { ps.stdout.once('data', resolve); ps.once('error', reject); });
+  const t0 = Date.now();
+  const res = wt.apply(root, [{ path: 'a.txt', ours: Buffer.from('base\n'), write: Buffer.from('new\n'), how: 'fast-forward' }]);
+  const waited = Date.now() - t0;
+  await new Promise(r => ps.once('close', r));
+  assert.equal(res.error, undefined);
+  assert.equal(H.read(root, 'a.txt'), 'new\n');
+  assert.ok(waited >= 100, `contended for ${waited} ms`);
+  assert.deepEqual(fs.readdirSync(root).filter(n => n.endsWith('.tmp')), [], 'no temporary file left');
+});
+
+test('journal recovery undoes a partial multi-file integration and never clobbers a later user edit', () => {
+  const root = H.repo(null, { 'a.txt': 'a0\n', 'b.txt': 'b0\n', 'c.txt': 'c0\n' });
+  const act = (p, ours, write) => ({ path: p, ours: Buffer.from(ours), write: Buffer.from(write), how: 'fast-forward' });
+  const actions = [act('a.txt', 'a0\n', 'a1\n'), act('b.txt', 'b0\n', 'b1\n'), act('c.txt', 'c0\n', 'c1\n')];
+  const jf = path.join(H.TMP, 'journal-test', 'j1.json');
+  wt.journal(jf, root, '/kept/worktree', actions);
+  wt.apply(root, actions.slice(0, 2)); // the owner died after two of three writes...
+  fs.writeFileSync(path.join(root, 'c.txt.tandem-0123456789abcdef.tmp'), 'c1\n'); // ...while replacing the third
+  H.write(root, { 'b.txt': 'user edit after the crash\n' });
+  const r = wt.recover(jf);
+  assert.deepEqual(r.restored, ['a.txt']);
+  assert.deepEqual(r.changedSince, ['b.txt']);
+  assert.deepEqual([H.read(root, 'a.txt'), H.read(root, 'b.txt'), H.read(root, 'c.txt')], ['a0\n', 'user edit after the crash\n', 'c0\n']);
+  assert.deepEqual(fs.readdirSync(root).filter(n => n.endsWith('.tmp')), []);
+  assert.ok(!fs.existsSync(jf));
+  assert.equal(wt.recover(jf), null, 'idempotent');
+});

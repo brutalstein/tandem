@@ -85,7 +85,25 @@ class Orchestrator {
 
   ctx(cwd) {
     const root = store.projectRoot(cwd || process.env.TANDEM_PROJECT_DIR || process.cwd());
-    return { root, projDir: store.projectDir(root) };
+    const projDir = store.projectDir(root);
+    this.recover(projDir);
+    return { root, projDir };
+  }
+
+  // Undo integrations whose owner died part-way (see worktree.journal). A journal of a job that is still
+  // active belongs to a live owner, possibly another session, and is left alone.
+  recover(projDir) {
+    let names;
+    try { names = fs.readdirSync(path.join(projDir, 'integrations')).filter(n => /^j\d+\.json$/.test(n)); } catch { return; }
+    for (const n of names) {
+      const id = n.slice(0, -5);
+      try {
+        const j = ledger.get(projDir, id); // the transaction reaps dead owners first
+        if (j && ledger.ACTIVE.has(j.status)) continue;
+        const r = worktree.recover(path.join(projDir, 'integrations', n));
+        if (r) ledger.annotate(projDir, id, { recovery: { ...r, at: Date.now(), note: 'integration interrupted part-way; written files restored, worktree kept' } });
+      } catch (e) { store.logError('recover', e); }
+    }
   }
 
   wake() { for (const w of [...this.wakers]) w(); }
@@ -373,10 +391,12 @@ class Orchestrator {
           await new Promise(r => setTimeout(r, delay)); delay = Math.min(delay * 2, 2000);
         }
         if (acq.acquired) {
+        const journal = path.join(projDir, 'integrations', `${job.id}.json`);
         const drift = x.snap && worktree.drifted(job.root, x.snap.tree, cfg.worktreeLinks);
         const p = worktree.plan(job.root, wt, changes);
         if (p.conflicts.length) { status = 'conflict'; result.integration = { conflicts: p.conflicts, worktree: wt.path }; }
         else {
+          worktree.journal(journal, job.root, wt.path, p.actions);
           const a = worktree.apply(job.root, p.actions);
           result.integration = { applied: a.applied, mainTreeDrifted: !!drift };
           if (a.error) { status = 'conflict'; result.integration = { conflicts: [{ path: '-', reason: a.error }], rolledBack: a.rolledBack, worktree: wt.path }; }
@@ -391,6 +411,7 @@ class Orchestrator {
             }
           }
         }
+        fs.rmSync(journal, { force: true }); fs.rmSync(journal + '.bak', { force: true }); // commit point: the outcome is final
         }
       } else if (integrable) result.integration = { applied: [] };
       // Keep the worktree whenever it holds changes that did not land (nothing is silently discarded).
