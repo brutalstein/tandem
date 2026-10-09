@@ -42,11 +42,13 @@ function config() {
     // Codex jobs are I/O- and provider-bound; the cap protects quota and the machine, not the CPU alone.
     maxParallel: parallel > 0 ? parallel : Math.min(3, Math.max(1, Math.floor(cpus / 4))),
     leanCodex: opt('lean_codex') !== 'false',
-    isolation: pick('isolation', ['auto', 'inplace', 'worktree'], 'worktree'),
+    isolation: pick('isolation', ['auto', 'inplace', 'worktree'], 'auto'), // same default as plugin.json
     objective: pick('objective', ['balanced', 'tokens', 'time'], 'balanced'),
     exploration: opt('exploration') !== 'false',
-    // Linked dependencies are writable through a junction/symlink. Opt-in only, never a safe default.
-    worktreeLinks: list('worktree_links'),
+    // Without its dependencies a check cannot run in a worktree (the job fails, or the model reinstalls
+    // them). Writes through a link reach the real folder, as an in-place job's would; removal never
+    // follows links (worktree.remove). 'none' disables linking.
+    worktreeLinks: list('worktree_links').includes('none') ? [] : list('worktree_links').length ? list('worktree_links') : ['node_modules', '.venv', 'venv'],
     jobTimeoutMs: num('job_timeout_min', 30, 1, 240) * 60000,
     verifyTimeoutMs: num('verify_timeout_min', 10, 1, 120) * 60000,
     problems,

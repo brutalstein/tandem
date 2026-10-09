@@ -59,7 +59,8 @@ The defaults work. To change an option, use the `/plugin` configure flow in Clau
 | `codex_max_effort` | `xhigh` | Highest reasoning effort. `max` and `ultra` are never used unless you raise this. |
 | `claude_max_model` | `opus` | Highest Claude model for subagents. A subagent requested above it is denied. |
 | `max_parallel` | `0` (auto, 1–3) | Concurrent Codex jobs, counted across all Claude sessions on the project |
-| `isolation` | `worktree` | Isolated worktrees are the safer default. `auto` can edit in place when paths are free; `inplace` trades isolation for lower setup overhead. |
+| `isolation` | `auto` | `auto`: edit in place, or in an isolated worktree when another job holds the paths. `worktree`: always isolate (safer, with setup cost per job). `inplace`: never isolate. |
+| `worktree_links` | `node_modules, .venv, venv` | Dependency folders linked into isolated worktrees so checks can run there. Writes through a link reach your real folder, as an in-place job's would; cleanup never follows links. `none` disables linking. |
 | `objective` | `balanced` | What routing minimises: `tokens`, `time`, or both |
 | `lean_codex` | `true` | Drops Codex's skill and plugin catalogs from delegated runs. Your `AGENTS.md`, rules, sandbox and hooks still apply. |
 

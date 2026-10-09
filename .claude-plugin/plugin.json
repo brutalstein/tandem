@@ -77,6 +77,12 @@
         "worktree"
       ]
     },
+    "worktree_links": {
+      "type": "string",
+      "title": "Dependency folders for isolated worktrees",
+      "description": "Comma-separated top-level folders linked into isolated worktrees so checks can run there (default node_modules, .venv, venv). Writes through a link reach your real folder, as an in-place job's would. 'none' disables linking.",
+      "default": ""
+    },
     "objective": {
       "type": "string",
       "title": "Routing objective",
@@ -104,6 +110,7 @@
         "TANDEM_MAX_PARALLEL": "${user_config.max_parallel}",
         "TANDEM_LEAN_CODEX": "${user_config.lean_codex}",
         "TANDEM_ISOLATION": "${user_config.isolation}",
+        "TANDEM_WORKTREE_LINKS": "${user_config.worktree_links}",
         "TANDEM_OBJECTIVE": "${user_config.objective}"
       }
     }
