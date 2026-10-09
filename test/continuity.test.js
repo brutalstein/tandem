@@ -14,6 +14,9 @@ const orch = (cfg = {}) => new Orchestrator({ ...H.CFG, ...cfg });
 const waitFor = async (cond, ms = 15000) => { const end = Date.now() + ms; while (!cond()) { if (Date.now() > end) throw new Error('timeout'); await new Promise(r => setTimeout(r, 25)); } };
 const scenario = (dir, s) => fs.writeFileSync(path.join(dir, '.fake-scenario.json'), JSON.stringify(s));
 const clean = () => { H.resetEnv(); };
+// The worktree is removed after successful integration. Canonicalize its existing
+// parent, not the deleted leaf; macOS maps /var to /private/var.
+const canonicalWorktreePath = p => path.join(fs.realpathSync.native(path.dirname(p)), path.basename(p));
 
 test('A: usage limit mid-run in a worktree: suspended with partial work kept; resume continues the same thread and worktree', async () => {
   clean();
@@ -43,7 +46,7 @@ test('A: usage limit mid-run in a worktree: suspended with partial work kept; re
   assert.equal(last.args[1], 'resume', 'same Codex conversation continued');
   assert.equal(last.args[2], j.result.resumeFrom.threadId);
   assert.match(last.prompt, /interrupted/);
-  assert.equal(fs.realpathSync.native(last.cwd), fs.realpathSync.native(wt), 'same worktree after platform path canonicalization');
+  assert.equal(canonicalWorktreePath(last.cwd), canonicalWorktreePath(wt), 'same worktree after platform path canonicalization');
   assert.equal(r.resumed, 2);
   assert.equal(r.attempts.filter(a => a.before).length, 1, 'earlier attempt history kept, marked');
   assert.ok(!codex.unavailable()['*'], 'a completed turn clears the provider outage');
@@ -150,7 +153,7 @@ test('crash: an interrupted job (owner died) resumes from its recorded worktree 
   scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
   const r = await o.resume(j.id, dir).promise;
   assert.equal(r.status, 'verified');
-  assert.equal(fs.realpathSync.native(H.calls(dir).at(-1).cwd), fs.realpathSync.native(j.worktree.path), 'continued in the same canonical worktree');
+  assert.equal(canonicalWorktreePath(H.calls(dir).at(-1).cwd), canonicalWorktreePath(j.worktree.path), 'continued in the same canonical worktree');
   assert.match(H.calls(dir).at(-1).prompt, /interrupted/);
   assert.equal(H.read(dir, 'a.txt'), 'good');
 });
