@@ -1,0 +1,14 @@
+{
+  "name": "tandem-local",
+  "description": "Local marketplace for the Tandem Claude Code + Codex orchestration plugin.",
+  "owner": {
+    "name": "cenke"
+  },
+  "plugins": [
+    {
+      "name": "tandem",
+      "source": "./",
+      "description": "Claude Code + OpenAI Codex orchestration: routing, verified delegation, shared memory."
+    }
+  ]
+}

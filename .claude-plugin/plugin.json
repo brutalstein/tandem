@@ -1,0 +1,44 @@
+{
+  "name": "tandem",
+  "version": "1.0.0",
+  "description": "Runs OpenAI Codex as a background worker inside Claude Code: cost-aware model routing, verified delegation, conflict-free parallel jobs and shared project memory.",
+  "author": { "name": "cenke" },
+  "license": "MIT",
+  "keywords": ["codex", "orchestration", "multi-agent", "routing", "memory"],
+  "userConfig": {
+    "codex_max_model": {
+      "type": "string",
+      "title": "Codex model ceiling",
+      "description": "Highest Codex model Tandem may select (generation first, then family luna<terra<sol<astra).",
+      "default": "gpt-6.1-sol"
+    },
+    "codex_max_effort": {
+      "type": "string",
+      "title": "Codex effort ceiling",
+      "description": "Highest Codex reasoning effort Tandem may select.",
+      "default": "xhigh",
+      "options": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    "claude_max_model": {
+      "type": "string",
+      "title": "Claude subagent ceiling",
+      "description": "Highest Claude model allowed for subagents.",
+      "default": "opus",
+      "options": ["haiku", "sonnet", "opus", "fable"]
+    },
+    "max_parallel": {
+      "type": "number",
+      "title": "Parallel Codex jobs",
+      "description": "Concurrent Codex jobs; 0 = auto from CPU count (1-3).",
+      "default": 0,
+      "min": 0,
+      "max": 8
+    },
+    "lean_codex": {
+      "type": "boolean",
+      "title": "Lean Codex prompts",
+      "description": "Trim Codex's skill/plugin catalogs from delegated runs (about 35% fewer input tokens).",
+      "default": true
+    }
+  }
+}
