@@ -10,7 +10,7 @@ Tandem is a Claude Code plugin. Claude Code stays your only interface and the le
 
 There are no extra windows and no prompts to copy between tools. Tandem needs only Node.js, Git and the two official CLIs, and has no third-party dependencies.
 
-> Status: 2.0.0, release candidate. See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for what is verified and what is not.
+> Status: 2.0.0, safety-hardening branch under review; run the regression and real-provider checks before release. See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for what is verified and what is not.
 
 ## Requirements
 
@@ -59,7 +59,7 @@ The defaults work. To change an option, use the `/plugin` configure flow in Clau
 | `codex_max_effort` | `xhigh` | Highest reasoning effort. `max` and `ultra` are never used unless you raise this. |
 | `claude_max_model` | `opus` | Highest Claude model for subagents. A subagent requested above it is denied. |
 | `max_parallel` | `0` (auto, 1–3) | Concurrent Codex jobs, counted across all Claude sessions on the project |
-| `isolation` | `auto` | `auto`: edit in place, or in an isolated worktree when another job holds the paths. `worktree`: always isolate. `inplace`: never isolate. |
+| `isolation` | `worktree` | Isolated worktrees are the safer default. `auto` can edit in place when paths are free; `inplace` trades isolation for lower setup overhead. |
 | `objective` | `balanced` | What routing minimises: `tokens`, `time`, or both |
 | `lean_codex` | `true` | Drops Codex's skill and plugin catalogs from delegated runs. Your `AGENTS.md`, rules, sandbox and hooks still apply. |
 
@@ -95,9 +95,9 @@ MCP tools Claude uses:
   - Details and the simulation study: [docs/ROUTING.md](docs/ROUTING.md).
 - **Verification.**
   - Implement jobs are checked with your tests (`verify`, or auto-detected), never with Codex's own claim.
-  - If the job changes the test definition or deletes a test, the result is downgraded to `unverified`.
+  - If the job changes a test file, a test definition, or deletes a test, the result is downgraded to `unverified`. An in-place scope violation fails verification and requires manual review.
 - **Isolation.**
-  - Overlapping jobs either queue or run in an isolated git worktree built from a snapshot of your current working state. Your HEAD, index and branches are never touched.
+  - Implement jobs run in an isolated git worktree by default; overlapping `auto` jobs may queue or isolate. Dependency-directory symlinks are disabled by default because they could expose original project files to writes. You can explicitly opt in through `TANDEM_WORKTREE_LINKS` if you accept that risk. Your HEAD, index and branches are never touched.
   - Results are merged three-way per file. If you edited the same lines, nothing is written and you get a `conflict` with the kept worktree.
 - **Coordination.**
   - A lock-protected ledger shared by all Claude sessions on the project prevents overlapping writers and enforces the global parallelism limit.
@@ -149,7 +149,7 @@ Methods, raw data and every number: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 npm test
 ```
 
-This runs the deterministic suite: 60 tests against a simulated Codex CLI. It needs no account. CI runs it on Linux, macOS and Windows.
+This runs the deterministic suite: a deterministic test suite against a simulated Codex CLI. It needs no account. CI runs it on Linux, macOS and Windows.
 
 Scripts that use real providers consume quota and never run automatically. They are listed in [CONTRIBUTING.md](CONTRIBUTING.md).
 
