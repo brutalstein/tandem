@@ -197,6 +197,13 @@ class Orchestrator {
     // ---- workspace ----
     let workdir = job.root, snap = null;
     const dirtyBefore = job.mode === 'implement' && job.isolation === 'inplace' ? gitDirty(job.root) : new Set();
+    // Snapshot complete current state, including pre-existing dirty files; status alone cannot
+    // detect a second edit to an already-modified tracked file.
+    let inplaceBase = null;
+    if (job.mode === 'implement' && job.isolation === 'inplace') {
+      try { inplaceBase = worktree.snapshot(job.root, []).tree; }
+      catch (e) { return end('failed', { error: 'cannot establish an in-place safety snapshot: ' + e.message }); }
+    }
     if (job.isolation === 'worktree') {
       try {
         snap = worktree.snapshot(job.root, cfg.worktreeLinks);
@@ -249,7 +256,7 @@ class Orchestrator {
         }
         if (res.errorKind === 'rate_limited') {
           provider.markUnavailable('*', res.error, provider.retryAfterMs(res.error));
-          return this.finish(job, projDir, entry, wt, 'codex_unavailable', { error: `Codex usage/rate limit reached: ${sanitize(res.error, 300)}. Do the work in Claude instead.`, usage, attempts, dirtyBefore, reported });
+          return this.finish(job, projDir, entry, wt, 'codex_unavailable', { error: `Codex usage/rate limit reached: ${sanitize(res.error, 300)}. Do the work in Claude instead.`, usage, attempts, dirtyBefore, inplaceBase, reported });
         }
         if (res.errorKind === 'auth' || res.errorKind === 'missing') return end('codex_unavailable', { error: sanitize(res.error, 300), attempts });
         if (res.errorKind === 'transient' && !transientRetried) { transientRetried = true; extra++; continue; }
@@ -280,7 +287,7 @@ class Orchestrator {
       idx = policy.next(projDir, { cls, rungs, cfg, at: idx, attemptsLeft: job.maxAttempts + extra - n });
     }
 
-    if (entry.cancelled) return this.finish(job, projDir, entry, wt, 'cancelled', { report, usage, attempts, dirtyBefore, reported });
+    if (entry.cancelled) return this.finish(job, projDir, entry, wt, 'cancelled', { report, usage, attempts, dirtyBefore, inplaceBase, reported });
     let status;
     if (job.mode !== 'implement') status = report ? (report.status === 'done' ? 'answered' : report.status) : 'failed';
     else if (!report) status = 'failed';
@@ -305,7 +312,7 @@ class Orchestrator {
       if (del.length) integrity.deletedTests = del;
     }
     if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests || integrity.modifiedTests || integrity.testScanError)) status = 'unverified';
-    return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, reported, wtChanges, snap, verifyCmd });
+    return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, inplaceBase, reported, wtChanges, snap, verifyCmd });
   }
 
   async finish(job, projDir, entry, wt, status, x) {
@@ -315,8 +322,19 @@ class Orchestrator {
     if (x.integrity && Object.keys(x.integrity).length) result.integrity = x.integrity;
     if (job.mode === 'implement' && !wt && x.dirtyBefore) {
       const held = ledger.heldClaims(projDir).filter(c => c.id !== job.id).flatMap(c => c.paths);
-      const changed = new Set(x.reported || []);
-      for (const f of gitDirty(job.root)) if (!x.dirtyBefore.has(f) && !held.some(p => ledger.overlaps(p, f))) changed.add(f);
+      let changed;
+      if (x.inplaceBase) {
+        try {
+          changed = new Set(worktree.diffTrees(job.root, x.inplaceBase, worktree.snapshot(job.root, []).tree));
+        } catch (e) {
+          result.integrity = { ...(result.integrity || {}), scopeScanError: String(e.message).slice(0, 200) };
+          if (status === 'verified') status = 'failed_verification';
+        }
+      }
+      if (!changed) {
+        changed = new Set(x.reported || []);
+        for (const f of gitDirty(job.root)) if (!x.dirtyBefore.has(f) && !held.some(p => ledger.overlaps(p, f))) changed.add(f);
+      }
       result.changed = [...changed].sort();
       result.outOfScope = job.paths.length ? result.changed.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
       if (result.outOfScope.length && ['verified', 'unverified'].includes(status)) {
