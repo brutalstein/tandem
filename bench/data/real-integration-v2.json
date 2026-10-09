@@ -1,0 +1,194 @@
+{
+  "meta": {
+    "date": "2026-10-09T08:43:01.100Z",
+    "platform": "win32 10.0.26200",
+    "node": "v24.11.0",
+    "codex": "codex-cli 0.154.0",
+    "ceiling": "gpt-6.1-sol",
+    "effortCeiling": "xhigh"
+  },
+  "results": [
+    {
+      "name": "discovery: catalog parsed, ceilings applied with reasons",
+      "outcome": "pass",
+      "ms": 5,
+      "evidence": {
+        "catalog": [
+          "gpt-6-astra",
+          "gpt-reserve",
+          "gpt-5.6-sol",
+          "gpt-5.6-terra",
+          "gpt-5.6-luna",
+          "gpt-5.5",
+          "codex-auto-review"
+        ],
+        "eligible": [
+          "gpt-5.6-luna",
+          "gpt-5.6-terra",
+          "gpt-5.6-sol",
+          "gpt-6-astra"
+        ],
+        "excluded": [
+          [
+            "gpt-reserve",
+            "hidden in catalog"
+          ],
+          [
+            "gpt-5.5",
+            "hidden in catalog"
+          ],
+          [
+            "codex-auto-review",
+            "hidden in catalog"
+          ]
+        ],
+        "rungs": [
+          "gpt-5.6-luna@low",
+          "gpt-5.6-luna@medium",
+          "gpt-5.6-luna@high",
+          "gpt-5.6-terra@low",
+          "gpt-5.6-luna@xhigh",
+          "gpt-5.6-terra@medium",
+          "gpt-5.6-terra@high",
+          "gpt-5.6-sol@low",
+          "gpt-5.6-terra@xhigh",
+          "gpt-5.6-sol@medium",
+          "gpt-5.6-sol@high",
+          "gpt-6-astra@low",
+          "gpt-5.6-sol@xhigh",
+          "gpt-6-astra@medium",
+          "gpt-6-astra@high",
+          "gpt-6-astra@xhigh"
+        ]
+      }
+    },
+    {
+      "name": "explicit model the account cannot run is rejected, never substituted",
+      "outcome": "pass",
+      "ms": 12110,
+      "evidence": {
+        "status": "rejected",
+        "error": "requested model unavailable: {\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-6.1-sol' model is not supported when using"
+      }
+    },
+    {
+      "name": "ask: routed to a permitted model, read-only, answered",
+      "outcome": "pass",
+      "ms": 30817,
+      "evidence": {
+        "attempts": [
+          "gpt-5.6-terra@low"
+        ],
+        "route": [
+          {
+            "r": "gpt-5.6-terra@low",
+            "p": 0.775,
+            "n": 0,
+            "C": 0.579
+          },
+          {
+            "r": "gpt-5.6-sol@low",
+            "p": 0.852,
+            "n": 0,
+            "C": 0.752
+          }
+        ],
+        "usage": {
+          "input": 30048,
+          "cached": 14080,
+          "output": 419
+        },
+        "ms": 30746,
+        "summary": "slug.js exports `slugify`, which currently throws `Error('not implemented')` for any input."
+      }
+    },
+    {
+      "name": "memory: Codex findings stored as tentative with provenance",
+      "outcome": "pass",
+      "ms": 1,
+      "evidence": {
+        "entry": "m1 fact (tentative; codex:gpt-5.6-terra:j2): slug.js exports slugify"
+      }
+    },
+    {
+      "name": "concurrent implement: isolated worktree + wide in-place writer, no duplicated work, both verified and integrated",
+      "outcome": "pass",
+      "ms": 42947,
+      "evidence": {
+        "inplace": {
+          "attempts": [
+            "gpt-6-astra@medium+"
+          ],
+          "usage": {
+            "input": 93327,
+            "cached": 72448,
+            "output": 663
+          },
+          "changed": [
+            "slug.js"
+          ],
+          "ms": 39533
+        },
+        "isolated": {
+          "attempts": [
+            "gpt-5.6-luna@high+"
+          ],
+          "usage": {
+            "input": 71767,
+            "cached": 54272,
+            "output": 952
+          },
+          "integration": {
+            "applied": [
+              {
+                "path": "lib/clamp.js",
+                "how": "fast-forward"
+              }
+            ],
+            "mainTreeDrifted": true,
+            "postVerify": {
+              "ok": true,
+              "code": 0,
+              "ms": 135
+            }
+          },
+          "ms": 42819
+        }
+      }
+    },
+    {
+      "name": "thread resume keeps context (Tandem resume argv: stdin prompt, -c sandbox, schema)",
+      "outcome": "pass",
+      "ms": 15836,
+      "evidence": {
+        "model": "gpt-6-astra",
+        "cachedShareOnResume": 0.49,
+        "freshIn": 16289,
+        "resumeIn": 32629
+      }
+    },
+    {
+      "name": "cancel stops a real running job and releases its claim",
+      "outcome": "pass",
+      "ms": 6171,
+      "evidence": {
+        "status": "cancelled",
+        "msAfterCancel": 159
+      }
+    },
+    {
+      "name": "MCP server over stdio with the real provider: status + dry-run + ask",
+      "outcome": "pass",
+      "ms": 25318,
+      "evidence": {
+        "dryRun": "plan for implement|hard: gpt-6-astra@medium (p=0.612, n=0, cost=1.515) -> gpt-6-astra@medium (p=0.612, n=0, cost=1.515); expected cost 3.097 (unit: balanced), ρ=0.25, 0 observations",
+        "answer": "job j6 [ask/trivial] ANSWERED in 25s"
+      }
+    }
+  ],
+  "totals": {
+    "pass": 8,
+    "fail": 0,
+    "skip": 0
+  }
+}

@@ -1,0 +1,270 @@
+{
+  "generated": "2026-10-09T08:59:06.181Z",
+  "n": 7,
+  "unavailable": 1,
+  "arms": {
+    "tandem-nolean": {
+      "n": 1,
+      "success": 1,
+      "successRate": 1,
+      "successCI": [
+        0.207,
+        1
+      ],
+      "codexTokens": 183820,
+      "codexTokensCI": [
+        183820,
+        183820
+      ],
+      "codexFreshTokens": 61964,
+      "codexFreshTokensCI": [
+        61964,
+        61964
+      ],
+      "wallSec": 102.9,
+      "wallSecCI": [
+        102.9,
+        102.9
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 183820,
+      "models": {
+        "gpt-5.6-terra@high": 1
+      }
+    },
+    "tandem-cold": {
+      "n": 1,
+      "success": 1,
+      "successRate": 1,
+      "successCI": [
+        0.207,
+        1
+      ],
+      "codexTokens": 126974,
+      "codexTokensCI": [
+        126974,
+        126974
+      ],
+      "codexFreshTokens": 27006,
+      "codexFreshTokensCI": [
+        27006,
+        27006
+      ],
+      "wallSec": 71.2,
+      "wallSecCI": [
+        71.2,
+        71.2
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 126974,
+      "models": {
+        "gpt-6-astra@high": 1
+      }
+    },
+    "fixed-cheap": {
+      "n": 2,
+      "success": 2,
+      "successRate": 1,
+      "successCI": [
+        0.342,
+        1
+      ],
+      "codexTokens": 53854,
+      "codexTokensCI": [
+        53655,
+        54053
+      ],
+      "codexFreshTokens": 22750,
+      "codexFreshTokensCI": [
+        4503,
+        40997
+      ],
+      "wallSec": 18.9,
+      "wallSecCI": [
+        16.8,
+        21
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 53854,
+      "models": {
+        "gpt-5.6-luna@low": 2
+      }
+    },
+    "fixed-top": {
+      "n": 1,
+      "success": 1,
+      "successRate": 1,
+      "successCI": [
+        0.207,
+        1
+      ],
+      "codexTokens": 126701,
+      "codexTokensCI": [
+        126701,
+        126701
+      ],
+      "codexFreshTokens": 24941,
+      "codexFreshTokensCI": [
+        24941,
+        24941
+      ],
+      "wallSec": 39.9,
+      "wallSecCI": [
+        39.9,
+        39.9
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 126701,
+      "models": {
+        "gpt-6-astra@xhigh": 1
+      }
+    },
+    "tandem": {
+      "n": 1,
+      "success": 1,
+      "successRate": 1,
+      "successCI": [
+        0.207,
+        1
+      ],
+      "codexTokens": 168455,
+      "codexTokensCI": [
+        168455,
+        168455
+      ],
+      "codexFreshTokens": 35079,
+      "codexFreshTokensCI": [
+        35079,
+        35079
+      ],
+      "wallSec": 171.8,
+      "wallSecCI": [
+        171.8,
+        171.8
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 168455,
+      "models": {
+        "gpt-5.6-terra@high": 1
+      }
+    },
+    "codex-default": {
+      "n": 1,
+      "success": 1,
+      "successRate": 1,
+      "successCI": [
+        0.207,
+        1
+      ],
+      "codexTokens": 196570,
+      "codexTokensCI": [
+        196570,
+        196570
+      ],
+      "codexFreshTokens": 31706,
+      "codexFreshTokensCI": [
+        31706,
+        31706
+      ],
+      "wallSec": 51.4,
+      "wallSecCI": [
+        51.4,
+        51.4
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 196570,
+      "models": {
+        "gpt-6-astra@low": 1
+      }
+    }
+  },
+  "perTask": {
+    "ask-config": {
+      "tandem-nolean": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 183820,
+        "wallSec": 102.9
+      },
+      "tandem-cold": null,
+      "fixed-cheap": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 53655,
+        "wallSec": 16.8
+      },
+      "fixed-top": null,
+      "tandem": null,
+      "codex-default": null
+    },
+    "lru-bugs": {
+      "tandem-nolean": null,
+      "tandem-cold": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 126974,
+        "wallSec": 71.2
+      },
+      "fixed-cheap": null,
+      "fixed-top": null,
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 168455,
+        "wallSec": 171.8
+      },
+      "codex-default": null
+    },
+    "review-page": {
+      "tandem-nolean": null,
+      "tandem-cold": null,
+      "fixed-cheap": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 54053,
+        "wallSec": 21
+      },
+      "fixed-top": null,
+      "tandem": null,
+      "codex-default": null
+    },
+    "slugify": {
+      "tandem-nolean": null,
+      "tandem-cold": null,
+      "fixed-cheap": null,
+      "fixed-top": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 126701,
+        "wallSec": 39.9
+      },
+      "tandem": null,
+      "codex-default": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 196570,
+        "wallSec": 51.4
+      }
+    }
+  },
+  "paired": {
+    "tandem-cold": {
+      "pairs": 1,
+      "tandemTokensRatio": 1.327,
+      "ratioCI": [
+        1.327,
+        1.327
+      ],
+      "tandemTimeRatio": 2.412,
+      "timeRatioCI": [
+        2.412,
+        2.412
+      ],
+      "successDiff": 0,
+      "successDiffCI": [
+        0,
+        0
+      ]
+    }
+  }
+}

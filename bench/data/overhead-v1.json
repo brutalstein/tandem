@@ -1,0 +1,74 @@
+{
+ "root": ".",
+ "date": "2026-10-09T00:54:05.600Z",
+ "platform": "win32-x64",
+ "node": "v24.11.0",
+ "cpu": "AMD Ryzen 9 8945HX with Radeon Graphics        ",
+ "cpus": 32,
+ "nodeSpawnBaseline": {
+  "n": 20,
+  "p50": 32.57,
+  "p95": 37.74,
+  "min": 30.66,
+  "max": 37.81
+ },
+ "guardEditNoJobs": {
+  "n": 30,
+  "p50": 42.15,
+  "p95": 51.53,
+  "min": 39.97,
+  "max": 54.98
+ },
+ "guardAgent": {
+  "n": 20,
+  "p50": 37.93,
+  "p95": 49.48,
+  "min": 35.8,
+  "max": 51.63
+ },
+ "sessionStart": {
+  "n": 20,
+  "p50": 42.82,
+  "p95": 50,
+  "min": 40.6,
+  "max": 55.57
+ },
+ "mcp": {
+  "initAndToolsList": {
+   "n": 10,
+   "p50": 52.32,
+   "p95": 55.55,
+   "min": 51.01,
+   "max": 55.8
+  },
+  "idle": {
+   "rssMB": 53.6,
+   "idleCpuMsPerMin": 0,
+   "toolsListBytes": 5013
+  },
+  "version": "1.0.0"
+ },
+ "memorySearchMs": {
+  "100": {
+   "n": 20,
+   "p50": 2.17,
+   "p95": 2.34,
+   "min": 1.91,
+   "max": 2.56
+  },
+  "400": {
+   "n": 20,
+   "p50": 3.04,
+   "p95": 3.42,
+   "min": 2.75,
+   "max": 3.72
+  },
+  "2000": {
+   "n": 20,
+   "p50": 8.78,
+   "p95": 9.05,
+   "min": 8.3,
+   "max": 9.83
+  }
+ }
+}

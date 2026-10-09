@@ -1,0 +1,48 @@
+{
+  "started": "2026-10-09T08:50:38.341Z",
+  "platform": "win32 10.0.26200 x64",
+  "cpus": 32,
+  "cpu": "AMD Ryzen 9 8945HX with Radeon Graphics        ",
+  "node": "v24.11.0",
+  "codex": {
+    "v": "codex-cli 0.154.0",
+    "login": true,
+    "models": [
+      "gpt-6-astra",
+      "gpt-reserve",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-5.5",
+      "codex-auto-review"
+    ]
+  },
+  "claude": "2.1.281 (Claude Code)",
+  "reps": 3,
+  "claudeReps": 3,
+  "claudeModel": "sonnet",
+  "tasks": [
+    "ask-config",
+    "slugify",
+    "lru-bugs",
+    "review-page"
+  ],
+  "arms": [
+    "tandem",
+    "tandem-cold",
+    "codex-default",
+    "fixed-top",
+    "fixed-cheap"
+  ],
+  "ablation": [
+    [
+      "tandem-nolean",
+      "slugify"
+    ],
+    [
+      "tandem-nolean",
+      "ask-config"
+    ]
+  ],
+  "tandemCommit": "af4031e-dirty"
+}

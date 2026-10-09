@@ -1,0 +1,695 @@
+{
+  "meta": {
+    "date": "2026-10-09T09:07:12.844Z",
+    "node": "v24.11.0",
+    "seeds": 30,
+    "rungs": [
+      "gpt-5.6-luna@low",
+      "gpt-5.6-luna@medium",
+      "gpt-5.6-luna@high",
+      "gpt-5.6-terra@low",
+      "gpt-5.6-luna@xhigh",
+      "gpt-5.6-terra@medium",
+      "gpt-5.6-terra@high",
+      "gpt-5.6-sol@low",
+      "gpt-5.6-terra@xhigh",
+      "gpt-5.6-sol@medium",
+      "gpt-5.6-sol@high",
+      "gpt-6-astra@low",
+      "gpt-5.6-sol@xhigh",
+      "gpt-6-astra@medium",
+      "gpt-6-astra@high",
+      "gpt-6-astra@xhigh"
+    ],
+    "F": 138519.77220341563,
+    "worldCost": {
+      "tier": 1.08,
+      "effort": 1.38
+    },
+    "note": "cost unit = tokens; lower is better; CIs are 95% t-intervals over seeds; deltas are paired by seed",
+    "runtimeSec": 63.2
+  },
+  "worlds": {
+    "monotone": {
+      "tasks": 300,
+      "policies": {
+        "fixed-top": {
+          "cost": 106109,
+          "costCI": [
+            104510,
+            107709
+          ],
+          "success": 0.872,
+          "attempts": 1.27,
+          "tokens": 88379,
+          "vsV2": {
+            "delta": 25301,
+            "ci": [
+              23586,
+              27017
+            ],
+            "pctOfV2": 31.3
+          },
+          "regretVsOracle": 47.3
+        },
+        "codex-default": {
+          "cost": 78171,
+          "costCI": [
+            76578,
+            79764
+          ],
+          "success": 0.795,
+          "attempts": 1.37,
+          "tokens": 49836,
+          "vsV2": {
+            "delta": -2637,
+            "ci": [
+              -3977,
+              -1298
+            ],
+            "pctOfV2": -3.3
+          },
+          "regretVsOracle": 8.5
+        },
+        "cheapest-escalate": {
+          "cost": 115078,
+          "costCI": [
+            113752,
+            116404
+          ],
+          "success": 0.444,
+          "attempts": 1.76,
+          "tokens": 38107,
+          "vsV2": {
+            "delta": 34270,
+            "ci": [
+              32465,
+              36074
+            ],
+            "pctOfV2": 42.4
+          },
+          "regretVsOracle": 59.8
+        },
+        "v1-static": {
+          "cost": 107375,
+          "costCI": [
+            105683,
+            109066
+          ],
+          "success": 0.694,
+          "attempts": 1.54,
+          "tokens": 64988,
+          "vsV2": {
+            "delta": 26566,
+            "ci": [
+              24999,
+              28134
+            ],
+            "pctOfV2": 32.9
+          },
+          "regretVsOracle": 49.1
+        },
+        "v2-mean": {
+          "cost": 75998,
+          "costCI": [
+            73745,
+            78251
+          ],
+          "success": 0.73,
+          "attempts": 1.33,
+          "tokens": 38613,
+          "vsV2": {
+            "delta": -4810,
+            "ci": [
+              -6374,
+              -3246
+            ],
+            "pctOfV2": -6
+          },
+          "regretVsOracle": 5.5
+        },
+        "v2-thompson": {
+          "cost": 80808,
+          "costCI": [
+            78587,
+            83029
+          ],
+          "success": 0.724,
+          "attempts": 1.34,
+          "tokens": 42515,
+          "vsV2": null,
+          "regretVsOracle": 12.2
+        },
+        "oracle": {
+          "cost": 72033,
+          "costCI": [
+            70601,
+            73464
+          ],
+          "success": 0.75,
+          "attempts": 1.42,
+          "tokens": 37434,
+          "vsV2": {
+            "delta": -8775,
+            "ci": [
+              -10140,
+              -7411
+            ],
+            "pctOfV2": -10.9
+          },
+          "regretVsOracle": 0
+        }
+      }
+    },
+    "flat": {
+      "tasks": 300,
+      "policies": {
+        "fixed-top": {
+          "cost": 123782,
+          "costCI": [
+            121768,
+            125795
+          ],
+          "success": 0.792,
+          "attempts": 1.37,
+          "tokens": 94939,
+          "vsV2": {
+            "delta": 47828,
+            "ci": [
+              46736,
+              48921
+            ],
+            "pctOfV2": 63
+          },
+          "regretVsOracle": 80.4
+        },
+        "codex-default": {
+          "cost": 82001,
+          "costCI": [
+            80342,
+            83661
+          ],
+          "success": 0.773,
+          "attempts": 1.39,
+          "tokens": 50619,
+          "vsV2": {
+            "delta": 6048,
+            "ci": [
+              5066,
+              7030
+            ],
+            "pctOfV2": 8
+          },
+          "regretVsOracle": 19.5
+        },
+        "cheapest-escalate": {
+          "cost": 71753,
+          "costCI": [
+            70058,
+            73448
+          ],
+          "success": 0.71,
+          "attempts": 1.47,
+          "tokens": 31582,
+          "vsV2": {
+            "delta": -4201,
+            "ci": [
+              -5173,
+              -3228
+            ],
+            "pctOfV2": -5.5
+          },
+          "regretVsOracle": 4.6
+        },
+        "v1-static": {
+          "cost": 94482,
+          "costCI": [
+            92321,
+            96642
+          ],
+          "success": 0.763,
+          "attempts": 1.42,
+          "tokens": 61606,
+          "vsV2": {
+            "delta": 18528,
+            "ci": [
+              17563,
+              19493
+            ],
+            "pctOfV2": 24.4
+          },
+          "regretVsOracle": 37.7
+        },
+        "v2-mean": {
+          "cost": 72302,
+          "costCI": [
+            70555,
+            74049
+          ],
+          "success": 0.736,
+          "attempts": 1.33,
+          "tokens": 35795,
+          "vsV2": {
+            "delta": -3651,
+            "ci": [
+              -4828,
+              -2475
+            ],
+            "pctOfV2": -4.8
+          },
+          "regretVsOracle": 5.4
+        },
+        "v2-thompson": {
+          "cost": 75954,
+          "costCI": [
+            74035,
+            77872
+          ],
+          "success": 0.729,
+          "attempts": 1.34,
+          "tokens": 38384,
+          "vsV2": null,
+          "regretVsOracle": 10.7
+        },
+        "oracle": {
+          "cost": 68615,
+          "costCI": [
+            67024,
+            70206
+          ],
+          "success": 0.762,
+          "attempts": 1.42,
+          "tokens": 35586,
+          "vsV2": {
+            "delta": -7339,
+            "ci": [
+              -8328,
+              -6349
+            ],
+            "pctOfV2": -9.7
+          },
+          "regretVsOracle": 0
+        }
+      }
+    },
+    "inverted": {
+      "tasks": 300,
+      "policies": {
+        "fixed-top": {
+          "cost": 116133,
+          "costCI": [
+            114531,
+            117735
+          ],
+          "success": 0.826,
+          "attempts": 1.33,
+          "tokens": 92092,
+          "vsV2": {
+            "delta": 44610,
+            "ci": [
+              41905,
+              47314
+            ],
+            "pctOfV2": 62.4
+          },
+          "regretVsOracle": 101.9
+        },
+        "codex-default": {
+          "cost": 85442,
+          "costCI": [
+            84051,
+            86833
+          ],
+          "success": 0.754,
+          "attempts": 1.41,
+          "tokens": 51351,
+          "vsV2": {
+            "delta": 13918,
+            "ci": [
+              11259,
+              16578
+            ],
+            "pctOfV2": 19.5
+          },
+          "regretVsOracle": 48.5
+        },
+        "cheapest-escalate": {
+          "cost": 76910,
+          "costCI": [
+            75796,
+            78025
+          ],
+          "success": 0.703,
+          "attempts": 1.65,
+          "tokens": 35739,
+          "vsV2": {
+            "delta": 5387,
+            "ci": [
+              2613,
+              8161
+            ],
+            "pctOfV2": 7.5
+          },
+          "regretVsOracle": 33.7
+        },
+        "v1-static": {
+          "cost": 91910,
+          "costCI": [
+            90328,
+            93492
+          ],
+          "success": 0.779,
+          "attempts": 1.42,
+          "tokens": 61297,
+          "vsV2": {
+            "delta": 20387,
+            "ci": [
+              17709,
+              23064
+            ],
+            "pctOfV2": 28.5
+          },
+          "regretVsOracle": 59.8
+        },
+        "v2-mean": {
+          "cost": 78465,
+          "costCI": [
+            75867,
+            81064
+          ],
+          "success": 0.698,
+          "attempts": 1.33,
+          "tokens": 36679,
+          "vsV2": {
+            "delta": 6942,
+            "ci": [
+              4180,
+              9704
+            ],
+            "pctOfV2": 9.7
+          },
+          "regretVsOracle": 36.4
+        },
+        "v2-thompson": {
+          "cost": 71523,
+          "costCI": [
+            68740,
+            74306
+          ],
+          "success": 0.757,
+          "attempts": 1.3,
+          "tokens": 37863,
+          "vsV2": null,
+          "regretVsOracle": 24.3
+        },
+        "oracle": {
+          "cost": 57521,
+          "costCI": [
+            56299,
+            58744
+          ],
+          "success": 0.806,
+          "attempts": 1.36,
+          "tokens": 30602,
+          "vsV2": {
+            "delta": -14002,
+            "ci": [
+              -16506,
+              -11498
+            ],
+            "pctOfV2": -19.6
+          },
+          "regretVsOracle": 0
+        }
+      }
+    },
+    "drift": {
+      "tasks": 400,
+      "policies": {
+        "fixed-top": {
+          "cost": 107298,
+          "costCI": [
+            106213,
+            108383
+          ],
+          "success": 0.868,
+          "attempts": 1.28,
+          "tokens": 89025,
+          "vsV2": {
+            "delta": 32231,
+            "ci": [
+              30401,
+              34061
+            ],
+            "pctOfV2": 42.9
+          },
+          "regretVsOracle": 70.3
+        },
+        "codex-default": {
+          "cost": 79742,
+          "costCI": [
+            78751,
+            80733
+          ],
+          "success": 0.786,
+          "attempts": 1.38,
+          "tokens": 50168,
+          "vsV2": {
+            "delta": 4674,
+            "ci": [
+              3194,
+              6155
+            ],
+            "pctOfV2": 6.2
+          },
+          "regretVsOracle": 26.6
+        },
+        "cheapest-escalate": {
+          "cost": 87468,
+          "costCI": [
+            86374,
+            88561
+          ],
+          "success": 0.618,
+          "attempts": 1.6,
+          "tokens": 34565,
+          "vsV2": {
+            "delta": 12400,
+            "ci": [
+              10649,
+              14152
+            ],
+            "pctOfV2": 16.5
+          },
+          "regretVsOracle": 38.8
+        },
+        "v1-static": {
+          "cost": 95664,
+          "costCI": [
+            94323,
+            97005
+          ],
+          "success": 0.761,
+          "attempts": 1.46,
+          "tokens": 62489,
+          "vsV2": {
+            "delta": 20597,
+            "ci": [
+              18857,
+              22336
+            ],
+            "pctOfV2": 27.4
+          },
+          "regretVsOracle": 51.8
+        },
+        "v2-mean": {
+          "cost": 75395,
+          "costCI": [
+            74045,
+            76745
+          ],
+          "success": 0.735,
+          "attempts": 1.36,
+          "tokens": 38641,
+          "vsV2": {
+            "delta": 328,
+            "ci": [
+              -1217,
+              1873
+            ],
+            "pctOfV2": 0.4
+          },
+          "regretVsOracle": 19.7
+        },
+        "v2-thompson": {
+          "cost": 75068,
+          "costCI": [
+            73247,
+            76889
+          ],
+          "success": 0.754,
+          "attempts": 1.34,
+          "tokens": 40946,
+          "vsV2": null,
+          "regretVsOracle": 19.2
+        },
+        "oracle": {
+          "cost": 63001,
+          "costCI": [
+            62064,
+            63939
+          ],
+          "success": 0.793,
+          "attempts": 1.38,
+          "tokens": 34305,
+          "vsV2": {
+            "delta": -12066,
+            "ci": [
+              -13545,
+              -10588
+            ],
+            "pctOfV2": -16.1
+          },
+          "regretVsOracle": 0
+        }
+      }
+    },
+    "sparse": {
+      "tasks": 32,
+      "policies": {
+        "fixed-top": {
+          "cost": 108106,
+          "costCI": [
+            103061,
+            113152
+          ],
+          "success": 0.856,
+          "attempts": 1.29,
+          "tokens": 88194,
+          "vsV2": {
+            "delta": 27473,
+            "ci": [
+              23131,
+              31815
+            ],
+            "pctOfV2": 34.1
+          },
+          "regretVsOracle": 50.2
+        },
+        "codex-default": {
+          "cost": 78817,
+          "costCI": [
+            74311,
+            83322
+          ],
+          "success": 0.787,
+          "attempts": 1.38,
+          "tokens": 49381,
+          "vsV2": {
+            "delta": -1817,
+            "ci": [
+              -5482,
+              1849
+            ],
+            "pctOfV2": -2.3
+          },
+          "regretVsOracle": 9.5
+        },
+        "cheapest-escalate": {
+          "cost": 113977,
+          "costCI": [
+            109436,
+            118518
+          ],
+          "success": 0.448,
+          "attempts": 1.75,
+          "tokens": 37503,
+          "vsV2": {
+            "delta": 33344,
+            "ci": [
+              28392,
+              38296
+            ],
+            "pctOfV2": 41.4
+          },
+          "regretVsOracle": 58.4
+        },
+        "v1-static": {
+          "cost": 105801,
+          "costCI": [
+            100691,
+            110911
+          ],
+          "success": 0.696,
+          "attempts": 1.53,
+          "tokens": 63668,
+          "vsV2": {
+            "delta": 25168,
+            "ci": [
+              20546,
+              29789
+            ],
+            "pctOfV2": 31.2
+          },
+          "regretVsOracle": 47
+        },
+        "v2-mean": {
+          "cost": 76187,
+          "costCI": [
+            71110,
+            81264
+          ],
+          "success": 0.73,
+          "attempts": 1.38,
+          "tokens": 38816,
+          "vsV2": {
+            "delta": -4446,
+            "ci": [
+              -7222,
+              -1670
+            ],
+            "pctOfV2": -5.5
+          },
+          "regretVsOracle": 5.9
+        },
+        "v2-thompson": {
+          "cost": 80633,
+          "costCI": [
+            75588,
+            85678
+          ],
+          "success": 0.72,
+          "attempts": 1.4,
+          "tokens": 41819,
+          "vsV2": null,
+          "regretVsOracle": 12
+        },
+        "oracle": {
+          "cost": 71965,
+          "costCI": [
+            67790,
+            76139
+          ],
+          "success": 0.749,
+          "attempts": 1.43,
+          "tokens": 37190,
+          "vsV2": {
+            "delta": -8669,
+            "ci": [
+              -11694,
+              -5643
+            ],
+            "pctOfV2": -10.8
+          },
+          "regretVsOracle": 0
+        }
+      }
+    }
+  },
+  "decideLatencyMs": {
+    "p50": 1.101,
+    "p95": 1.431,
+    "rungs": 16,
+    "maxAttempts": 4
+  }
+}
