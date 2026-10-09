@@ -99,6 +99,19 @@ test('integrity: a pass obtained by editing the test definition is not "verified
   assert.deepEqual(j.result.integrity.verifyDefinitionChanged, ['package.json']);
 });
 
+test('test content tampering cannot yield verified even when the configured check passes', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },
+    { 'a.txt': 'old', 'a.test.js': 'original test' });
+  const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal',
+    paths: ['a.txt', 'a.test.js'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
+  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.status, 'unverified');
+  assert.deepEqual(j.result.integrity.modifiedTests, ['a.test.js']);
+  assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).filter(x => x.ok).length, 0,
+    'tampered check result must not train routing as success');
+});
+
 test('worktree isolation (auto): a second writer on busy paths runs isolated and integrates after', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, byPrompt: { 'TASK-A': { writes: { 'src/a.js': 'good' }, delayMs: 1500 }, 'TASK-B': { writes: { 'src/b.js': 'good' } } } }, { 'src/a.js': 'old', 'src/b.js': 'old' });
@@ -193,7 +206,7 @@ test('in-place: changes outside the declared paths are reported as out of scope'
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'b.txt': 'surprise' }] }, { 'a.txt': 'old', 'b.txt': 'b' });
   const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
-  assert.equal(j.status, 'verified');
+  assert.equal(j.status, 'failed_verification', 'scope violations cannot be verified');
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
 });
 
