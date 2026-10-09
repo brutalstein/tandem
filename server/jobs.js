@@ -4,7 +4,9 @@
 //
 // Job lifecycle:  queued ─acquire→ running ─(worktree)→ integrating ─→ terminal
 // Terminal: verified | unverified | failed_verification | partial | failed | blocked | answered |
-//           conflict | codex_unavailable | cancelled | interrupted | rejected | skipped
+//           conflict | codex_unavailable | cancelled | interrupted | rejected | skipped | taken_over
+// Stopped, resumable (ledger.RESUMABLE): suspended (provider limit, login, session end) | interrupted
+// (owner process died) | codex_unavailable. resume() re-queues one with its resumeFrom state.
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -35,6 +37,8 @@ const OUTPUT_SCHEMA = {
 };
 const MODES = ['ask', 'implement', 'review'];
 const DIFFICULTIES = ['trivial', 'normal', 'hard', 'critical'];
+
+const resumeFile = (projDir, id) => path.join(projDir, 'resume', id + '.json');
 
 function gitDirty(root) {
   try {
@@ -118,6 +122,8 @@ class Orchestrator {
     if (spec.verify !== undefined && typeof spec.verify !== 'string') errs.push('verify: string');
     if (spec.isolation !== undefined && !['auto', 'inplace', 'worktree'].includes(spec.isolation)) errs.push('isolation: auto | inplace | worktree');
     if (spec.max_attempts !== undefined && !(Number.isInteger(spec.max_attempts) && spec.max_attempts >= 1 && spec.max_attempts <= 4)) errs.push('max_attempts: integer 1-4');
+    const c = spec.ceiling;
+    if (c !== undefined && !(c && typeof c.codexMaxModel === 'string' && EFFORTS.includes(c.codexMaxEffort) && Array.isArray(c.codexAllowedModels) && c.codexAllowedModels.every(m => typeof m === 'string'))) errs.push('ceiling: invalid');
     if (errs.length) throw new Error('invalid arguments: ' + errs.join('; '));
     return (spec.paths || []).map(p => confine(root, p));
   }
@@ -135,7 +141,13 @@ class Orchestrator {
       root, mode, difficulty: spec.difficulty || 'normal', task: spec.task.trim(), context: spec.context ? String(spec.context) : '',
       paths, after: spec.after || [], verify: spec.verify ?? 'auto', model: spec.model || null, effort: spec.effort || null,
       maxAttempts: spec.max_attempts || 2, isolationPref: git ? isolation : 'inplace', isolation: isolation === 'worktree' && git ? 'worktree' : undefined,
+      // What the submitter authorized; a later resume (CLI, another session) runs under these, never wider.
+      ceiling: spec.ceiling || { codexMaxModel: this.cfg.codexMaxModel, codexAllowedModels: this.cfg.codexAllowedModels, codexMaxEffort: this.cfg.codexMaxEffort },
     });
+    return this.start(job, projDir);
+  }
+
+  start(job, projDir) {
     const entry = { job, projDir, cancelled: false, child: null };
     entry.promise = this.run(job, projDir, entry).catch(e => {
       store.logError('job ' + job.id, e);
@@ -149,10 +161,13 @@ class Orchestrator {
   async run(job, projDir, entry) {
     let delay = 100, acq;
     for (;;) {
-      if (entry.cancelled) { ledger.patch(projDir, job.id, { status: 'cancelled' }); return ledger.get(projDir, job.id); }
+      if (entry.cancelled) {
+        ledger.patch(projDir, job.id, entry.suspendReason ? { status: 'suspended', result: { suspension: entry.suspendReason } } : { status: 'cancelled' });
+        return ledger.get(projDir, job.id);
+      }
       acq = ledger.tryAcquire(projDir, job.id, { maxParallel: this.cfg.maxParallel, isolationPref: job.isolationPref, canIsolate: store.isGitRepo(job.root) });
       if (acq.acquired) break;
-      if (acq.skip || acq.gone) return ledger.get(projDir, job.id);
+      if (acq.skip || acq.gone || acq.suspend) return ledger.get(projDir, job.id);
       this.onProgress(job.id, `queued: ${acq.wait}`);
       await new Promise(r => {
         const done = () => { clearTimeout(t); this.wakers.delete(done); r(); };
@@ -177,14 +192,17 @@ class Orchestrator {
   }
 
   async execute(job, projDir, entry) {
-    const { cfg, provider } = this;
+    const provider = this.provider;
+    const cfg = job.ceiling ? { ...this.cfg, ...job.ceiling } : this.cfg;
     let wt = null;
     const end = (status, x) => this.finish(job, projDir, entry, wt, status, x);
     const env = await provider.discover();
     const unav = provider.unavailable();
-    if (!env.installed) return end('codex_unavailable', { error: 'Codex CLI not installed (npm i -g @openai/codex).' });
-    if (!env.loggedIn) return end('codex_unavailable', { error: `Codex not logged in (${env.login}). Run: codex login` });
-    if (unav['*']) return end('codex_unavailable', { error: `Codex rate-limited until ${new Date(unav['*'].until).toLocaleTimeString()}: ${unav['*'].reason}` });
+    // Provider down before any work: suspend (resumable, nothing lost), never fail the job.
+    const ps = provider.providerState(env, unav);
+    if (!['available', 'no_models'].includes(ps.state)) {
+      return end('suspended', { suspension: { kind: ps.state, waitFor: ps.waitFor, until: ps.until || null, reason: ps.reason, at: Date.now() }, resumeFrom: job.resumeFrom || null });
+    }
 
     // ---- routing ----
     const cls = `${job.mode}|${job.difficulty}`;
@@ -213,38 +231,78 @@ class Orchestrator {
     ledger.patch(projDir, job.id, { route });
 
     // ---- workspace ----
-    let workdir = job.root, snap = null;
-    const dirtyBefore = job.mode === 'implement' && job.isolation === 'inplace' ? gitDirty(job.root) : new Set();
+    // A resumed job continues from what its interrupted run left (resumeFrom): same worktree, same
+    // pre-job baselines (so its own partial edits stay attributed and checked), same Codex thread.
+    // Baselines live in a side file (they can be large); the ledger keeps only the small resume summary.
+    const rfile = resumeFile(projDir, job.id);
+    const rf = job.resumeFrom ? { ...store.readJson(rfile, {}), ...job.resumeFrom } : null;
+    let workdir = job.root, snap = null, resumeNote = null;
+    if (rf && rf.inplaceBase && job.isolation === 'inplace') {
+      // Files changed while the job was stopped: continuing in place could overwrite them, so continue isolated.
+      let now = null; try { now = worktree.snapshot(job.root, []).tree; } catch {}
+      if (now !== rf.suspendTree) {
+        job = { ...job, isolation: 'worktree' };
+        resumeNote = 'files changed while the job was stopped; continued in an isolated worktree';
+        ledger.patch(projDir, job.id, { isolation: 'worktree', note: resumeNote });
+      }
+    }
+    const inplace = job.mode === 'implement' && job.isolation === 'inplace';
+    const dirtyBefore = inplace ? (rf && rf.dirtyBefore ? new Set(rf.dirtyBefore) : gitDirty(job.root)) : new Set();
     // Snapshot complete current state, including pre-existing dirty files; status alone cannot
     // detect a second edit to an already-modified tracked file.
     let inplaceBase = null;
-    if (job.mode === 'implement' && job.isolation === 'inplace' && store.isGitRepo(job.root)) {
-      try { inplaceBase = worktree.snapshot(job.root, []).tree; }
+    if (inplace && store.isGitRepo(job.root)) {
+      try { inplaceBase = (rf && rf.inplaceBase) || worktree.snapshot(job.root, []).tree; }
       catch (e) { return end('failed', { error: 'cannot establish an in-place safety snapshot: ' + e.message }); }
     }
     if (job.isolation === 'worktree') {
       try {
-        snap = worktree.snapshot(job.root, cfg.worktreeLinks);
-        wt = worktree.create(job.root, job.id, snap.commit, cfg.worktreeLinks);
+        const old = rf && rf.worktree;
+        if (old && old.base && fs.existsSync(old.path)) {
+          worktree.assertManaged(job.root, old.path);
+          snap = { commit: old.base, tree: old.tree };
+          wt = { path: old.path, base: old.base, linked: worktree.linkDeps(job.root, old.path, cfg.worktreeLinks) };
+        } else {
+          snap = worktree.snapshot(job.root, cfg.worktreeLinks);
+          wt = worktree.create(job.root, job.id, snap.commit, cfg.worktreeLinks);
+        }
         workdir = wt.path;
         ledger.patch(projDir, job.id, { worktree: { path: wt.path, base: snap.commit, tree: snap.tree, linked: wt.linked } });
       } catch (e) { return end('failed', { error: `could not create isolated worktree: ${String(e.message).slice(0, 300)}` }); }
     }
     const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null : job.verify === 'auto' ? verify.detect(workdir) : job.verify;
-    const fpBefore = verifyCmd ? verify.fingerprint(workdir) : null;
-    const testsBefore = verifyCmd ? verify.testFingerprint(workdir) : null;
+    const fpBefore = verifyCmd ? ((rf && rf.fpBefore) || verify.fingerprint(workdir)) : null;
+    const testsBefore = verifyCmd ? ((rf && rf.testsBefore) || verify.testFingerprint(workdir)) : null;
+    // Persist the pre-job baselines now, so even a crashed run can be resumed with its edits still attributed.
+    const baselines = { inplaceBase, dirtyBefore: inplace ? [...dirtyBefore] : null, fpBefore, testsBefore };
+    if (job.mode === 'implement') store.writeJson(rfile, baselines);
 
     // ---- attempts ----
     let idx = seq[0], threadId = null, threadModel = null, lastFail = null, report = null, verification = null;
     let transientRetried = false, extra = 0;
+    if (rf && rf.threadId) { // continue the interrupted Codex conversation when its model is still on the ladder
+      const k = rungs.findIndex(r => r.model === rf.model && r.effort === rf.effort);
+      const same = k >= 0 ? k : rungs.findIndex(r => r.model === rf.model);
+      if (same >= 0) { idx = same; threadId = rf.threadId; threadModel = rf.model; }
+    }
     const usage = { input: 0, cached: 0, output: 0 };
-    const attempts = [];
+    const attempts = rf ? (job.attempts || []).map(a => ({ ...a, before: true })) : [];
+    // Everything a later resume needs to continue this run without losing or re-attributing work.
+    const resumeFrom = (tid, rung) => {
+      let suspendTree = null;
+      if (inplace && inplaceBase) { try { suspendTree = worktree.snapshot(job.root, []).tree; } catch {} }
+      if (job.mode === 'implement') store.writeJson(rfile, { ...baselines, suspendTree });
+      return { threadId: tid || null, model: rung ? rung.model : null, effort: rung ? rung.effort : null,
+        worktree: wt ? { path: wt.path, base: snap.commit, tree: snap.tree } : null };
+    };
     const reported = new Set();
     for (let n = 1; n <= job.maxAttempts + extra && idx !== null && idx !== undefined; n++) {
       if (entry.cancelled) break;
       const rung = rungs[idx];
       const resume = threadId && threadModel === rung.model;
-      const prompt = !resume ? this.prompt(job, projDir, lastFail) : `${lastFail.text}\n\nFix the problem. Same scope, rules and final JSON format as before.`;
+      const prompt = !resume ? this.prompt(job, projDir, lastFail) + (rf && n === 1 ? '\n\nAn earlier run of this task was interrupted; the working tree may already hold its partial changes. Review them and continue rather than starting over.' : '')
+        : lastFail ? `${lastFail.text}\n\nFix the problem. Same scope, rules and final JSON format as before.`
+        : 'Your previous turn on this task was interrupted (provider limit or session end) before you reported. Continue from where you stopped: the working tree holds your partial changes. Same scope, rules and final JSON format as before.';
       const args = provider.buildArgs({ sandbox: job.mode === 'implement' ? 'workspace-write' : 'read-only', model: rung.model, effort: rung.effort, resumeThread: resume ? threadId : null, schemaFile: schemaFile(), lean: cfg.leanCodex, ephemeral: job.mode !== 'implement' });
       this.onProgress(job.id, `attempt ${n}: ${catalog.key(rung)}`);
       const run = provider.runTurn({
@@ -273,11 +331,14 @@ class Orchestrator {
           const d = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: job.maxAttempts - n + 1 + extra });
           idx = d.seq[0]; extra++; threadId = null; continue;
         }
-        if (res.errorKind === 'rate_limited') {
-          provider.markUnavailable('*', res.error, provider.retryAfterMs(res.error));
-          return this.finish(job, projDir, entry, wt, 'codex_unavailable', { error: `Codex usage/rate limit reached: ${sanitize(res.error, 300)}. Do the work in Claude instead.`, usage, attempts, dirtyBefore, inplaceBase, reported });
+        if (['rate_limited', 'auth', 'missing'].includes(res.errorKind)) {
+          // The provider stopped, not the task: suspend with everything needed to continue later.
+          const kind = res.errorKind === 'rate_limited' ? provider.limitKind(res.error) : res.errorKind === 'auth' ? 'auth_required' : 'not_installed';
+          const ms = res.errorKind === 'rate_limited' ? provider.retryAfterMs(res.error) : 0;
+          if (ms) provider.markUnavailable('*', res.error, ms, kind);
+          const suspension = { kind, waitFor: ms ? 'time' : 'user', until: ms ? Date.now() + ms : null, reason: sanitize(res.error, 300), at: Date.now() };
+          return this.finish(job, projDir, entry, wt, 'suspended', { suspension, resumeFrom: resumeFrom(res.threadId || threadId, rung), report, usage, attempts, dirtyBefore, inplaceBase, reported, snap });
         }
-        if (res.errorKind === 'auth' || res.errorKind === 'missing') return end('codex_unavailable', { error: sanitize(res.error, 300), attempts });
         if (res.errorKind === 'transient' && !transientRetried) { transientRetried = true; extra++; continue; }
         obs(false, true);
         lastFail = { text: `The previous attempt ended with an error: ${sanitize(res.error, 800)}`, report };
@@ -306,6 +367,10 @@ class Orchestrator {
       idx = policy.next(projDir, { cls, rungs, cfg, at: idx, attemptsLeft: job.maxAttempts + extra - n });
     }
 
+    if (entry.cancelled && entry.suspendReason) {
+      const last = attempts.filter(a => !a.before).at(-1);
+      return this.finish(job, projDir, entry, wt, 'suspended', { suspension: entry.suspendReason, resumeFrom: resumeFrom(threadId, last && { model: last.model, effort: last.effort }), report, usage, attempts, dirtyBefore, inplaceBase, reported, snap });
+    }
     if (entry.cancelled) return this.finish(job, projDir, entry, wt, 'cancelled', { report, usage, attempts, dirtyBefore, inplaceBase, reported });
     let status;
     if (job.mode !== 'implement') status = report ? (report.status === 'done' ? 'answered' : report.status) : 'failed';
@@ -339,6 +404,7 @@ class Orchestrator {
   async finish(job, projDir, entry, wt, status, x) {
     const { cfg } = this;
     const result = { report: x.report || null, usage: x.usage, error: x.error || null };
+    if (x.suspension) { result.suspension = x.suspension; result.resumeFrom = x.resumeFrom || null; }
     if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200) };
     if (x.integrity && Object.keys(x.integrity).length) result.integrity = x.integrity;
     if (job.mode === 'implement' && !wt && x.dirtyBefore) {
@@ -371,7 +437,7 @@ class Orchestrator {
       if (!changes) { try { changes = worktree.changes(wt); } catch { changes = []; } }
       result.changed = changes.map(c => c.path).sort();
       result.outOfScope = job.paths.length ? result.changed.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
-      if (result.outOfScope.length) {
+      if (result.outOfScope.length && status !== 'suspended') {
         status = 'conflict';
         result.integration = { conflicts: result.outOfScope.map(p => ({ path: p, reason: 'outside assigned scope' })) };
       }
@@ -416,7 +482,8 @@ class Orchestrator {
       } else if (integrable) result.integration = { applied: [] };
       // Keep the worktree whenever it holds changes that did not land (nothing is silently discarded).
       const landed = result.integration && !result.integration.conflicts && !result.integration.reverted;
-      const keep = changes.length > 0 && !landed && status !== 'cancelled';
+      // A suspended job keeps its worktree as-is (a resume continues there, in the same Codex session).
+      const keep = status === 'suspended' || (changes.length > 0 && !landed && status !== 'cancelled');
       if (keep) { worktree.unlinkLinks(wt); result.worktreeKept = wt.path; } else worktree.remove(job.root, wt);
     }
     // Share findings as tentative knowledge (never verified on the model's word).
@@ -443,6 +510,7 @@ class Orchestrator {
         } catch (e) { store.logError('routing evidence', e); }
       }
     }
+    if (status !== 'suspended') fs.rmSync(resumeFile(projDir, job.id), { force: true });
     ledger.patch(projDir, job.id, { status, result });
     return ledger.get(projDir, job.id);
   }
@@ -476,13 +544,39 @@ class Orchestrator {
     return L.join('\n');
   }
 
-  cancel(id) {
+  cancel(id, suspendReason) {
     const e = this.live.get(id);
     if (!e || e.settled) return false;
     e.cancelled = true;
+    if (suspendReason) e.suspendReason = suspendReason;
     if (e.child) codex.killTree(e.child);
     this.wake();
     return true;
+  }
+
+  // Stop every live job of this process as resumable (session ending, Ctrl+C) rather than cancelled.
+  suspendAll(kind, reason) {
+    const ids = [...this.live].filter(([, e]) => !e.settled).map(([id]) => id);
+    for (const id of ids) this.cancel(id, { kind, waitFor: 'user', until: null, reason, at: Date.now() });
+    return ids;
+  }
+
+  // Continue a suspended/interrupted job from where it stopped, under its original spec (scope, mode,
+  // verification, model ceilings): resuming never widens what was authorized at submission.
+  // `now`: the user says the provider is back before the recorded estimate; try once instead of waiting.
+  resume(id, cwd, { now = false } = {}) {
+    const { projDir } = this.ctx(cwd);
+    if (now) this.provider.clearUnavailable('*');
+    return this.start(ledger.resume(projDir, id), projDir);
+  }
+
+  // The lead (or user) finished a stopped job another way: close it so it is never resumed and repeated.
+  // A kept worktree is left on disk for review (its path stays in the job record).
+  takeOver(id, cwd, by = 'claude', note = '') {
+    const { projDir } = this.ctx(cwd);
+    const j = ledger.takeOver(projDir, id, by, note);
+    fs.rmSync(resumeFile(projDir, id), { force: true });
+    return j;
   }
 
   async wait(ids, timeoutMs) {

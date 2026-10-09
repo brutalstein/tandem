@@ -34,7 +34,8 @@ Workers do not see this conversation. Give: goal, acceptance criteria, files and
 ## 5. Run
 - Independent units: `codex_run` with `wait: false` for each, do your own unit meanwhile, then `codex_wait`.
 - Do not edit paths a running in-place Codex job owns; the guard hook blocks it.
-- `codex_unavailable` (usage limit, login, no permitted model) means do the work in Claude. Do not retry in a loop.
+- `SUSPENDED` (Codex usage limit, login, session ended) is stopped, not failed: partial work is kept. Either do it yourself and `codex_jobs takeover=<id>` (so it is never repeated), or leave it and `codex_jobs resume=<id>` once the limit resets. Never retry in a loop. `codex_unavailable` (no permitted model) means do the work in Claude.
+- Multi-step work: record it with `tandem_checkpoint` (objective, acceptance, constraints, items) and update items as they land. If your own usage runs out, the user can continue with `node <plugin>/bin/tandem.js continue`, which resumes stopped jobs and runs only items you gave a `delegate` spec. Delegate only what Codex may do without you.
 
 ## 6. Verify — a claim is not a result
 - `verified`: Tandem ran the check and it passed (and the test definition was not changed). `unverified`: no check ran, or `INTEGRITY` shows tests were edited/deleted — review the diff. `failed_verification`, `partial`, `failed`, `blocked`, `skipped`: not done.

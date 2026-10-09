@@ -102,6 +102,11 @@ function create(root, jobId, base, links = []) {
   const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), `${jobId}-${crypto.randomBytes(3).toString('hex')}`);
   if (fs.existsSync(dir)) throw new Error('worktree already exists; refusing to discard interrupted work: ' + dir);
   git(root, ['worktree', 'add', '--detach', '--quiet', dir, base]);
+  return { path: dir, base, linked: linkDeps(root, dir, links) };
+}
+
+// Link the user's dependency folders into a worktree (also on resume: links are removed when a job stops).
+function linkDeps(root, dir, links = []) {
   const linked = [];
   for (const l of links) {
     if (!validLinkName(l)) throw new Error('unsafe dependency link name');
@@ -111,7 +116,7 @@ function create(root, jobId, base, links = []) {
       linked.push(l);
     }
   }
-  return { path: dir, base, linked };
+  return linked;
 }
 
 // Files changed in the worktree relative to base: [{ path, status: 'A'|'M'|'D' }].
@@ -285,4 +290,4 @@ function remove(root, wt) {
 // Has the user's working state moved since `tree` was snapshotted?
 function drifted(root, tree, links) { try { return snapshot(root, links).tree !== tree; } catch { return true; } }
 
-module.exports = { snapshot, diffTrees, create, changes, plan, apply, revert, journal, recover, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };
+module.exports = { snapshot, diffTrees, create, linkDeps, changes, plan, apply, revert, journal, recover, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };

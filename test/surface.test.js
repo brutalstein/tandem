@@ -84,7 +84,7 @@ test('MCP server: protocol, validation, framing, dry-run, status, progress', asy
     const init = await s.rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } });
     assert.equal(init.result.serverInfo.version, require('../.claude-plugin/plugin.json').version);
     const tools = (await s.rpc('tools/list', {})).result.tools.map(t => t.name);
-    assert.deepEqual(tools.sort(), ['codex_jobs', 'codex_run', 'codex_wait', 'memory_search', 'memory_update', 'memory_write', 'tandem_status']);
+    assert.deepEqual(tools.sort(), ['codex_jobs', 'codex_run', 'codex_wait', 'memory_search', 'memory_update', 'memory_write', 'tandem_checkpoint', 'tandem_status']);
 
     for (const [args, re] of [[{ task: 'x', mode: 'ask' }, /difficulty is required/], [{ task: 1, mode: 'ask', difficulty: 'normal' }, /task: expected string/], [{ task: 'x', mode: 'rm', difficulty: 'normal' }, /mode: expected/], [{ task: 'x', mode: 'ask', difficulty: 'normal', bogus: 1 }, /unknown argument bogus/], [{ task: 'x', mode: 'ask', difficulty: 'normal', max_attempts: 9 }, /max_attempts/]]) {
       const r = await s.call('codex_run', args);
@@ -130,4 +130,33 @@ test('MCP server: kept worktree is reported and can be discarded', async () => {
     assert.ok(!fs.existsSync(kept));
     assert.match(await s.text('codex_jobs', { discard: 'j1' }), /no kept worktree/);
   } finally { s.close(); }
+});
+
+test('Claude gone: session end suspends the live job; the tandem CLI continues it and the delegated checkpoint item, nothing else', async () => {
+  H.resetEnv();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: { SLOWTASK: { action: 'hang' } } });
+  const s = server(dir);
+  const exited = new Promise(r => s.srv.once('exit', r));
+  await s.rpc('initialize', {});
+  assert.match(await s.text('codex_run', { task: 'SLOWTASK explain the repo', mode: 'ask', difficulty: 'normal', wait: false }), /queued/);
+  assert.match(await s.text('tandem_checkpoint', { objective: 'document the repo', constraints: ['no push'], items: [
+    { id: 'i1', title: 'summarize', delegate: { task: 'ITEMTASK summarize', mode: 'ask', difficulty: 'trivial' } },
+    { id: 'i2', title: 'needs the lead' }] }), /saved[\s\S]*i1 summarize \(delegable\)/);
+  assert.match((await s.call('tandem_checkpoint', { items: [{ id: 'x', delegate: { task: 't', mode: 'implement', difficulty: 'normal', paths: ['../out'] } }] })).content[0].text, /outside|escape|confine|path/i);
+  await new Promise((r, x) => { const end = Date.now() + 15000; (function poll() { if (H.calls(dir).length) r(); else if (Date.now() > end) x(new Error('timeout')); else setTimeout(poll, 25); })(); });
+  s.srv.stdin.end(); // Claude Code closed (or its usage ran out and the user quit)
+  await exited;
+  const cli = (...a) => spawnSync(process.execPath, [path.join(H.ROOT, 'bin', 'tandem.js'), ...a, '--cwd', dir], { encoding: 'utf8', timeout: 60000 });
+  let st = cli('status');
+  assert.match(st.stdout, /j1 suspended session_ended .*\[due\]/);
+  assert.match(st.stdout, /claude: not observable/);
+  fs.writeFileSync(path.join(dir, '.fake-scenario.json'), JSON.stringify({ default: { action: 'ok' } }));
+  const c = cli('continue');
+  assert.equal(c.status, 0, c.stdout + c.stderr);
+  assert.equal((c.stdout.match(/ANSWERED/g) || []).length, 2);
+  st = cli('status');
+  assert.match(st.stdout, /stopped jobs: none/);
+  assert.match(st.stdout, /\[done\] i1 summarize/);
+  assert.match(st.stdout, /\[todo\] i2 needs the lead/, 'non-delegated work is left for the lead');
+  assert.equal(H.calls(dir).filter(x => /ITEMTASK/.test(x.prompt)).length, 1);
 });

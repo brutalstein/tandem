@@ -67,6 +67,8 @@ process.stdin.on('end', () => {
     else { fs.mkdirSync(path.dirname(path.join(cwd, p)), { recursive: true }); fs.writeFileSync(path.join(cwd, p), content); }
     out({ type: 'item.completed', item: { id: 'f' + n, type: 'file_change', changes: [{ path: p, kind: 'update' }] } });
   }
+  // The provider stops after partial work (usage limit mid-turn).
+  if (s.action === 'partial_ratelimit') fail("You've hit your usage limit. Try again in 2h 5m.");
   const delay = s.delayMs || 0;
   setTimeout(() => {
     out({ type: 'item.completed', item: { id: 'c' + n, type: 'command_execution', command: 'echo ok', exit_code: 0 } });

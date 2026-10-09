@@ -23,6 +23,9 @@ const KEEP_FINISHED = 60;
 const ACTIVE = new Set(['queued', 'running', 'integrating']);
 const HOLDING = new Set(['running', 'integrating']);
 const SUCCESS = new Set(['verified', 'answered']); // unverified changes must not satisfy dependencies
+// Stopped, not finished: the work can continue later (provider limit, session ended, owner crashed).
+// Never pruned, and a dependent of one is suspended with it rather than skipped.
+const RESUMABLE = new Set(['suspended', 'interrupted', 'codex_unavailable']);
 
 const SESSION_ID = `${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 const file = projDir => path.join(projDir, 'ledger.json');
@@ -61,7 +64,7 @@ function reap(doc, now) {
       reaped.push(j.id);
     }
   }
-  const done = Object.values(doc.jobs).filter(j => !ACTIVE.has(j.status)).sort((a, b) => b.seq - a.seq);
+  const done = Object.values(doc.jobs).filter(j => !ACTIVE.has(j.status) && !RESUMABLE.has(j.status)).sort((a, b) => b.seq - a.seq);
   for (const j of done.slice(KEEP_FINISHED)) delete doc.jobs[j.id];
   return reaped;
 }
@@ -90,6 +93,11 @@ function tryAcquire(projDir, id, { maxParallel, isolationPref = 'auto', canIsola
       const d = doc.jobs[dep];
       if (!d) { j.status = 'skipped'; j.finished = Date.now(); j.note = `dependency ${dep} no longer in ledger`; return { skip: j.note }; }
       if (ACTIVE.has(d.status)) return { wait: `waiting for ${dep}` };
+      if (RESUMABLE.has(d.status)) {
+        j.status = 'suspended'; j.finished = Date.now();
+        j.result = { suspension: { kind: 'dependency', reason: `dependency ${dep} is ${d.status}`, at: Date.now() } };
+        return { suspend: j.result.suspension.reason };
+      }
       if (!SUCCESS.has(d.status)) { j.status = 'skipped'; j.finished = Date.now(); j.note = `dependency ${dep} ended ${d.status}`; return { skip: j.note }; }
     }
     const others = Object.values(doc.jobs).filter(o => o.id !== id);
@@ -154,6 +162,35 @@ function annotate(projDir, id, fields) {
   return txn(projDir, doc => { const j = doc.jobs[id]; if (j && !ACTIVE.has(j.status)) Object.assign(j, fields); return !!j; });
 }
 
+// Continue a stopped job in this session: back to the queue with a new owner. The job keeps its id,
+// spec and history; resumeFrom carries what the next run may reuse (thread, worktree, snapshots).
+function resume(projDir, id) {
+  return txn(projDir, doc => {
+    const j = doc.jobs[id];
+    if (!j) throw new Error(`unknown job ${id}`);
+    if (!RESUMABLE.has(j.status)) throw new Error(`job ${id} is ${j.status}; only suspended or interrupted jobs can be resumed`);
+    (j.history = j.history || []).push({ at: Date.now(), from: j.status, by: SESSION_ID, reason: (j.result && j.result.suspension && j.result.suspension.reason) || j.note || null });
+    // A crashed owner left no summary: continue from its recorded worktree (in place, the drift check decides).
+    j.resumeFrom = (j.result && j.result.resumeFrom) || { worktree: j.worktree || null };
+    Object.assign(j, { status: 'queued', owner: { pid: process.pid, sid: SESSION_ID, hb: Date.now() }, resumed: (j.resumed || 0) + 1 });
+    delete j.finished; delete j.result; delete j.integrating;
+    return structuredClone(j);
+  });
+}
+
+// Someone else (Claude, or the user) did the work of a stopped job: it must never be resumed and repeated.
+function takeOver(projDir, id, by, note) {
+  return txn(projDir, doc => {
+    const j = doc.jobs[id];
+    if (!j) throw new Error(`unknown job ${id}`);
+    if (!RESUMABLE.has(j.status) && j.status !== 'queued') throw new Error(`job ${id} is ${j.status}`);
+    if (j.status === 'queued' && pidAlive(j.owner.pid) && j.owner.sid !== SESSION_ID) throw new Error(`job ${id} is queued in another live session`);
+    (j.history = j.history || []).push({ at: Date.now(), from: j.status, by: SESSION_ID, reason: 'taken over' });
+    Object.assign(j, { status: 'taken_over', finished: Date.now(), takenOverBy: String(by || 'claude').slice(0, 40), note: String(note || '').slice(0, 300) });
+    return structuredClone(j);
+  });
+}
+
 function heartbeat(projDir, ids) {
   return txn(projDir, doc => {
     let n = 0;
@@ -199,4 +236,4 @@ function concurrentWrites(projDir, id) {
   return [...new Set(paths)];
 }
 
-module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, annotate, heartbeat, list, get, heldClaims, concurrentWrites, overlaps, anyOverlap, migrate, reap };
+module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, RESUMABLE, resume, takeOver, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, annotate, heartbeat, list, get, heldClaims, concurrentWrites, overlaps, anyOverlap, migrate, reap };

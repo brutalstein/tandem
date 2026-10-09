@@ -16,6 +16,7 @@ const { frame } = require('./security');
 
 const VERSION = require('../.claude-plugin/plugin.json').version;
 const cfg = config();
+store.publishDataDir();
 const progressTokens = new Map(); // jobId -> progressToken of the call waiting on it
 let progressCount = 0;
 const orch = new Orchestrator(cfg, {
@@ -61,8 +62,8 @@ const TOOLS = [
   },
   {
     name: 'codex_jobs',
-    description: 'List recent Codex jobs for this project (all sessions), or act on one: cancel (stop a job of this session), show (full result), discard (delete a kept worktree).',
-    inputSchema: { type: 'object', properties: { cancel: str('Job id to cancel.'), show: str('Job id to show in full.'), discard: str('Job id whose kept worktree to delete.'), cwd: str('Project directory.') } },
+    description: 'List recent Codex jobs for this project (all sessions), or act on one: cancel (stop a job of this session), show (full result), discard (delete a kept worktree), resume (continue a suspended/interrupted job where it stopped, in the background), takeover (mark a stopped job as done another way so it is never resumed).',
+    inputSchema: { type: 'object', properties: { cancel: str('Job id to cancel.'), show: str('Job id to show in full.'), discard: str('Job id whose kept worktree to delete.'), resume: str('Suspended/interrupted job id to continue.'), takeover: str('Suspended/interrupted job id you completed yourself.'), note: str('takeover: what was done instead (short).'), cwd: str('Project directory.') } },
   },
   {
     name: 'memory_search',
@@ -91,6 +92,19 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { id: str('Entry id.'), status: str('New status.', { enum: memory.STATUSES }), verified: { type: 'boolean' }, text: str('Replacement text.'), cwd: str('Project directory.') }, required: ['id'] },
   },
   {
+    name: 'tandem_checkpoint',
+    description: 'Durable task state that survives this conversation, a Claude usage limit or a closed session (the tandem CLI reads it). Record the objective, acceptance criteria, constraints, decisions and plan items at milestones; mark items done as they land. An item with a delegate spec (codex_run arguments) authorizes Codex to run it without you via `tandem continue`. No arguments = show.',
+    inputSchema: { type: 'object', properties: {
+      objective: str('What the user asked for, in one or two sentences.'),
+      acceptance: strs('Acceptance criteria (replaces the list).'),
+      constraints: strs('User constraints that must survive (replaces the list).'),
+      decisions: strs('Decisions taken (replaces the list).'),
+      next: str('The next step, for whoever continues.'),
+      items: { type: 'array', items: { type: 'object' }, description: 'Upsert by id: {id, title?, status? (todo|doing|done|blocked|dropped), delegate? (codex_run arguments, or null)}.' },
+      cwd: str('Project directory.'),
+    } },
+  },
+  {
     name: 'tandem_status',
     description: 'Codex install/login, permitted models (and why others are excluded), per-model availability, ceilings, routing estimates per task class, memory size, config problems and recent errors.',
     inputSchema: { type: 'object', properties: { refresh: { type: 'boolean', description: 'Re-run discovery now.' }, cwd: str('Project directory.') } },
@@ -115,35 +129,8 @@ function check(name, a) {
   return a;
 }
 
-const k = n => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n || 0));
-const list = xs => xs.map(x => '- ' + x).join('\n');
-
-function formatJob(j, full = false) {
-  const r = j.result || {};
-  const rep = r.report || {};
-  const L = [`job ${j.id} [${j.mode}/${j.difficulty}${j.isolation && j.isolation !== 'none' ? ', ' + j.isolation : ''}] ${j.status.toUpperCase()}` + (j.finished ? ` in ${Math.round((j.finished - (j.started || j.created)) / 1000)}s` : '')];
-  if (j.note) L.push(`note: ${j.note}`);
-  if (j.route && (full || j.route.explored)) L.push(`route: ${j.route.override ? 'override ' + j.route.override : `plan ${(j.route.plan || []).map(p => p.r).join(' -> ')}${j.route.explored ? ' (exploring)' : ''}, ${j.route.nObs} obs`}`);
-  if (j.attempts && j.attempts.length) L.push('attempts: ' + j.attempts.map(a => `${a.model}@${a.effort}${a.verified === true ? ' ✓' : a.verified === false ? ' ✗' : ''}${a.errorKind ? ' (' + a.errorKind + ')' : ''}`).join(' -> '));
-  if (r.usage) L.push(`codex tokens: in ${k(r.usage.input)} (cached ${k(r.usage.cached)}), out ${k(r.usage.output)}`);
-  if (rep.summary) L.push(frame(`codex report (${rep.status})`, rep.summary + (full && rep.verification ? `\nclaimed verification: ${rep.verification}` : '')));
-  if (r.verification) L.push(`verification: \`${r.verification.command}\` ${r.verification.ok ? 'PASSED' : 'FAILED (exit ' + r.verification.code + ')'}` + (r.verification.tail ? '\n' + frame('test output', r.verification.tail) : ''));
-  else if (j.mode === 'implement' && rep.status) L.push('verification: none run by Tandem — verify before trusting');
-  if (r.integrity) L.push(`INTEGRITY: ${r.integrity.verifyDefinitionChanged ? 'test definition changed (' + r.integrity.verifyDefinitionChanged.join(', ') + ') ' : ''}${r.integrity.deletedTests ? 'tests deleted (' + r.integrity.deletedTests.join(', ') + ') ' : ''}${r.integrity.modifiedTests ? 'test files changed (' + r.integrity.modifiedTests.join(', ') + ')' : ''} — pass not counted as verified; review the diff`);
-  if (r.changed) L.push(`changed: ${r.changed.join(', ') || 'none'}`);
-  if (r.outOfScope && r.outOfScope.length) L.push(`OUT OF SCOPE changes: ${r.outOfScope.join(', ')}`);
-  if (r.integration) {
-    const g = r.integration;
-    if (g.conflicts) L.push(`integration: NOT applied — conflicts:\n${list(g.conflicts.map(c => `${c.path}: ${c.reason}`))}`);
-    else L.push(`integration: ${g.applied.length ? g.applied.map(a => `${a.path} (${a.how})`).join(', ') : 'nothing to apply'}${g.mainTreeDrifted ? '; your tree changed meanwhile' : ''}${g.postVerify ? `; re-verified in your tree: ${g.postVerify.ok ? 'PASSED' : 'FAILED'}` : ''}${g.reverted ? `; reverted ${g.reverted.join(', ')}` : ''}`);
-  }
-  if (r.worktreeKept) L.push(`worktree kept for inspection: ${r.worktreeKept} (git -C "${r.worktreeKept}" diff HEAD; codex_jobs discard=${j.id} to delete)`);
-  if (rep.findings && rep.findings.length) L.push(frame('codex findings (saved as tentative memory)', list(rep.findings)));
-  if (rep.open_questions && rep.open_questions.length) L.push(frame('codex open questions', list(rep.open_questions)));
-  if (r.error) L.push(`error: ${r.error}`);
-  if (r.memoryIds && r.memoryIds.length) L.push(`memory: ${r.memoryIds.join(', ')}`);
-  return L.join('\n');
-}
+const { formatJob, k, list } = require('./format');
+const checkpoint = require('./checkpoint');
 
 async function waitFor(ids, timeoutMs) {
   const want = ids && ids.length ? ids : [...orch.live.entries()].filter(([, e]) => !e.settled).map(([id]) => id);
@@ -214,6 +201,11 @@ const handlers = {
     const { root, projDir } = orch.ctx(a.cwd);
     if (a.cancel) return orch.cancel(a.cancel) ? `cancelling ${a.cancel}` : `job ${a.cancel} is not running in this session`;
     if (a.show) { const j = ledger.get(projDir, a.show); return j ? formatJob(j, true) : `no job ${a.show}`; }
+    if (a.resume) {
+      const { job } = orch.resume(a.resume, a.cwd);
+      return `job ${job.id} resumed (queued, ${job.mode}, attempt history kept). Collect with codex_wait.`;
+    }
+    if (a.takeover) { const j = orch.takeOver(a.takeover, a.cwd, 'claude', a.note); return `job ${j.id} marked taken_over; it will not be resumed${j.result && j.result.worktreeKept ? `. Its partial work is still in ${j.result.worktreeKept}` : ''}`; }
     if (a.discard) {
       const j = ledger.get(projDir, a.discard);
       const kept = j && j.result && j.result.worktreeKept;
@@ -225,7 +217,7 @@ const handlers = {
       worktree.remove(root, { path: kept, linked: (j.worktree && j.worktree.linked) || [] });
       return `deleted worktree ${kept}`;
     }
-    return ledger.list(projDir).slice(0, 15).map(j => `${j.id} ${j.status} [${j.mode}/${j.difficulty}]${j.paths && j.paths.length ? ' paths=' + j.paths.join(',') : ''}${j.after && j.after.length ? ' after=' + j.after.join(',') : ''}${j.owner && j.owner.sid !== ledger.SESSION_ID ? ' (other session)' : ''}: ${j.task.slice(0, 100)}`).join('\n') || 'no jobs';
+    return ledger.list(projDir).slice(0, 15).map(j => `${j.id} ${j.status}${j.result && j.result.suspension ? ` (${j.result.suspension.kind})` : ''} [${j.mode}/${j.difficulty}]${j.paths && j.paths.length ? ' paths=' + j.paths.join(',') : ''}${j.after && j.after.length ? ' after=' + j.after.join(',') : ''}${j.owner && j.owner.sid !== ledger.SESSION_ID ? ' (other session)' : ''}: ${j.task.slice(0, 100)}`).join('\n') || 'no jobs';
   },
   async memory_search(a) {
     const { root, projDir } = orch.ctx(a.cwd);
@@ -241,6 +233,21 @@ const handlers = {
     const { projDir } = orch.ctx(a.cwd);
     const r = memory.setStatus(projDir, a.id, a);
     return r ? `${r.id}: ${r.status}, ${r.confidence}` : `no entry ${a.id}`;
+  },
+  async tandem_checkpoint(a) {
+    const { root, projDir } = orch.ctx(a.cwd);
+    const jobs = ledger.list(projDir);
+    if (Object.keys(a).every(x => x === 'cwd')) return checkpoint.summary(checkpoint.reconcile(projDir, jobs), jobs);
+    const items = (a.items || []).map(it => {
+      if (!it || !it.delegate) return it;
+      const d = it.delegate;
+      orch.validate(d, root); // reject a bad spec now, not when the lead is gone
+      if (!['task', 'mode', 'difficulty'].every(f => d[f] !== undefined)) throw new Error(`item ${it.id}: delegate needs task, mode and difficulty`);
+      // Authorization is recorded with the item: the ceilings in force now, not the CLI's defaults later.
+      return { ...it, delegate: { ...d, cwd: undefined, wait: undefined, dry_run: undefined, ceiling: { codexMaxModel: cfg.codexMaxModel, codexAllowedModels: cfg.codexAllowedModels, codexMaxEffort: cfg.codexMaxEffort } } };
+    });
+    const cp = checkpoint.save(projDir, { ...a, items }, 'claude');
+    return 'saved\n' + checkpoint.summary(cp, jobs);
   },
   tandem_status: status,
 };
@@ -285,7 +292,7 @@ process.stdin.on('data', d => {
     onMessage(msg);
   }
 });
-// Client gone: stop our Codex children rather than leaving them running unattended.
-process.stdin.on('end', () => { for (const id of orch.live.keys()) orch.cancel(id); setTimeout(() => process.exit(0), 1500).unref(); });
+// The session ended: stop live jobs as resumable (suspended), never as lost work.
+process.stdin.on('end', () => { orch.suspendAll('session_ended', 'the Claude Code session ended while the job was running'); setTimeout(() => process.exit(0), 1500).unref(); });
 // Warm the discovery cache so the first delegation does not pay for it.
 codex.discover().catch(e => store.logError('discover', e));

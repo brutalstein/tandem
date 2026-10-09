@@ -7,7 +7,18 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const DATA = process.env.TANDEM_DATA || process.env.CLAUDE_PLUGIN_DATA || path.join(os.homedir(), '.tandem');
+// Outside Claude Code (the tandem CLI) CLAUDE_PLUGIN_DATA is unset: follow the pointer the plugin's MCP
+// server leaves in ~/.tandem so both see the same ledger, checkpoint and memory.
+const HOME_DATA = path.join(os.homedir(), '.tandem');
+const POINTER = path.join(HOME_DATA, 'data-dir');
+function pointed() {
+  try { const p = fs.readFileSync(POINTER, 'utf8').trim(); return path.isAbsolute(p) && fs.existsSync(p) ? p : null; } catch { return null; }
+}
+const DATA = process.env.TANDEM_DATA || process.env.CLAUDE_PLUGIN_DATA || pointed() || HOME_DATA;
+function publishDataDir() {
+  if (process.env.TANDEM_DATA || DATA === HOME_DATA) return;
+  try { if (pointed() !== DATA) { mkdirp(HOME_DATA); fs.writeFileSync(POINTER, DATA); } } catch (e) { logError('data pointer', e); }
+}
 const LOCK_STALE_MS = 30000;
 
 function mkdirp(dir) { fs.mkdirSync(dir, { recursive: true }); return dir; }
@@ -148,4 +159,4 @@ function update(file, fallback, mutator, migrate) {
 
 function sha1(buf) { return crypto.createHash('sha1').update(buf).digest('hex'); }
 
-module.exports = { DATA, mkdirp, projectRoot, projectKey, projectDir, isGitRepo, readJson, writeJson, withLock, update, pidAlive, sleepMs, retryBusy, renameRetry, logError, sha1 };
+module.exports = { DATA, publishDataDir, mkdirp, projectRoot, projectKey, projectDir, isGitRepo, readJson, writeJson, withLock, update, pidAlive, sleepMs, retryBusy, renameRetry, logError, sha1 };

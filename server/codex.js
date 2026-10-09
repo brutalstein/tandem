@@ -85,15 +85,18 @@ async function discover({ force = false } = {}) {
 //   verified    - a run on this model succeeded for this account
 //   unavailable - the provider rejected it (with expiry) ; key '*' = provider-wide rate limit
 //   listed      - in the catalog, never tried
-function markUnavailable(key, reason, ms) {
-  update(ENV_FILE, {}, v => { (v.unavailable = v.unavailable || {})[key] = { until: Date.now() + ms, reason: String(reason).slice(0, 200) }; });
+function markUnavailable(key, reason, ms, kind) {
+  update(ENV_FILE, {}, v => { (v.unavailable = v.unavailable || {})[key] = { until: Date.now() + ms, reason: String(reason).slice(0, 200), kind: kind || null }; });
 }
 function markVerified(model) {
   update(ENV_FILE, {}, v => {
     (v.verified = v.verified || {})[model] = Date.now();
-    if (v.unavailable) delete v.unavailable[model];
+    if (v.unavailable) { delete v.unavailable[model]; delete v.unavailable['*']; } // a completed turn proves the provider is back
   });
 }
+// Forget a recorded outage before its estimated end (the user says the provider is back). It only
+// re-enables trying: a provider that is still limited answers with its limit again and the job re-suspends.
+function clearUnavailable(key) { update(ENV_FILE, {}, v => { if (v.unavailable) delete v.unavailable[key]; }); }
 function unavailable() {
   const now = Date.now();
   const u = (readJson(ENV_FILE, {}) || {}).unavailable || {};
@@ -103,6 +106,19 @@ function availability(env) {
   const unav = unavailable();
   return Object.fromEntries((env.models || []).map(m => [m.slug, unav[m.slug] ? 'unavailable' : (env.verified || {})[m.slug] ? 'verified' : 'listed']));
 }
+
+// The provider as a whole (a single model being unavailable is not the provider being down):
+//   available | rate_limited | quota_exhausted (both with until) | auth_required | not_installed | no_models
+function providerState(env, unav = unavailable()) {
+  if (!env || !env.installed) return { state: 'not_installed', waitFor: 'user', reason: 'Codex CLI not found on PATH (npm i -g @openai/codex)' };
+  if (!env.loggedIn) return { state: 'auth_required', waitFor: 'user', reason: `Codex not logged in (${env.login}); run: codex login` };
+  if (unav['*']) return { state: unav['*'].kind || 'rate_limited', waitFor: 'time', until: unav['*'].until, reason: unav['*'].reason };
+  if (!(env.models || []).length) return { state: 'no_models', waitFor: 'user', reason: 'no Codex model catalog available' };
+  return { state: 'available' };
+}
+
+// A usage/plan quota resets on the provider's schedule; a rate limit clears in seconds to minutes.
+const limitKind = msg => (/usage limit|quota|insufficient_quota|plan limit|credits/i.test(String(msg || '')) ? 'quota_exhausted' : 'rate_limited');
 
 function classifyError(msg) {
   const s = String(msg || '');
@@ -231,4 +247,4 @@ function runTurn({ args, prompt, cwd, timeoutMs, onEvent }) {
   return { child, done };
 }
 
-module.exports = { id: 'codex', codexCommand, discover, markUnavailable, markVerified, unavailable, availability, classifyError, retryAfterMs, killTree, buildArgs, runTurn, ENV_FILE };
+module.exports = { providerState, clearUnavailable, limitKind, id: 'codex', codexCommand, discover, markUnavailable, markVerified, unavailable, availability, classifyError, retryAfterMs, killTree, buildArgs, runTurn, ENV_FILE };

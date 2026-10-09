@@ -63,24 +63,28 @@ test('unsupported model: marked unavailable, rerouted, job still succeeds', asyn
   assert.ok(codex.unavailable()[first]);
 });
 
-test('rate limit: provider-wide backoff; later jobs fail fast without spawning Codex', async () => {
+test('rate limit: job suspended (resumable), provider-wide backoff; later jobs suspend without spawning Codex', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ratelimit' } });
   const o = orch();
   const j = await run(o, { cwd: dir, task: 'q', mode: 'ask', difficulty: 'normal' });
-  assert.equal(j.status, 'codex_unavailable');
-  assert.match(j.result.error, /usage\/rate limit/);
+  assert.equal(j.status, 'suspended');
+  assert.equal(j.result.suspension.waitFor, 'time');
+  assert.ok(['rate_limited', 'quota_exhausted'].includes(j.result.suspension.kind));
+  assert.ok(j.result.resumeFrom, 'resume state recorded');
   assert.ok(codex.unavailable()['*'].until > Date.now() + 2 * 3600e3 - 60e3, 'retry-after parsed (2h 5m)');
   const n = H.calls(dir).length;
   const j2 = await run(o, { cwd: dir, task: 'q2', mode: 'ask', difficulty: 'normal' });
-  assert.equal(j2.status, 'codex_unavailable');
+  assert.equal(j2.status, 'suspended');
+  assert.equal(j2.result.suspension.until, codex.unavailable()['*'].until);
   assert.equal(H.calls(dir).length, n);
 });
 
 test('auth failure and transient errors', async () => {
   clean();
   const auth = await run(orch(), { cwd: H.repo({ default: { action: 'auth' } }), task: 'q', mode: 'ask', difficulty: 'normal' });
-  assert.equal(auth.status, 'codex_unavailable');
+  assert.equal(auth.status, 'suspended');
+  assert.deepEqual([auth.result.suspension.kind, auth.result.suspension.waitFor], ['auth_required', 'user']);
   clean();
   const dir = H.repo({ default: { action: 'transient' } });
   const t = await run(orch(), { cwd: dir, task: 'q', mode: 'ask', difficulty: 'normal', max_attempts: 1 });
@@ -304,8 +308,9 @@ test('not logged in and timeouts', async () => {
   process.env.FAKE_LOGGED_OUT = '1';
   try {
     const j = await run(orch(), { cwd: H.repo(), task: 'q', mode: 'ask', difficulty: 'normal' });
-    assert.equal(j.status, 'codex_unavailable');
-    assert.match(j.result.error, /codex login/);
+    assert.equal(j.status, 'suspended');
+    assert.equal(j.result.suspension.waitFor, 'user');
+    assert.match(j.result.suspension.reason, /codex login/);
   } finally { delete process.env.FAKE_LOGGED_OUT; clean(); }
   const t = await run(orch({ jobTimeoutMs: 1500 }), { cwd: H.repo({ default: { action: 'hang' } }), task: 'q', mode: 'ask', difficulty: 'normal', max_attempts: 1 });
   assert.equal(t.status, 'failed');
