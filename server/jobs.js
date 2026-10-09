@@ -83,7 +83,7 @@ class Orchestrator {
     this.cfg = cfg;
     this.provider = provider;
     this.onProgress = onProgress || (() => {});
-    this.live = new Map(); // id -> { job, projDir, promise, child, cancelled }
+    this.live = new Map(); // composite project+job key -> { job, projDir, promise, child, cancelled }
     this.wakers = new Set();
     this.hbTimer = null;
   }
@@ -157,7 +157,9 @@ class Orchestrator {
       ledger.patch(projDir, job.id, { status: 'failed', result: { error: String(e && e.message || e) } });
       return ledger.get(projDir, job.id);
     }).then(j => { entry.job = j || entry.job; entry.settled = true; this.wake(); this.pruneFinished(); return entry.job; });
-    this.live.set(job.id, entry);
+    // Job identifiers restart at j1 for each repository. A single MCP process may
+    // serve multiple repositories, so global keys must include the project identity.
+    this.live.set(`${projDir}\0${job.id}`, entry);
     return { job, promise: entry.promise };
   }
 
@@ -178,7 +180,7 @@ class Orchestrator {
       acq = ledger.tryAcquire(projDir, job.id, { maxParallel: this.cfg.maxParallel, isolationPref: job.isolationPref, canIsolate: store.isGitRepo(job.root) });
       if (acq.acquired) break;
       if (acq.skip || acq.gone || acq.suspend) return ledger.get(projDir, job.id);
-      this.onProgress(job.id, `queued: ${acq.wait}`);
+      this.onProgress(job.id, `queued: ${acq.wait}`, projDir);
       await new Promise(r => {
         const done = () => { clearTimeout(t); this.wakers.delete(done); r(); };
         const t = setTimeout(done, delay);
@@ -194,7 +196,7 @@ class Orchestrator {
     if (this.hbTimer) return;
     this.hbTimer = setInterval(() => {
       const byProj = new Map();
-      for (const [id, e] of this.live) if (!e.settled) (byProj.get(e.projDir) || byProj.set(e.projDir, []).get(e.projDir)).push(id);
+      for (const e of this.live.values()) if (!e.settled) (byProj.get(e.projDir) || byProj.set(e.projDir, []).get(e.projDir)).push(e.job.id);
       if (!byProj.size) { clearInterval(this.hbTimer); this.hbTimer = null; return; }
       for (const [pd, ids] of byProj) { try { ledger.heartbeat(pd, ids); } catch (e) { store.logError('heartbeat', e); } }
     }, ledger.HEARTBEAT_MS);
@@ -315,10 +317,10 @@ class Orchestrator {
         : lastFail ? `${lastFail.text}\n\nFix the problem. Same scope, rules and final JSON format as before.`
         : 'Your previous turn on this task was interrupted (provider limit or session end) before you reported. Continue from where you stopped: the working tree holds your partial changes. Same scope, rules and final JSON format as before.';
       const args = provider.buildArgs({ sandbox: job.mode === 'implement' ? 'workspace-write' : 'read-only', model: rung.model, effort: rung.effort, resumeThread: resume ? threadId : null, schemaFile: schemaFile(), lean: cfg.leanCodex, ephemeral: job.mode !== 'implement' });
-      this.onProgress(job.id, `attempt ${n}: ${catalog.key(rung)}`);
+      this.onProgress(job.id, `attempt ${n}: ${catalog.key(rung)}`, projDir);
       const run = provider.runTurn({
         args, prompt, cwd: workdir, timeoutMs: cfg.jobTimeoutMs,
-        onEvent: ev => { if (ev.type === 'item.completed' && ev.item && ev.item.type === 'command_execution') this.onProgress(job.id, `$ ${String(ev.item.command).slice(0, 80)}`); },
+        onEvent: ev => { if (ev.type === 'item.completed' && ev.item && ev.item.type === 'command_execution') this.onProgress(job.id, `$ ${String(ev.item.command).slice(0, 80)}`, projDir); },
       });
       entry.child = run.child;
       const res = await run.done;
@@ -390,10 +392,10 @@ class Orchestrator {
             scanFailed && 'test-file fingerprint scan failed',
           ].filter(Boolean).join('; '),
         };
-        this.onProgress(job.id, 'verification blocked: test integrity preflight failed');
+        this.onProgress(job.id, 'verification blocked: test integrity preflight failed', projDir);
         break;
       }
-      this.onProgress(job.id, `verifying: ${verifyCmd}`);
+      this.onProgress(job.id, `verifying: ${verifyCmd}`, projDir);
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;
       ledger.patch(projDir, job.id, { attempts });
@@ -592,8 +594,16 @@ class Orchestrator {
     return L.join('\n');
   }
 
-  cancel(id, suspendReason) {
-    const e = this.live.get(id);
+  // Resolve user-visible j1/j2 within a project. Refuse ambiguous cross-project
+  // requests instead of cancelling or waiting on a different repository's job.
+  getLive(id, projDir = null) {
+    const matches = [...this.live.values()].filter(e => e.job && e.job.id === id && (!projDir || e.projDir === projDir));
+    if (matches.length > 1) throw new Error('ambiguous job ' + id + ': specify the project cwd');
+    return matches[0] || null;
+  }
+
+  cancel(id, suspendReason, projDir = null) {
+    const e = this.getLive(id, projDir);
     if (!e || e.settled) return false;
     e.cancelled = true;
     if (suspendReason) e.suspendReason = suspendReason;
@@ -604,9 +614,9 @@ class Orchestrator {
 
   // Stop every live job of this process as resumable (session ending, Ctrl+C) rather than cancelled.
   suspendAll(kind, reason) {
-    const ids = [...this.live].filter(([, e]) => !e.settled).map(([id]) => id);
-    for (const id of ids) this.cancel(id, { kind, waitFor: 'user', until: null, reason, at: Date.now() });
-    return ids;
+    const targets = [...this.live.values()].filter(e => !e.settled);
+    for (const e of targets) this.cancel(e.job.id, { kind, waitFor: 'user', until: null, reason, at: Date.now() }, e.projDir);
+    return targets.map(e => e.job.id);
   }
 
   // Continue a suspended/interrupted job from where it stopped, under its original spec (scope, mode,
@@ -627,8 +637,8 @@ class Orchestrator {
     return j;
   }
 
-  async wait(ids, timeoutMs) {
-    const targets = ids.map(id => this.live.get(id)).filter(Boolean);
+  async wait(ids, timeoutMs, projDir = null) {
+    const targets = ids.map(id => this.getLive(id, projDir)).filter(Boolean);
     let timer;
     await Promise.race([Promise.all(targets.map(t => t.promise)), new Promise(r => { timer = setTimeout(r, timeoutMs); })]);
     clearTimeout(timer);
