@@ -134,7 +134,9 @@ function fitSuccess(evidence, cls, rungs, now) {
     list.forEach((o, i) => {
       const [m, e] = String(o.r).split('@');
       if (!idx.m.has(m) || !idx.e.has(e)) return;
-      const w = Math.pow(0.5, Math.max(0, now - (o.t || now)) / HALF_LIFE_MS) * Math.pow(RECENCY_LAMBDA, list.length - 1 - i) * (o.cond ? COND_WEIGHT : 1);
+      // Self-reported completions are weak evidence, not equivalent to an independent check.
+      const trust = o.verified === false ? 0.35 : 1;
+      const w = Math.pow(0.5, Math.max(0, now - (o.t || now)) / HALF_LIFE_MS) * Math.pow(RECENCY_LAMBDA, list.length - 1 - i) * (o.cond ? COND_WEIGHT : 1) * trust;
       rows.push([idx.c.get(c), idx.m.get(m), idx.e.get(e), o.ok ? 1 : 0, w]);
     });
   }
