@@ -21,6 +21,13 @@ Three things stand between this and a general release:
 3. **Security reporting.** The repository is public. Verify that GitHub private vulnerability reporting is enabled before advertising it as the preferred disclosure channel.
 4. **Verification runs outside the Codex sandbox** and executes code the job wrote. This is documented in SECURITY.md; users with untrusted input should use `verify: none` and review.
 
+## Addendum: continuity branch (feat/continuity-v3)
+
+Not merged, not released. Adds suspend/resume, takeover, checkpoint, the standalone CLI and the skill registry (CHANGELOG "Unreleased"). Verified by 97 deterministic tests on Windows and Linux and one real-provider suspend/resume check (6/6). Open before merging:
+- real quota exhaustion and reset have not been observed end to end on this branch (the simulated path is tested);
+- macOS and Node 20 are CI-only and CI has not run on this branch (nothing pushed);
+- the per-job skill pointers have a labelled-set check (5/5, no false positives) but no measured effect on task success yet.
+
 ## Checklist
 
 | Area | Status | Evidence |

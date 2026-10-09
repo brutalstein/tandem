@@ -33,6 +33,24 @@ The hooks cost 5–11 ms above bare Node start. The v2 MCP server starts about 9
 
 ![overhead](charts/overhead.svg)
 
+## 1c. Continuity branch vs 2.0.0 (paired, same machine, same run)
+
+`node bench/overhead.js <root>`, both trees measured alternately twice on Windows 11 / Node 24.11.0.
+
+| Event | 2.0.0 (two runs) | continuity branch (two runs) |
+|---|---|---|
+| MCP server start + `tools/list`, median | 59.6 / 54.4 ms | 57.6 / 55.8 ms |
+| MCP server idle RSS | 56.3 / 56.3 MB | 56.9 / 56.8 MB |
+| Idle CPU | 0 | 0 |
+| PreToolUse guard, Edit, no jobs, median | 37.2 / 36.7 ms | 36.6 / 37.2 ms |
+| `tools/list` size | 5.9 KB | 6.8 KB (after trimming; 7.6 KB before) |
+
+Start-up and hook latency are unchanged within noise; idle memory +0.5 MB. The added tool schema (checkpoint, resume, takeover) costs about 0.9 KB of session context.
+
+Per job: skill matching scans Codex skill folders (about 17 ms with 51 skills on the development machine) and adds at most three one-line pointers to the prompt, only when they match. `tandem_status` also scans Claude plugin skills (0.25–0.4 s with 460).
+
+Real resume cost (`bench/results/real-resume-2026-10-09.txt`): the resumed turn replays the conversation: 120 k input tokens, of which 101 k cached, 343 output. The stopped turn's own usage is not reported by Codex when it is killed, so it is missing from the totals.
+
 ## 1b. Safety overhead per job: main vs the hardening branch (deterministic)
 
 `node bench/safety-overhead.js --server <server dir> --files <n>`. Medians in ms over 5 repetitions, Windows 11, Node 24.11.0, on a generated repository (10 % test files, 2 KB each, one dirty file, an ignored `node_modules`). No provider is called. Data: `bench/data/safety-overhead/`.

@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased — continuity and capabilities (branch feat/continuity-v3)
+
+### Changed
+
+- **A provider stopping no longer fails the job.** A Codex usage/rate limit, lost login or missing CLI (before or during a turn), the Claude Code session ending, and Ctrl+C in the CLI now end a job `suspended` with its partial work kept; a crashed owner still ends `interrupted`. Both are resumable. Previously the first group ended `codex_unavailable` (a limit mid-turn) or `cancelled` (session end). `codex_unavailable` remains only for "no permitted model".
+- A dependent of a stopped job is suspended with it instead of being skipped.
+- A completed Codex turn clears a recorded provider-wide outage early.
+
+### Added
+
+- **Resume** (`codex_jobs resume=<id>`, `tandem resume`): continues the same Codex conversation in the same worktree, with the original baselines, attempt history and authorization ceilings. In place, it continues isolated if files changed while stopped.
+- **Takeover** (`codex_jobs takeover=<id>`, `tandem takeover`): close a stopped job done another way so it is never repeated.
+- **Checkpoint** (`tandem_checkpoint`): durable objective, constraints, decisions and plan items. Items with a `delegate` spec are authorized for Codex.
+- **Standalone CLI** (`bin/tandem.js`): `status`, `jobs`, `show`, `resume`, `takeover`, `continue [--wait]`, `skills`. Works without Claude, on the same state (`~/.tandem/data-dir` pointer).
+- **Skill registry** (`server/capabilities.js`): discovery across Codex and Claude Code locations, task-matched pointers in lean Codex prompts, per-skill job outcomes in status, and explicit pinned project-local installs with verify, rollback and removal.
+- **Environment failures**: a check whose own program is missing ends `unverified` with the reason, without escalation or routing evidence.
+- `dry_run` reports this project's measured history for the task class.
+- Tests: `continuity.test.js` (failover scenarios), `capabilities.test.js`, an MCP-to-CLI end-to-end test, `test/real-resume.js` (real provider, manual).
+
 ## 2.0.0 — unreleased
 
 Production hardening of v1. See [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md) for the audit that motivated each change.

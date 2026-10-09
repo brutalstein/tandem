@@ -1,6 +1,6 @@
 # Architecture
 
-Tandem is a Claude Code plugin. Claude Code is the only user interface. Codex runs in the background as a worker that Claude delegates to, and the user never switches tools. There are no runtime dependencies: about 2,200 lines of Node.js, plus the official `claude` and `codex` CLIs.
+Tandem is a Claude Code plugin. Claude Code is the main user interface; a small CLI (`bin/tandem.js`) can inspect and continue already-authorized work when Claude is unavailable. Codex runs in the background as a worker that Claude delegates to, and the user never switches tools. There are no runtime dependencies: about 2,200 lines of Node.js, plus the official `claude` and `codex` CLIs.
 
 ```
 Claude Code session (lead, the only UI)
@@ -18,8 +18,12 @@ Claude Code session (lead, the only UI)
            ├─ worktree.js    snapshot, isolated worktree, three-way integration
            ├─ verify.js      check detection, run, integrity fingerprints
            ├─ memory.js      shared project memory
+           ├─ capabilities.js installed skills (Codex + Claude), task matching, pinned installs
+           ├─ checkpoint.js  durable task state (objective, constraints, plan items)
            ├─ security.js    sanitise, redact, confine, frame
            └─ store.js       locked JSON transactions with .bak recovery
+
+bin/tandem.js                standalone CLI on the same state: status, resume, takeover, continue, skills
 ```
 
 ## Job lifecycle
@@ -97,15 +101,51 @@ Additional coordination:
 - **Line endings.** Integration compares text with line endings normalised and writes results in your file's existing style, so `core.autocrlf` and `eol` attributes do not produce false conflicts.
 - **Kept worktrees.** A worktree with changes that did not land (conflict, failure) is kept for inspection. The SessionStart brief lists those from the last 7 days. `codex_jobs` with `discard` removes one, links first.
 
+## Continuity: suspend and resume
+
+A provider stopping is not the task failing. Jobs that stop for an outside reason end `suspended` (or `interrupted` when the owner process died) and can be resumed. Nothing is discarded.
+
+| Cause | Detected | State | Resumable when |
+|---|---|---|---|
+| Codex usage/rate limit (before or during a turn) | `classifyError` → `rate_limited`; `limitKind` splits quota vs rate | `suspended`, `waitFor: time`, `until` = parsed reset | the reset passes (`--due`), or the user says it is back (`--now`) |
+| Codex not logged in / not installed | discovery, or an auth error mid-turn | `suspended`, `waitFor: user` | after `codex login` / install |
+| Claude Code session ended | MCP server stdin closes | `suspended` (`session_ended`) | any time |
+| Ctrl+C in the CLI | SIGINT | `suspended` (`user_interrupt`) | any time |
+| Owner process killed | lease expires (reap) | `interrupted` | any time |
+| Dependency stopped | `tryAcquire` | `suspended` (`dependency`) | once the dependency is resumed |
+
+What a resume reuses (`result.resumeFrom` in the ledger, baselines in `projects/<p>/resume/<job>.json`):
+- **Codex thread.** An implement turn continues the same Codex conversation (`codex exec resume`), with a prompt that says it was interrupted and that the tree holds its partial work. Ask/review turns are ephemeral and restart.
+- **Workspace.** An isolated job continues in its kept worktree; dependency links are re-created. An in-place job continues in place only if the project tree is byte-identical to when it stopped; otherwise it continues in an isolated worktree, so it cannot overwrite edits made meanwhile.
+- **Baselines.** The pre-job snapshot, dirty-file set and test fingerprints are those of the original run, so partial edits stay attributed to the job and test tampering before the stop is still detected. They are written when the run starts, so even a crashed run resumes with them.
+- **Authorization.** Each job records the ceilings it was submitted under (`ceiling`); a resume from the CLI or another session runs under those, never wider. A resume never changes the job's scope, mode or check.
+- **History.** Attempts from before the stop are kept, marked `before`; `history` records each transition.
+
+`takeover` closes a stopped job that Claude or the user finished another way, so it is never resumed and repeated.
+
+**Checkpoint.** `tandem_checkpoint` stores the objective, acceptance criteria, constraints, decisions and plan items outside any conversation. An item with a `delegate` spec (codex_run arguments, plus the ceilings in force when it was written) is authorized for Codex; `tandem continue` runs only those, and resumes due jobs. Items complete when their job ends verified, answered or taken over.
+
+**Waiting.** There is no background service. `tandem continue --wait` waits in the terminal until the latest recorded reset (at most 24 h), then continues. Scheduling it (cron, Task Scheduler) is left to the user.
+
+**Data directory.** Inside Claude Code the state lives in `$CLAUDE_PLUGIN_DATA`. The MCP server writes that path to `~/.tandem/data-dir`, and the CLI follows it, so both see the same ledger.
+
+## Skills
+
+`capabilities.js` lists skills from the locations the tools themselves load: `<repo>/.agents/skills`, `~/.agents/skills`, `$CODEX_HOME/skills` (and `.system`), `<repo>/.claude/skills`, `~/.claude/skills`, and enabled Claude plugins (from `installed_plugins.json`). Duplicates (same name or same content) are counted once. Skills marked `disable-model-invocation` or `allow_implicit_invocation: false` are never suggested.
+
+Lean mode passes `skills.max_context_tokens=100` to Codex, which hides its own skill list. To keep relevant skills usable, the worker prompt names at most three installed Codex skills that clearly match the task (BM25 over name and description, at least two distinct matching terms, weak tail dropped), with their paths; nothing when none match. The job records which skills it was pointed at, and `tandem_status` reports how those jobs ended. Scanning Codex locations costs about 17 ms with 51 skills; scanning everything including 460 plugin skills about 0.25–0.4 s (status only).
+
+Installing is explicit (`tandem skills add`), project-local (`<repo>/.agents/skills`), and pinned: see SECURITY.md.
+
 ## Process safety
 
 - **Timeouts and cancel.** A job timeout (default 30 min) or a cancel kills the whole process tree: `taskkill /T /F` on Windows, process-group `SIGKILL` elsewhere.
 - **Hang protection.** A Codex turn and a verification command both settle 1.5 s after their main process exits, even if a leftover grandchild still holds the output pipe. Without this, an orphaned `git` started by Codex during a cancel hung a job indefinitely.
-- **Session end.** When the MCP server exits, its running jobs are cancelled. A job whose server crashed is reaped as `interrupted` by the next session.
+- **Session end.** When the MCP server exits, its running jobs are suspended (process tree killed, work kept, resumable). A job whose server crashed is reaped as `interrupted` by the next session, and can be resumed too.
 
 ## State
 
-Everything is under the plugin data directory (`$CLAUDE_PLUGIN_DATA`, or `TANDEM_DATA`):
+Everything is under the plugin data directory (`TANDEM_DATA`, else `$CLAUDE_PLUGIN_DATA`, else the path in `~/.tandem/data-dir`, else `~/.tandem`):
 
 ```
 env.json                         discovery cache, per-model availability (verified / unavailable until …)
@@ -115,6 +155,8 @@ projects/<name>-<hash>/
   router-evidence.json           routing observations (v2; v1 router stats migrated)
   memory.json                    shared memory (v2; v1 migrated)
   integrations/<job>.json        journal of an integration in progress (crash recovery)
+  resume/<job>.json              pre-job baselines of a running or stopped implement job
+  checkpoint.json                durable task state (tandem_checkpoint, tandem continue)
 worktrees/<project>/<job>-<rnd>/ isolated worktrees (transient, or kept on conflict)
 ```
 

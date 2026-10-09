@@ -29,6 +29,19 @@ Real Codex run, 2026-10-09 13:22 UTC, codex-cli 0.154.0: every job routed to `gp
 
 Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the fixed code (no local CodeQL; runs on push), several real Claude sessions delegating to Codex at the same time (covered by the multi-process ledger and lock stress tests), power-loss consistency.
 
+## Continuity branch (feat/continuity-v3, 2026-10-09)
+
+| Check | Result | Kind |
+|---|---|---|
+| `npm test`, Windows 11, Node 24.11.0 | 97 / 97 pass (1 POSIX-only test skipped as designed) | simulated Codex |
+| `npm test`, Ubuntu 24.04 (WSL 2), Node 22.22.2 | 96 pass + 1 Windows-only skip, 0 fail; the POSIX Ctrl+C test passes | simulated Codex |
+| Strict plugin validation | pass | real `claude plugin validate` |
+| `node test/real-resume.js` | 6 / 6 — a real Codex implement turn stopped mid-way (session end) is `suspended` with its thread id and worktree; the resume continued the same thread (`resumed: true`) in the same worktree and finished `verified` and integrated | **real Codex** (codex-cli 0.154.0) |
+
+What the simulated failover tests prove (`continuity.test.js`, `surface.test.js`): suspension on a limit mid-run with partial work kept; no Codex spawn while the recorded limit lasts; resume in the same thread and worktree; in-place resume keeps attribution; drift while stopped forces isolation and preserves the user edit; takeover blocks resume; session end suspends; dependency suspension and ordered resume; a killed owner's job resumes from its worktree; `continue --wait` starts only after the reset; Ctrl+C suspends (POSIX); after the MCP server ends, the CLI alone resumes the job and runs only the delegated checkpoint item.
+
+What they do **not** prove: real quota exhaustion followed by a real reset (the provider's limit was not reached in this session), the real auth-loss path, and continuity of a real Claude Code session (Claude's own quota is not observable to Tandem). The real resume check covers the session-end path only.
+
 ## Facts established by observation (not assumed)
 
 | Finding | How verified | Consequence |

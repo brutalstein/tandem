@@ -22,6 +22,8 @@ Tandem runs locally inside Claude Code and starts the official Codex CLI. It add
 | Secrets | Text that looks like an API key, token or private key is redacted from Codex summaries and findings and from everything written to project memory. Task text you or Claude send is stored in the job ledger as given. |
 | Isolated worktrees | Created only under the plugin data directory. Linked dependency folders are unlinked before removal, so cleanup cannot follow a link into your project. |
 | Integration | Worktree results are merged three-way per file. A file you changed on the same lines is a conflict and nothing is written; every write is re-checked immediately before it happens and rolled back on a race. |
+| Resume and takeover | A resumed job keeps its original scope, mode, check and model/effort ceilings (recorded at submission); the CLI cannot widen them. Checkpoint items run without Claude only if they carry a `delegate` spec, which is validated when written and records the ceilings in force then. |
+| Skills | Discovery only reads skill files; nothing is executed or fetched. Worker prompts name at most three matching skills, never their content. `tandem skills add` is explicit and project-local (`<repo>/.agents/skills`, never global); a git source must be pinned to a full commit sha and is checked out with symlinks disabled; links are refused; executable content (`scripts/`, script or binary extensions) requires `--allow-scripts`; the content hash is recorded in `tandem-lock.json` and `tandem skills verify` detects later changes; a directory Tandem did not install is never overwritten or removed. |
 | Verification integrity | Test definitions and existing test files are fingerprinted; changing or deleting one, or adding a `conftest.py`, downgrades a `verified` result (new tests are allowed). Out-of-scope edits make the result `unverified` and require review. |
 
 ## Known limits
@@ -32,4 +34,6 @@ Tandem runs locally inside Claude Code and starts the official Codex CLI. It add
 - Writes Claude makes through shell commands are not intercepted by the Edit/Write guard hook. Codex's own writes during an in-place job are bounded only by its sandbox and audited afterwards, not prevented.
 - Dependency folders are linked into isolated worktrees by default (`worktree_links`). Writes through a link reach the real folder, as an in-place job's would. Set `worktree_links` to `none` for untrusted tasks.
 - Path checks are `lstat`-based and race with a concurrent process that swaps a parent directory for a link between the check and the write.
+- An installed skill is instructions Codex may follow (and scripts it may run) inside its sandbox. Review a skill before `--allow-scripts`; pinning proves which content you reviewed, not that it is safe.
+- `~/.tandem/data-dir` tells the CLI where the plugin keeps its state. Anyone who can write your home directory can redirect it; that is the same trust boundary as the state itself.
 - The Claude subagent ceiling applies to model overrides requested through the Agent tool. It does not apply to third-party agents that hard-code a model.
