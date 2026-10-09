@@ -90,7 +90,7 @@ It should help your editor, not become your editor's second job.
 
 | Validation | Recorded outcome |
 |:--|--:|
-| Deterministic tests (simulated Codex) | **97 / 97** (Windows, 1 POSIX-only skip; Linux 96 + 1 Windows-only skip) |
+| Deterministic tests (simulated Codex) | **97 / 98** pass, 1 platform-specific skip (Windows and Linux) |
 | Real Codex integration checks | **9 / 9** |
 | Real suspend → resume in the same Codex thread | **6 / 6** |
 | Real plugin installation lifecycle checks | **12 / 12** |

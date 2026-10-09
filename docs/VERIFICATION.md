@@ -33,8 +33,8 @@ Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the f
 
 | Check | Result | Kind |
 |---|---|---|
-| `npm test`, Windows 11, Node 24.11.0 | 97 / 97 pass (1 POSIX-only test skipped as designed) | simulated Codex |
-| `npm test`, Ubuntu 24.04 (WSL 2), Node 22.22.2 | 96 pass + 1 Windows-only skip, 0 fail; the POSIX Ctrl+C test passes | simulated Codex |
+| `npm test`, Windows 11, Node 24.11.0 | 97 pass + 1 POSIX-only skip (98 tests) | simulated Codex |
+| `npm test`, Ubuntu 24.04 (WSL 2), Node 22.22.2 | 97 pass + 1 Windows-only skip (98 tests); the POSIX Ctrl+C test passes | simulated Codex |
 | Strict plugin validation | pass | real `claude plugin validate` |
 | `node test/real-resume.js` | 6 / 6 — a real Codex implement turn stopped mid-way (session end) is `suspended` with its thread id and worktree; the resume continued the same thread (`resumed: true`) in the same worktree and finished `verified` and integrated | **real Codex** (codex-cli 0.154.0) |
 

@@ -23,10 +23,15 @@ Three things stand between this and a general release:
 
 ## Addendum: continuity branch (feat/continuity-v3)
 
-Not merged, not released. Adds suspend/resume, takeover, checkpoint, the standalone CLI and the skill registry (CHANGELOG "Unreleased"). Verified by 97 deterministic tests on Windows and Linux and one real-provider suspend/resume check (6/6). Open before merging:
+Not merged, not released. Adds suspend/resume, takeover, checkpoint, the standalone CLI and the skill registry (CHANGELOG "Unreleased"). Verified by 98 deterministic tests (97 pass + 1 platform-specific skip on each of Windows and Linux) and one real-provider suspend/resume check (6/6). Open before merging:
 - real quota exhaustion and reset have not been observed end to end on this branch (the simulated path is tested);
 - macOS and Node 20 are CI-only and CI has not run on this branch (nothing pushed);
 - the per-job skill pointers have a labelled-set check (5/5, no false positives) but no measured effect on task success yet.
+
+Deliberately not built on this branch (no measured need yet; each would add per-job cost):
+- **Repository index / retrieval for workers.** Codex explores the repository itself; an index only pays off if it measurably cuts exploration tokens on large repositories. That needs a benchmark on a large repository first.
+- **Whole-strategy cost engine (Claude inline vs Codex vs both).** Tandem cannot observe Claude's own token use, so a Claude-side cost would be an assumption. `dry_run` reports measured Codex-side history instead, and the lead decides.
+- **Automatic skill creation and multi-repository analysis.** Explicit, pinned installs exist; generating skills is left until a repeated gap is observed.
 
 ## Checklist
 
