@@ -10,7 +10,7 @@
 
 Adaptive model routing, parallel jobs, test-backed delegation, and shared project memory — inside the Claude Code experience you already use.
 
-[**Install in 60 seconds ↓**](#get-started) · [**See the evidence ↓**](#the-evidence) · [**Explore the architecture ↗**](docs/ARCHITECTURE.md)
+[**Get started ↓**](#get-started) · [**See the evidence ↓**](#the-evidence) · [**Explore the architecture ↗**](docs/ARCHITECTURE.md)
 
 <p>
   <a href="https://github.com/brutalstein/tandem/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/brutalstein/tandem/actions/workflows/ci.yml/badge.svg"></a>
