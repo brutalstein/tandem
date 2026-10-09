@@ -46,7 +46,7 @@ Terminal states:
    - Implement jobs choose their isolation here:
      - `inplace` writes to your working tree under a path claim;
      - `worktree` writes to an isolated copy;
-     - `auto` (the default) runs in place unless that would have to wait for another writer's paths, and then isolates.
+     - `auto` edits in place if no writer holds the paths, otherwise isolates. `worktree` is the safer default.
 2. **Routing.** `catalog` → eligible rungs; `policy.decide` → escalation plan. The plan is stored with the job.
 3. **Execution.**
    - `codex exec --json` runs with `-m`, effort, the sandbox (`workspace-write` or `read-only`), an output schema and, by default, lean flags.
@@ -54,7 +54,7 @@ Terminal states:
    - The job holds a lease that is renewed every 15 s; a lease expires after 60 s without renewal.
 4. **Verification.**
    - Implement jobs run the check: `verify`, or auto-detected `npm test`, `pytest`, `cargo test` or `go test`.
-   - The test definition (scripts and test configuration) is fingerprinted before and after. A change downgrades the result.
+   - Test definitions and tracked/untracked test-file contents are fingerprinted before and after. Changes downgrade the result.
    - A failed check feeds the failure output into the next attempt. On the same model the thread is resumed; on a new model the prompt is fresh plus a summary.
 5. **Integration (worktree jobs).**
    - Planning is three-way per file: base = snapshot, ours = your current file, theirs = job result.
@@ -87,7 +87,7 @@ Additional coordination:
 
 - **Snapshot.** The snapshot is built in a temporary index file (`GIT_INDEX_FILE`), started from a copy of the real index. HEAD, the index, branches, the stash and your files are never modified. `.gitignore` is respected.
 - **Worktree location.** Worktrees live only under the plugin data directory (`worktrees/<project>/<job>`).
-- **Dependency links.** Dependency folders (`node_modules`, `.venv`, `venv`, configurable) are linked into the worktree (a junction on Windows, a symlink elsewhere), so checks can run there. The links are recorded in the ledger.
+- **Dependency links.** Dependency directories are not linked by default: writable junctions/symlinks would expose the original project during execution. Explicit opt-in via `TANDEM_WORKTREE_LINKS` accepts this risk. The links are recorded in the ledger.
   - **Removal never deletes through a link.** On Windows, `git worktree remove --force` follows junctions and deletes the target's contents; this deleted a real `node_modules` during development. Tandem therefore removes links first, then deletes the worktree with Node's `rm` (which does not follow links), then runs `git worktree prune`.
   - **Surviving worktrees hold no links.** A worktree that outlives its job (kept after a conflict, or left by a crashed session and reaped) has its links removed. If you clean it up yourself with `git worktree remove --force`, that cannot reach your project either.
   - Tests cover removal, kept worktrees followed by a user's `git worktree remove --force`, and crash reaping.
