@@ -38,6 +38,21 @@ test('snapshot captures modified + untracked files and leaves HEAD, index and st
   assert.ok(fs.existsSync(path.join(root, 'node_modules', 'm', 'index.js')), 'removing the worktree never deletes the linked target');
 });
 
+test('integration and cleanup reject symlinks/junctions and unmanaged paths', () => {
+  const root = H.repo(null, { 'a.txt': 'base\n' });
+  const outside = path.join(H.TMP, 'outside-protected');
+  fs.mkdirSync(outside, { recursive: true });
+  fs.writeFileSync(path.join(outside, 'secret.txt'), 'untouched');
+  fs.symlinkSync(outside, path.join(root, 'alias'), process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => wt.safeTarget(root, 'alias/secret.txt'), /symlink|junction/);
+  assert.throws(() => wt.safeTarget(root, '../outside-protected/secret.txt'), /escapes/);
+  const attempt = wt.apply(root, [{ path: 'alias/secret.txt', ours: Buffer.from('untouched'), write: Buffer.from('broken') }]);
+  assert.match(attempt.error, /symlink|junction/);
+  assert.equal(fs.readFileSync(path.join(outside, 'secret.txt'), 'utf8'), 'untouched');
+  assert.throws(() => wt.remove(root, { path: outside, linked: [] }), /unmanaged/);
+  assert.ok(fs.existsSync(path.join(outside, 'secret.txt')));
+});
+
 test('fast-forward, add and delete land when the user did not touch those files', () => {
   const { root, w } = setup({ 'a.txt': 'a\n', 'gone.txt': 'g\n' });
   H.write(w.path, { 'a.txt': 'a2\n', 'sub/new.txt': 'n\n', 'gone.txt': null });
