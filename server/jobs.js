@@ -137,7 +137,9 @@ class Orchestrator {
     if (mode === 'implement' && !git && !spec.allow_non_git) {
       throw new Error('implement mode needs a git repository so changes can be reviewed and reverted (pass allow_non_git: true to override).');
     }
-    const isolation = spec.isolation || this.cfg.isolation;
+    // Critical changes default to isolation when the user selected auto. Explicit
+    // per-job and global isolation choices remain authoritative.
+    const isolation = spec.isolation || (spec.difficulty === 'critical' && this.cfg.isolation === 'auto' ? 'worktree' : this.cfg.isolation);
     const job = ledger.submit(projDir, {
       root, mode, difficulty: spec.difficulty || 'normal', task: spec.task.trim(), context: spec.context ? String(spec.context) : '',
       paths, after: spec.after || [], verify: spec.verify ?? 'auto', model: spec.model || null, effort: spec.effort || null,
