@@ -62,8 +62,8 @@ const TOOLS = [
   },
   {
     name: 'codex_jobs',
-    description: 'List recent Codex jobs for this project (all sessions), or act on one: cancel (stop a job of this session), show (full result), discard (delete a kept worktree), resume (continue a suspended/interrupted job where it stopped, in the background), takeover (mark a stopped job as done another way so it is never resumed).',
-    inputSchema: { type: 'object', properties: { cancel: str('Job id to cancel.'), show: str('Job id to show in full.'), discard: str('Job id whose kept worktree to delete.'), resume: str('Suspended/interrupted job id to continue.'), takeover: str('Suspended/interrupted job id you completed yourself.'), note: str('takeover: what was done instead (short).'), cwd: str('Project directory.') } },
+    description: 'List recent Codex jobs (all sessions), or act on one by id: cancel, show, discard (kept worktree), resume (stopped job, continues where it stopped), takeover (you did it; never resume).',
+    inputSchema: { type: 'object', properties: { cancel: str(''), show: str(''), discard: str(''), resume: str(''), takeover: str(''), note: str('takeover note.'), cwd: str('Project directory.') } },
   },
   {
     name: 'memory_search',
@@ -93,14 +93,10 @@ const TOOLS = [
   },
   {
     name: 'tandem_checkpoint',
-    description: 'Durable task state that survives this conversation, a Claude usage limit or a closed session (the tandem CLI reads it). Record the objective, acceptance criteria, constraints, decisions and plan items at milestones; mark items done as they land. An item with a delegate spec (codex_run arguments) authorizes Codex to run it without you via `tandem continue`. No arguments = show.',
+    description: 'Task state that outlives this session (read by the tandem CLI). Save objective, constraints and plan items at milestones. An item\'s delegate (codex_run args) lets `tandem continue` run it without you. No args = show.',
     inputSchema: { type: 'object', properties: {
-      objective: str('What the user asked for, in one or two sentences.'),
-      acceptance: strs('Acceptance criteria (replaces the list).'),
-      constraints: strs('User constraints that must survive (replaces the list).'),
-      decisions: strs('Decisions taken (replaces the list).'),
-      next: str('The next step, for whoever continues.'),
-      items: { type: 'array', items: { type: 'object' }, description: 'Upsert by id: {id, title?, status? (todo|doing|done|blocked|dropped), delegate? (codex_run arguments, or null)}.' },
+      objective: str('Goal.'), acceptance: strs('Criteria.'), constraints: strs('User constraints.'), decisions: strs('Decisions.'), next: str('Next step.'),
+      items: { type: 'array', items: { type: 'object' }, description: 'Upsert by id: {id, title, status: todo|doing|done|blocked|dropped, delegate}.' },
       cwd: str('Project directory.'),
     } },
   },
