@@ -17,6 +17,7 @@ const policy = require('./policy');
 const ledger = require('./ledger');
 const worktree = require('./worktree');
 const verify = require('./verify');
+const testIntegrity = require('./test-integrity');
 const memory = require('./memory');
 const capabilities = require('./capabilities');
 const { sanitize, redactSecrets, confine } = require('./security');
@@ -373,24 +374,15 @@ class Orchestrator {
       // PRE-EXECUTION integrity check: never run an altered test command or a modified
       // pre-existing test with the user's full privileges. A post-run warning is too late
       // to prevent malicious package scripts or test fixtures from executing.
-      const preDefinitions = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
-      const preTestsNow = verify.testFingerprint(workdir);
-      // Other Tandem jobs may legitimately update separate test files while this
-      // in-place job runs. Such files are excluded by the same ledger attribution
-      // rule used by the final integrity audit.
-      const foreignTests = wt ? [] : ledger.concurrentWrites(projDir, job.id);
-      const preTests = verify.testChanges(testsBefore, preTestsNow)
-        .filter(f => !foreignTests.some(p => ledger.overlaps(p, f)));
-      const scanFailed = Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(preTestsNow, '__scan_error__');
-      if (preDefinitions.length || preTests.length || scanFailed) {
+      // Both the preflight and final decision use one independently testable
+      // integrity policy. Foreign in-place edits are attributed by the ledger.
+      const preflight = testIntegrity.inspect(workdir, fpBefore, testsBefore,
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+      if (testIntegrity.blocked(preflight)) {
         verification = {
           command: verifyCmd, ok: false, code: null, ms: 0,
           environment: 'verification preflight blocked: test definitions or existing tests changed; review changes before running code with local user privileges',
-          tail: [
-            preDefinitions.length && 'changed definitions: ' + preDefinitions.join(', '),
-            preTests.length && 'changed tests: ' + preTests.join(', '),
-            scanFailed && 'test-file fingerprint scan failed',
-          ].filter(Boolean).join('; '),
+          tail: testIntegrity.reason(preflight),
         };
         this.onProgress(job.id, 'verification blocked: test integrity preflight failed', projDir);
         break;
@@ -422,15 +414,11 @@ class Orchestrator {
     // ---- integrity: a pass obtained by changing the check itself is not a pass ----
     const integrity = {};
     if (verifyCmd) {
-      const changedDefs = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
-      if (changedDefs.length) integrity.verifyDefinitionChanged = changedDefs;
-      const afterTests = verify.testFingerprint(workdir);
-      if (Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(afterTests, '__scan_error__'))
-        integrity.testScanError = 'could not inspect test files';
-      // In place, a concurrent job's own tests are not this job's change.
-      const foreign = wt ? [] : ledger.concurrentWrites(projDir, job.id);
-      const changedTests = verify.testChanges(testsBefore, afterTests).filter(f => !foreign.some(p => ledger.overlaps(p, f)));
-      if (changedTests.length) integrity.modifiedTests = changedTests;
+      const inspected = testIntegrity.inspect(workdir, fpBefore, testsBefore,
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+      if (inspected.changedDefs.length) integrity.verifyDefinitionChanged = inspected.changedDefs;
+      if (inspected.scanFailed) integrity.testScanError = 'could not inspect test files';
+      if (inspected.changedTests.length) integrity.modifiedTests = inspected.changedTests;
     }
     let wtChanges = null;
     if (wt) {
