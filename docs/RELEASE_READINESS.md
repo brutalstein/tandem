@@ -4,7 +4,7 @@ Date: 2026-10-09. Scope: everything in this repository at the commit that contai
 
 ## Verdict
 
-**Ready as a release candidate for early adopters on Windows and Linux. Not yet ready for a general public release.**
+**The safety-hardening branch requires local regression and real-provider validation before release. Do not interpret the original main-branch CI result as validation of this branch.**
 
 The core is verified in three ways:
 - deterministic tests on two operating systems;
@@ -16,8 +16,8 @@ That core covers coordination, isolation, verification, safety and failure handl
 Three things stand between this and a general release:
 
 1. **Statistically meaningful real-provider performance evidence.** The repeated benchmark was cut short by the Codex account's usage limit; only a pilot exists (one run per cell). Until the scheduled run completes, the claims Tandem can make about cost against plain Codex are directional, not statistical.
-2. **CI has never executed.** Nothing was pushed (by instruction), so the macOS leg, the Node 20 leg and CodeQL have not run.
-3. **The repository has no public home yet.** `SECURITY.md` points to GitHub private vulnerability reporting, which needs a repository with that feature enabled.
+2. **CI.** The original public main-branch CI and CodeQL have succeeded on GitHub, including macOS and Node 20 deterministic tests. These results predate this safety-hardening branch; rerun locally before merging.
+3. **Security reporting.** The repository is public. Verify that GitHub private vulnerability reporting is enabled before advertising it as the preferred disclosure channel.
 
 ## Checklist
 
@@ -38,7 +38,7 @@ Three things stand between this and a general release:
 | Local overhead | ✅ hooks 5–11 ms over Node start | BENCHMARKS.md |
 | macOS | ❌ not run | CI only |
 | Node 20 | ❌ not run locally | CI only |
-| CI / CodeQL / dependency review | ⚠️ configured, never executed | `.github/workflows` |
+.| CI / CodeQL / dependency review | ✅ CI and CodeQL passed on original main; new branch unverified | `.github/workflows` |
 | Docs | ✅ README, architecture, routing, benchmarks, verification, security, contributing, changelog | |
 | Personal data in bundle | ✅ none (scanned); CI scans too | |
 
