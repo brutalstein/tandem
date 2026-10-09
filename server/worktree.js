@@ -185,6 +185,10 @@ function plan(root, wt, changed) {
 
 // Atomic per-file replacement prevents truncated files on a write failure. It is not
 // a multi-file transaction: abrupt process death may still leave a partial merge.
+// How long a replacement waits for another program's handle. Exhausting it fails the write and leaves the
+// original untouched (rename is all-or-nothing). TANDEM_REPLACE_WAIT_MS exists for tests and diagnosis.
+const replaceWaitMs = () => Number(process.env.TANDEM_REPLACE_WAIT_MS) || (process.platform === 'win32' ? 10000 : 1000);
+
 function atomicReplace(root, relative, content, expected) {
   const dst = safeTarget(root, relative);
   if (!same(read(dst), expected)) throw new Error(relative + ' changed during integration');
@@ -210,8 +214,9 @@ function atomicReplace(root, relative, content, expected) {
       if (!same(read(dst), expected)) throw Object.assign(
         new Error(relative + ' changed while waiting for replacement'), { code: 'RACE' });
       fs.renameSync(tmp, dst);
-    }, process.platform === 'win32' ? 10000 : 1000);
-  } finally { try { fs.unlinkSync(tmp); } catch {} }
+    }, replaceWaitMs());
+  // The temporary file can itself be held briefly (an AV scan of a just-written file): retry its removal too.
+  } finally { try { retryBusy(() => fs.unlinkSync(tmp), 2000); } catch {} }
 }
 
 function apply(root, actions) {

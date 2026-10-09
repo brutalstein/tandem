@@ -195,6 +195,25 @@ test('Windows: replacing a file another program holds open without delete sharin
   assert.deepEqual(fs.readdirSync(root).filter(n => n.endsWith('.tmp')), [], 'no temporary file left');
 });
 
+test('Windows: a handle held past the wait budget fails the integration cleanly: originals intact, earlier writes rolled back, no temp files', { skip: process.platform !== 'win32' }, async () => {
+  const root = H.repo(null, { 'a.txt': 'a0\n', 'b.txt': 'b0\n' });
+  const ps = require('child_process').spawn('powershell', ['-NoProfile', '-Command',
+    `$f=[System.IO.File]::Open('${path.join(root, 'b.txt')}','Open','Read','ReadWrite'); 'held'; Start-Sleep -Milliseconds 4000; $f.Close()`]);
+  await new Promise((resolve, reject) => { ps.stdout.once('data', resolve); ps.once('error', reject); });
+  process.env.TANDEM_REPLACE_WAIT_MS = '800';
+  let res;
+  try {
+    res = wt.apply(root, [
+      { path: 'a.txt', ours: Buffer.from('a0\n'), write: Buffer.from('a1\n'), how: 'fast-forward' },
+      { path: 'b.txt', ours: Buffer.from('b0\n'), write: Buffer.from('b1\n'), how: 'fast-forward' }]);
+  } finally { delete process.env.TANDEM_REPLACE_WAIT_MS; }
+  await new Promise(r => ps.once('close', r));
+  assert.match(res.error, /EPERM|EBUSY|EACCES/);
+  assert.deepEqual(res.rolledBack, ['a.txt']);
+  assert.deepEqual([H.read(root, 'a.txt'), H.read(root, 'b.txt')], ['a0\n', 'b0\n'], 'nothing truncated, nothing half-applied');
+  assert.deepEqual(fs.readdirSync(root).filter(n => n.endsWith('.tmp')), [], 'no temporary file left');
+});
+
 test('journal recovery undoes a partial multi-file integration and never clobbers a later user edit', () => {
   const root = H.repo(null, { 'a.txt': 'a0\n', 'b.txt': 'b0\n', 'c.txt': 'c0\n' });
   const act = (p, ours, write) => ({ path: p, ours: Buffer.from(ours), write: Buffer.from(write), how: 'fast-forward' });
