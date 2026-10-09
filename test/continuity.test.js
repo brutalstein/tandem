@@ -170,3 +170,20 @@ test('CLI continue --wait: waits in the foreground until the recorded limit rese
   assert.ok(Date.now() - t0 >= 1500, 'did not start before the reset');
   assert.match(r.stdout, /ANSWERED/);
 });
+
+test('CLI Ctrl+C: running jobs are suspended (resumable), not lost', { skip: process.platform === 'win32' && 'SIGINT cannot be delivered to a child process on Windows' }, async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ratelimit' } });
+  const j = await orch().submit({ cwd: dir, task: 'q', mode: 'ask', difficulty: 'normal' }).promise;
+  assert.equal(j.status, 'suspended');
+  scenario(dir, { default: { action: 'hang' } });
+  const n = H.calls(dir).length;
+  const child = require('child_process').spawn(process.execPath, [path.join(H.ROOT, 'bin', 'tandem.js'), 'resume', j.id, '--now', '--cwd', dir], { stdio: 'ignore' });
+  const exited = new Promise(r => child.once('exit', r));
+  await waitFor(() => H.calls(dir).length > n);
+  child.kill('SIGINT');
+  await exited;
+  const after = orch().list(dir).find(x => x.id === j.id);
+  assert.equal(after.status, 'suspended');
+  assert.equal(after.result.suspension.kind, 'user_interrupt');
+});
