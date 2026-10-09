@@ -394,6 +394,25 @@ test('verify: detection, fingerprint of scripts only, deleted tests, timeout', a
   assert.ok(bg.ms < 6000, `took ${bg.ms} ms`);
 });
 
+test('retryBusy only retries transient filesystem errors within a monotonic deadline', () => {
+  const store = require('../server/store');
+  let attempts = 0;
+  assert.equal(store.retryBusy(() => {
+    if (++attempts < 3) throw Object.assign(new Error('temporary sharing violation'), { code: 'EPERM' });
+    return 'ok';
+  }, 1500), 'ok');
+  assert.equal(attempts, 3);
+  assert.throws(() => store.retryBusy(() => {
+    throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+  }, 1500), /disk full/);
+  const before = process.hrtime.bigint();
+  assert.throws(() => store.retryBusy(() => {
+    throw Object.assign(new Error('persistent lock'), { code: 'EBUSY' });
+  }, 80), /persistent lock/);
+  const elapsed = Number(process.hrtime.bigint() - before) / 1e6;
+  assert.ok(elapsed >= 50 && elapsed < 1000, 'contention retries must be bounded');
+});
+
 test('store: stale lock from a dead process is broken; live lock waits', () => {
   const f = path.join(H.TMP, 'locked.json');
   fs.writeFileSync(f + '.lock', `999999 ${Date.now()}`); // pid that does not exist
