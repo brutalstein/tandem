@@ -11,6 +11,7 @@ process.env.TANDEM_DATA = path.join(TMP, 'data');
 process.env.TANDEM_CODEX_BIN = path.join(__dirname, 'fake-codex.js');
 process.env.CODEX_HOME = path.join(TMP, 'codex-home'); // never read the developer's real Codex config
 for (const k of Object.keys(process.env)) if (/^(TANDEM_(?!DATA|CODEX_BIN)|CLAUDE_PLUGIN_OPTION_)/.test(k)) delete process.env[k];
+process.env.TANDEM_HOME = path.join(TMP, 'home'); // skill discovery sees only test fixtures
 
 const ROOT = path.join(__dirname, '..');
 const CFG = {

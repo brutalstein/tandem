@@ -131,6 +131,7 @@ function check(name, a) {
 
 const { formatJob, k, list } = require('./format');
 const checkpoint = require('./checkpoint');
+const capabilities = require('./capabilities');
 
 async function waitFor(ids, timeoutMs) {
   const want = ids && ids.length ? ids : [...orch.live.entries()].filter(([, e]) => !e.settled).map(([id]) => id);
@@ -169,6 +170,10 @@ async function status(a) {
     `unavailable: ${Object.entries(unav).map(([m, x]) => `${m} until ${new Date(x.until).toLocaleString()} (${x.reason})`).join('; ') || 'none'}`,
     `memory: ${c.active} active (${c.verified} verified, ${c.tentative} tentative), ${c.inactive} inactive | project ${root}`,
   ];
+  const inv = capabilities.scan(root);
+  const by = (p, sc) => inv.skills.filter(s => s.platform === p && (!sc || s.scope === sc)).length;
+  const used = Object.entries(capabilities.usage(ledger.list(projDir))).map(([n, x]) => `${n} ${x.verified}/${x.jobs} succeeded`);
+  L.push(`skills: codex ${by('codex')} (${inv.skills.filter(s => s.platform === 'codex' && !s.implicit).length} explicit-only), claude ${by('claude')} (${by('claude', 'plugin')} from plugins); ${inv.dupes.length} duplicates ignored${used.length ? '; pointed at in jobs: ' + used.join(', ') : ''}`);
   if (env.configModel && !elig.models.some(m => m.slug === env.configModel)) L.push(`note: your Codex config default model "${env.configModel}" is not usable here; Tandem always passes an explicit model.`);
   if (rungs.length) L.push(...policy.summary(projDir, rungs, cfg).map(s => 'routing ' + s));
   if (cfg.problems.length) L.push('CONFIG PROBLEMS: ' + cfg.problems.join('; '));

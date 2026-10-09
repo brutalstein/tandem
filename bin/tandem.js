@@ -5,12 +5,16 @@
 // what was already authorized: suspended/interrupted jobs (under their original scope and ceilings)
 // and checkpoint items the lead marked delegable. It never invents new work.
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { config } = require('../server/config');
 const { Orchestrator } = require('../server/jobs');
 const codex = require('../server/codex');
 const ledger = require('../server/ledger');
 const checkpoint = require('../server/checkpoint');
 const { formatJob } = require('../server/format');
+const capabilities = require('../server/capabilities');
 
 const USAGE = `usage: tandem <command> [--cwd DIR]
   status                 providers, stopped jobs, kept worktrees, checkpoint
@@ -22,13 +26,18 @@ const USAGE = `usage: tandem <command> [--cwd DIR]
   takeover <id> [--note TEXT]
                          mark a stopped job as done another way; it will never be resumed
   continue [--now]       resume due jobs, then start checkpoint items marked delegable
+  skills [list]          installed Codex/Claude skills (source, trust, scripts) and how they did in jobs
+  skills add <dir|git-url> [--ref SHA] [--path SUBDIR] [--allow-scripts] [--force]
+                         install a skill for this project only (.agents/skills), pinned in tandem-lock.json;
+                         a git source needs --ref <full commit sha>
+  skills verify | remove <name> | rollback <name>
 Ctrl+C suspends running jobs (resumable); it does not discard them.`;
 
 function parse(argv) {
   const o = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--cwd' || a === '--note') o[a.slice(2)] = argv[++i];
+    if (['--cwd', '--note', '--ref', '--path'].includes(a)) o[a.slice(2)] = argv[++i];
     else if (a.startsWith('--')) o[a.slice(2)] = true;
     else o._.push(a);
   }
@@ -58,6 +67,51 @@ async function status(orch, o) {
   if (kept.length) L.push('kept worktrees:\n' + kept.map(j => `  ${j.id}: ${j.result.worktreeKept}`).join('\n'));
   L.push(checkpoint.summary(checkpoint.reconcile(projDir, jobs), jobs));
   return L.join('\n');
+}
+
+function skills(root, projDir, o) {
+  const sub = o._.shift() || 'list';
+  if (sub === 'list') {
+    const inv = capabilities.scan(root), used = capabilities.usage(ledger.list(projDir));
+    for (const p of ['codex', 'claude']) {
+      const xs = inv.skills.filter(s => s.platform === p);
+      console.log(`${p}: ${xs.length} skills`);
+      for (const s of p === 'claude' ? xs.filter(s => s.scope !== 'plugin') : xs) {
+        const u = used[s.name];
+        console.log(`  ${s.name} [${s.trust}${s.ref ? ' ' + String(s.ref).slice(0, 12) : ''}${s.hasScripts ? ', scripts' : ''}${s.implicit ? '' : ', explicit only'}] ${(u ? `(${u.verified}/${u.jobs} jobs ok) ` : '')}${s.description.slice(0, 90)}`);
+      }
+      if (p === 'claude') console.log(`  + ${xs.filter(s => s.scope === 'plugin').length} from enabled plugins`);
+    }
+    if (inv.dupes.length) console.log(`duplicates ignored: ${inv.dupes.length}`);
+    return;
+  }
+  if (sub === 'verify') {
+    const r = capabilities.verifyInstalled(root);
+    console.log(r.map(x => `${x.ok ? 'ok  ' : 'FAIL'} ${x.name}${x.reason ? ': ' + x.reason : ''}`).join('\n') || 'no tandem-installed skills');
+    process.exitCode = r.every(x => x.ok) ? 0 : 1;
+    return;
+  }
+  if (sub === 'remove') { capabilities.uninstall(root, o._[0]); return console.log(`removed ${o._[0]}`); }
+  if (sub === 'rollback') { const e = capabilities.rollback(root, o._[0]); return console.log(`${o._[0]} rolled back to ${e.ref || e.sha256.slice(0, 12)} (${e.source})`); }
+  if (sub !== 'add' || !o._[0]) throw new Error('usage: tandem skills add <dir|git-url> [--ref SHA] [--path SUBDIR]');
+  const src = o._[0];
+  let dir = src, tmp = null, ref = null;
+  if (/^(https:\/\/|ssh:\/\/|file:\/\/|git@)/.test(src)) {
+    if (!/^[0-9a-f]{40}$/.test(o.ref || '')) throw new Error('a git source must be pinned: --ref <full 40-character commit sha>');
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tandem-skill-'));
+    const git = (...a) => execFileSync('git', ['-c', 'core.symlinks=false', ...a], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    try {
+      git('clone', '--quiet', '--no-checkout', '--', src, tmp);
+      git('-C', tmp, 'checkout', '--quiet', '--detach', o.ref);
+      if (git('-C', tmp, 'rev-parse', 'HEAD').toString().trim() !== o.ref) throw new Error('checked-out revision does not match --ref');
+    } catch (e) { fs.rmSync(tmp, { recursive: true, force: true }); throw new Error('git fetch failed: ' + String(e.stderr || e.message).trim().slice(0, 300)); }
+    dir = tmp; ref = o.ref;
+  }
+  if (o.path) { dir = path.resolve(dir, o.path); if (path.relative(tmp || path.resolve(src), dir).startsWith('..')) throw new Error('--path escapes the source'); }
+  try {
+    const r = capabilities.install(root, path.resolve(dir), { source: src + (o.path ? '#' + o.path : ''), ref, allowScripts: !!o['allow-scripts'], force: !!o.force });
+    console.log(`installed ${r.name} -> ${r.path} (${r.files} files, sha256 ${r.sha256.slice(0, 16)})${r.executable.length ? '\nWARNING: contains executable content Codex may run: ' + r.executable.join(', ') : ''}`);
+  } finally { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
 async function main() {
@@ -106,6 +160,7 @@ async function main() {
     }
     return run(started);
   }
+  if (cmd === 'skills') return skills(root, projDir, o);
   console.error(USAGE);
   process.exitCode = 2;
 }

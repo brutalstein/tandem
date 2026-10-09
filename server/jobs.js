@@ -18,6 +18,7 @@ const ledger = require('./ledger');
 const worktree = require('./worktree');
 const verify = require('./verify');
 const memory = require('./memory');
+const capabilities = require('./capabilities');
 const { sanitize, redactSecrets, confine } = require('./security');
 const { EFFORTS } = require('./config');
 
@@ -522,6 +523,15 @@ class Orchestrator {
   prompt(job, projDir, lastFail) {
     const L = ['You are a Codex worker delegated by Claude Code (the lead engineer) via the Tandem orchestrator.', '', `TASK (${job.mode}):`, job.task];
     if (job.context) L.push('', 'CONTEXT FROM LEAD:', job.context);
+    // Lean mode hides Codex's own skill list: point at the few installed skills that match this task.
+    if (this.cfg.leanCodex) {
+      let sk = [];
+      try { sk = capabilities.select(job.task, capabilities.scan(job.root, ['codex']).skills); } catch (e) { store.logError('skills', e); }
+      if (sk.length) {
+        L.push('', 'INSTALLED SKILLS that may fit this task (open a SKILL.md only if it helps; the scope and rules here still apply):', ...sk.map(s => `- ${s.name}: ${s.description.slice(0, 160)} (${s.path})`));
+        ledger.patch(projDir, job.id, { skills: sk.map(s => s.name) });
+      }
+    }
     if (job.mode === 'implement') {
       L.push('', job.paths.length ? `SCOPE: modify only these paths: ${job.paths.join(', ')}` : 'SCOPE: modify only what the task needs; keep the change minimal.');
       // Tell the worker what concurrent writers (in place or isolated) are working on, so two agents do
