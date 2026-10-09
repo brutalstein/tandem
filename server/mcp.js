@@ -150,7 +150,12 @@ async function plan(a) {
   if (!rungs.length) return 'no permitted and available Codex model; see tandem_status';
   const cls = `${a.mode}|${a.difficulty}`;
   const d = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: a.max_attempts || 2 });
-  return `plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations`;
+  // Measured history of this task class in this project: what delegating it actually cost and yielded.
+  const past = ledger.list(projDir).filter(j => `${j.mode}|${j.difficulty}` === cls && j.finished && j.result && j.result.usage);
+  const med = xs => (xs.length ? xs.sort((a, b) => a - b)[xs.length >> 1] : 0);
+  const ok = past.filter(j => ['verified', 'answered'].includes(j.status)).length;
+  const hist = past.length ? `; this project's ${cls} jobs: ${ok}/${past.length} succeeded, median ${Math.round(med(past.map(j => j.finished - (j.started || j.created))) / 1000)}s, median Codex input ${k(med(past.map(j => j.result.usage.input)))} (cached ${k(med(past.map(j => j.result.usage.cached)))})` : `; no finished ${cls} jobs in this project yet`;
+  return `plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations${hist}`;
 }
 
 async function status(a) {

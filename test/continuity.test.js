@@ -154,3 +154,19 @@ test('crash: an interrupted job (owner died) resumes from its recorded worktree 
   assert.match(H.calls(dir).at(-1).prompt, /interrupted/);
   assert.equal(H.read(dir, 'a.txt'), 'good');
 });
+
+test('CLI continue --wait: waits in the foreground until the recorded limit reset, then resumes', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ratelimit' } });
+  const j = await orch().submit({ cwd: dir, task: 'q', mode: 'ask', difficulty: 'normal' }).promise;
+  assert.equal(j.status, 'suspended');
+  const until = Date.now() + 1500; // the provider's reset, made short for the test
+  require('../server/ledger').annotate(store.projectDir(dir), j.id, { result: { ...j.result, suspension: { ...j.result.suspension, until } } });
+  codex.clearUnavailable('*'); codex.markUnavailable('*', 'limit', 1500, 'rate_limited');
+  scenario(dir, { default: { action: 'ok' } });
+  const t0 = Date.now();
+  const r = require('child_process').spawnSync(process.execPath, [path.join(H.ROOT, 'bin', 'tandem.js'), 'continue', '--wait', '--cwd', dir], { encoding: 'utf8', timeout: 60000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(Date.now() - t0 >= 1500, 'did not start before the reset');
+  assert.match(r.stdout, /ANSWERED/);
+});

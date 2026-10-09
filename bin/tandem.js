@@ -25,7 +25,10 @@ const USAGE = `usage: tandem <command> [--cwd DIR]
                          wait is over; --now: try even if Codex was recorded as limited)
   takeover <id> [--note TEXT]
                          mark a stopped job as done another way; it will never be resumed
-  continue [--now]       resume due jobs, then start checkpoint items marked delegable
+  continue [--now] [--wait]
+                         resume due jobs, then start checkpoint items marked delegable; --wait first
+                         waits (in this terminal, nothing in the background) until the recorded Codex
+                         limit reset, at most 24 h
   skills [list]          installed Codex/Claude skills (source, trust, scripts) and how they did in jobs
   skills add <dir|git-url> [--ref SHA] [--path SUBDIR] [--allow-scripts] [--force]
                          install a skill for this project only (.agents/skills), pinned in tandem-lock.json;
@@ -142,6 +145,15 @@ async function main() {
     if (!o._[0]) throw new Error('takeover needs a job id');
     const j = orch.takeOver(o._[0], o.cwd, 'user', o.note || '');
     return console.log(`${j.id} marked taken_over${j.result && j.result.worktreeKept ? `; partial work remains in ${j.result.worktreeKept}` : ''}`);
+  }
+  if (cmd === 'continue' && o.wait) {
+    // Wait for the latest reset among time-limited jobs (so all of them are due), then continue.
+    const until = Math.max(0, ...ledger.list(projDir).filter(j => ledger.RESUMABLE.has(j.status) && j.result && j.result.suspension && j.result.suspension.waitFor === 'time').map(j => j.result.suspension.until || 0));
+    const ms = Math.min(until - Date.now(), 24 * 3600e3);
+    if (ms > 0) {
+      process.stderr.write(`waiting until ${new Date(Date.now() + ms).toLocaleString()} (Codex limit reset); Ctrl+C to stop\n`);
+      await new Promise(r => setTimeout(r, ms + 1000));
+    }
   }
   if (cmd === 'resume' || cmd === 'continue') {
     const jobs = ledger.list(projDir);
