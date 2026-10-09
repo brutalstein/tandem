@@ -1,0 +1,87 @@
+name: ci
+# Ordinary validation. Never calls a paid model: Codex is replaced by test/fake-codex.js and the
+# install smoke test needs no Claude login.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22]
+        include:
+          - { os: ubuntu-latest, node: 20 }
+          - { os: ubuntu-latest, node: 24 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: git identity for test repositories
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@localhost
+      - name: syntax check
+        shell: bash
+        run: for f in server/*.js hooks/*.js test/*.js bench/*.js; do node --check "$f"; done
+      - name: unit, property, concurrency, integration and E2E tests (simulated Codex)
+        run: npm test
+      - name: bundle contents
+        shell: bash
+        run: |
+          # No personal paths, secrets or local state in the shipped plugin.
+          ! grep -rInE '[A-Za-z]:\\Users\\|/home/[a-z]+/|/Users/[A-Za-z]+/|sk-(proj|ant)-[A-Za-z0-9]{10}' --include='*.js' --include='*.json' --include='*.md' server hooks skills agents commands .claude-plugin bench docs README.md
+          test ! -e .mcp.json
+
+  plugin:
+    name: plugin validation + install lifecycle
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: strict validation, marketplace add, install, MCP health check, disable/enable, uninstall
+        run: node test/install-smoke.js
+
+  bench:
+    name: deterministic benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: routing simulation study
+        run: node bench/router-sim.js --seeds 30 --out artifacts/router-sim.json
+      - name: overhead micro-benchmarks
+        run: node bench/overhead.js . --out artifacts/overhead.json
+      - name: charts from the measured data
+        run: node bench/charts.js --sim artifacts/router-sim.json --overhead artifacts/overhead.json --out artifacts/charts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: artifacts/

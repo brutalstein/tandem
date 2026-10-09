@@ -1,73 +1,107 @@
-# Verification record
+# Verification record (v2.0.0)
 
-Environment: Windows 11 Pro 10.0.26200, Claude Code 2.1.281, codex-cli 0.154.0 (ChatGPT login), Node 24.11.0, 2026-10-09.
+This page records what was verified, how, and the results. Anything not listed here was not verified. Simulated tests are labelled as such and are never presented as evidence of real provider behaviour.
 
-## Research findings that shaped the design (verified locally, not assumed)
+Primary environment, 2026-10-09:
+- Windows 11 Pro 10.0.26200, Node 24.11.0, Git for Windows;
+- Claude Code 2.1.281;
+- codex-cli 0.154.0 with a ChatGPT account.
+
+Secondary environment: WSL 2, Ubuntu 24.04.4 LTS, Node 22.22.2, Git 2.43.0.
+
+## Facts established by observation (not assumed)
 
 | Finding | How verified | Consequence |
 |---|---|---|
-| Live Codex catalog for this account: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` (+ hidden `gpt-reserve`, `gpt-5.5`, `codex-auto-review`) | `codex debug models`, `~/.codex/models_cache.json` (fetched same day) | Router builds its ladder from discovery, not a static list |
-| `gpt-6.1-sol` (the requested ceiling) does not exist for this account | Real call returned "The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account." | Ceiling is a cap, never a default; unsupported models are detected and skipped |
-| `codex exec --json` emits `thread.started`, `item.completed` (agent_message, command_execution, file_change, error), `turn.completed` with usage, `turn.failed` | Real runs | Event parser |
-| `--output-schema` works with this login | Real run | Structured worker reports (status, summary, findings…) |
-| `codex exec resume` has no `-s`/`-C` flags | `codex exec resume --help` | Sandbox via `-c sandbox_mode=…`; cwd via process cwd |
-| Delegated runs paid ~19.4k input tokens for "say PONG"; 32 KB of skills catalog + 12 KB recommended-plugins block | `codex debug prompt-input` | `lean_codex`: `-c skills.max_context_tokens=100 --disable plugins` -> 12.5k (−35 %) |
-| User's global `~/.codex/AGENTS.md` makes Codex build a graphify graph for every codebase task | First real implement run wrote `graphify-out/` (caught by out-of-scope detection) | Worker prompt scopes the task explicitly; the next run cut time 62 s -> 33 s, tokens 83.8k -> 65.3k, and wrote no stray files |
-| Windows npm shim `codex.cmd` cannot be spawned without a shell | `%APPDATA%\npm\codex.cmd` | Tandem runs `node …/@openai/codex/bin/codex.js` directly; prompts go via stdin |
-| Claude Code stdio MCP tool calls: 28 h wall timeout, 30 min idle | Claude Code env-var docs | Foreground waits capped at 9 min; longer jobs continue in background |
+| Account catalog lists `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and hides `gpt-reserve`, `gpt-5.5`, `codex-auto-review` | `codex debug models` | Eligibility is computed from discovery, never a fixed list |
+| `gpt-6.1-sol` (the default ceiling) is rejected for this account: "not supported when using Codex with a ChatGPT account" | Real call (integration check 2) | A ceiling is a cap, never a default; an explicit request for it is rejected, never substituted |
+| The user's `~/.codex/config.toml` default model `gpt-6-luna` is rejected, so plain `codex exec` fails without `-m` | Real call | Tandem always passes `-m`; the config file is reported, not edited |
+| `codex exec --json` events: `thread.started`, `item.completed`, `turn.completed` (usage), `turn.failed`, top-level `error` (also for retried stream hiccups) | Real runs | Event parser; a recovered stream error is not a failure |
+| Real usage-limit wording: "You've hit your usage limit … try again at 4:18 PM." | Real run (benchmark, account exhausted) | Classified `rate_limited`; reset parsed as the next local 16:18. Before this fix it fell back to 15 minutes; regression test added. |
+| On Windows, `git worktree remove --force` follows a directory junction and deletes the target's contents; Node's `fs.rmSync` does not | Reproduced in isolation | Worktrees are deleted with Node's `rm` after unlinking links; surviving worktrees hold no links |
+| A process started by Codex can outlive Codex and keep the stdout pipe open (an orphaned `git rev-parse HEAD` after a cancel); waiting for `close` then hangs forever | Real cancel in integration run 3 | A turn and a verification settle 1.5 s after the main process exits; regression tests with an orphaned grandchild |
+| `claude -p --bare` accepts only `ANTHROPIC_API_KEY` or an `apiKeyHelper` | `claude --help` | Benchmarks isolate Claude with `--setting-sources project --strict-mcp-config` instead |
 
-## Automated tests — simulated Codex (`npm test`)
+## Automated tests: simulated Codex (`npm test`)
 
-18 tests and 18 passes, run 3 times in a row with no flakes. `test/fake-codex.js` is a deterministic stand-in CLI. The job manager, MCP server and hooks under test are the real code.
+There are 62 tests. They run the real orchestrator, ledger, worktree, policy, MCP server and hooks. Only the Codex CLI is replaced, by `test/fake-codex.js`.
 
-- Ceiling semantics; ladder construction (newest per family, hidden and above-ceiling excluded, effort cap, fallback to an older family member); start rungs per difficulty; adaptive offset up after 4 failures and down after an 8-success streak
-- Memory: dedupe merge, supersede, BM25 ranking, staleness after a cited file changes, 400-entry cap keeps decisions, kind validation
-- Verified on the first attempt; failed verification resumes the same thread at higher effort and then passes; verification never passing gives `failed_verification`, not success
-- Unsupported model skipped, remembered, and not charged as an attempt; rate limit stops delegation and short-circuits the next job without a Codex call; logged-out state; explicit above-ceiling model rejected
-- Overlapping writers serialize; disjoint writers run concurrently; no check gives `unverified`
-- Cancel kills the process tree; timeout reported as a failure; orphaned jobs marked `interrupted`; implement mode refuses non-git directories
-- Guard hook: denies edits to owned paths, allows others, denies over-ceiling subagent models (including a lowered ceiling), fails open on garbage input
-- SessionStart brief content and size; MCP protocol: initialize, tools/list, calls, unknown-tool error
+| Platform | Result |
+|---|---|
+| Windows 11, Node 24.11.0 | 62 / 62 pass |
+| Ubuntu 24.04 (WSL 2), Node 22.22.2 | 62 / 62 pass |
+| macOS, Node 20 | not run locally; covered by the CI matrix, which has not been executed yet (no push) |
 
-## Real integration — real Codex (`npm run test:real`)
+| File | Covers |
+|---|---|
+| `unit.test.js` | **Security:** sanitise, redact, confine, frame.<br>**Catalog:** ceilings, allow-list, exclusions with reasons.<br>**Policy:** DP equals brute force; Cholesky; success model learns an inverted model order and transfers across classes; Laplace samples centred; routing moves away from failing rungs; seeded exploration with bounded regret; v1 migration.<br>**Codex adapter:** error classification incl. the real usage-limit message; argument building; fuzzed JSONL (garbage, oversized lines, split multibyte); recovered stream errors; timeout; orphaned grandchild.<br>**Other:** report parsing; memory; verification incl. leftover background process; store recovery |
+| `ledger.test.js` | Invariants I1–I5; crash of an owner; reaping unlinks a crashed worktree's links; v1 import; 6 processes × 6 jobs stress with random paths |
+| `worktree.test.js` | Snapshot leaves HEAD, index and status byte-identical; links never deleted; fast-forward, merge, conflict, binary, all-or-nothing; race and rollback; revert; CRLF filters; autocrlf; drift; a user's `git worktree remove --force` on a surviving worktree cannot reach `node_modules` |
+| `orchestrator.test.js` | End to end with the fake CLI: verification, escalation, thread resume, unsupported model skipped, rate limit, cancel, timeout, `after`, isolation `auto`, worktree conflict kept without links, out-of-scope, integrity downgrade, drift + re-verification revert, coordination prompt |
+| `surface.test.js` | Guard hook, SessionStart brief, MCP protocol, argument validation, framing, dry run, status, progress notifications, discard |
 
-PASS:
-- Discovery found codex-cli 0.154.0, logged in, and a 9-rung ladder.
-- ask/trivial: `answered` on gpt-5.6-luna@low.
-- implement/normal: `verified` on gpt-5.6-terra@medium. Tandem auto-detected and ran `npm test`, then the test re-ran independently. Changed files were exactly `slug.js`; nothing was out of scope.
-- Thread resume: the same thread id kept context across turns.
+## Real Codex integration (`node test/real-integration.js`)
 
-## Real Claude Code end-to-end (headless, `--plugin-dir`, Haiku)
+Final run (run 4): **8 / 8 PASS**. Output: `bench/data/real-integration-v2.json`.
 
-- The plugin loaded. MCP server `plugin:tandem:tandem` was connected with all 7 tools. Agents `tandem:scout` and `tandem:builder` loaded, along with skill `tandem:orchestrate` and commands status/delegate/review/memory.
-- The SessionStart brief was injected: `[tandem] Codex ready (codex-cli 0.154.0): gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, gpt-6-astra (ceiling gpt-6.1-sol)…`
-- `tandem_status`, `memory_write` and `memory_search` round-tripped from inside Claude.
-- With a live Codex claim on `a.txt`, Claude's Edit was denied by the guard ("locked by running Codex job j77") and the file stayed unchanged.
+| Check | Result |
+|---|---|
+| Discovery | Catalog parsed. 4 eligible models; 3 hidden ones excluded with reasons. |
+| Explicit `gpt-6.1-sol` | `rejected` with the provider's message; no other model substituted |
+| ask / trivial | Answered on a permitted model, read-only |
+| Memory | Codex findings stored as *tentative* with provenance `codex:<model>:<job>` |
+| Concurrent implement | Worktree job and wide in-place job ran together; no duplicated work; both verified; worktree result integrated as a fast-forward |
+| Thread resume | Same thread kept context; 49 % of input cached on resume |
+| Cancel | Real running job cancelled 159 ms after the request; claim released |
+| MCP over stdio | `tandem_status`, dry-run plan, and a real ask through the protocol; output framed as untrusted |
 
-## Benchmark — real Codex (`npm run bench`, repeats=1)
+History. Each failure led to a fix and a regression test:
+- runs 1–2: 7 / 8, conflict caused by line endings (autocrlf) and by duplicated work;
+- run 3: hung at cancel, caused by the orphaned grandchild;
+- run 4: 8 / 8.
 
-Each row uses a fresh git repo. "fixed-top" is the naive strategy: the strongest eligible model (gpt-6-astra@high) with the full Codex prompt.
+Run 4 used the routing cost prior from before the calibration in [ROUTING.md](ROUTING.md) §4. The checks do not depend on which rung is chosen.
 
-| task | arm | status | tests re-run | model | input tok | uncached in | output tok | wall s |
-|---|---|---|---|---|---|---|---|---|
-| ask/trivial | tandem | answered | - | gpt-5.6-luna@low | 39,340 | 14,252 | 475 | 13 |
-| ask/trivial | tandem-full | answered | - | gpt-5.6-luna@low | 59,831 | 21,431 | 397 | 10 |
-| ask/trivial | fixed-top | answered | - | gpt-6-astra@high | 81,512 | 29,928 | 305 | 16 |
-| implement/normal | tandem | verified | pass | gpt-5.6-terra@medium | 81,626 | 19,162 | 893 | 39 |
-| implement/normal | fixed-top | verified | pass | gpt-6-astra@high | 104,302 | 28,014 | 497 | 32 |
-| implement/hard | tandem | verified | pass | gpt-5.6-sol@high | 91,787 | 21,643 | 3,533 | 41 |
-| implement/hard | fixed-top | verified | pass | gpt-6-astra@high | 165,328 | 30,928 | 1,851 | 57 |
+## Plugin install lifecycle (`node test/install-smoke.js`)
 
-- Correctness was equal: 2 of 2 implement tasks verified in both arms, and every test suite re-ran green independently.
-- Implement input tokens: 173k vs 270k (−36 %). Uncached input: 40.8k vs 58.9k (−31 %). Wall time: 80 s vs 89 s.
-- Read-only task: −52 % input tokens versus fixed-top. Lean prompts alone account for −34 % (same model, 59.8k -> 39.3k).
-- Tandem also ran these on cheaper model tiers. Per-model quota pricing is not published in the CLI, so the quota savings beyond token counts were not measured.
+This runs against the real `claude` 2.1.281 in a throw-away home directory. Result: **12 / 12 PASS**, run twice on Windows.
 
-**Caveats.** n=1 per cell; Codex runs are non-deterministic, so expect noticeable variance. The tasks are small, and no task needed escalation, so the escalation path is verified only against simulated Codex plus the real resume test. Repeat with `node bench/bench.js 3` for tighter numbers.
+The steps:
+1. strict validation of the marketplace and the plugin manifest;
+2. marketplace add;
+3. install (user scope);
+4. listed as enabled;
+5. skills, agents and hooks registered;
+6. MCP server connected (`claude mcp list`);
+7. disable, enable;
+8. uninstall;
+9. no plugins left;
+10. marketplace removed.
+
+Not run on Linux or macOS locally; CI runs it on Ubuntu and Windows.
+
+## Real Claude Code with Tandem
+
+`claude -p` (Sonnet) ran the `lru-bugs` task with the Tandem MCP server and hooks (`--plugin-dir`). Claude delegated through `codex_run`; Codex fixed the bugs, verified on `luna@xhigh`. The independent re-test passed and the test files were byte-identical. See [BENCHMARKS.md](BENCHMARKS.md).
+
+## Provider quota behaviour (real)
+
+The Codex account reached its usage limit during the benchmark.
+- The job ended `codex_unavailable` with the provider's message.
+- Tandem marked the provider unavailable and made no further calls.
+- The benchmark recorded the cell as `unavailable`, not as a failure, and stopped.
+
+## Static checks
+
+- `node --check` passes on every source file.
+- `tsc --checkJs` was evaluated: about 20 reports, all type-inference limitations, no real defects. It was not adopted.
+- CodeQL is configured in CI and has not run yet.
 
 ## Not verified
 
-- macOS/Linux execution (code paths exist: POSIX process-group kill, `codex` binary lookup), never run
-- Real rate-limit and quota-exhaustion responses (message classification is tested against the documented and observed wording only)
-- Installation through `claude plugin install` from the local marketplace (the manifests pass `claude plugin validate --strict`; loading was tested with `--plugin-dir`)
-- Multiple simultaneous Claude sessions on one project (the ledger is lock-protected; only single-process concurrency was tested)
+- **macOS.** No machine available. Only the CI matrix covers it, and it has not run.
+- **Node 20.** CI only. The local Docker daemon was not running and was not started.
+- **GitHub Actions workflows.** Never executed, because nothing was pushed.
+- **Real-provider behaviour after the routing calibration.** Pending the scheduled benchmark (see [BENCHMARKS.md](BENCHMARKS.md)).
+- **Several real Claude Code sessions on one project at the same time.** Covered by the 6-process ledger stress test, not by real sessions.
+- **The PreToolUse guard denying a real Claude edit in v2.** Verified in v1 in a real session; in v2 only through the hook-level tests.

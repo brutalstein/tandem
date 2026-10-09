@@ -1,0 +1,41 @@
+name: real-provider
+# Manually triggered only. Uses the REAL Codex CLI and consumes quota on the configured account.
+# Requires the repository secret OPENAI_API_KEY. Never runs on push or pull_request.
+on:
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: benchmark repetitions per task and arm (0 = integration test only)
+        default: '0'
+
+permissions:
+  contents: read
+
+jobs:
+  real:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: real-provider
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @openai/codex
+      - name: codex login (API key from secret, via stdin)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: printenv OPENAI_API_KEY | codex login --with-api-key
+      - run: |
+          git config --global user.name ci
+          git config --global user.email ci@localhost
+      - name: real integration test
+        run: node test/real-integration.js --out artifacts/real-integration.json
+      - name: real-provider benchmark
+        if: ${{ inputs.reps != '0' }}
+        run: node bench/bench.js --reps ${{ inputs.reps }} --out artifacts/bench-real
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-provider
+          path: artifacts/
