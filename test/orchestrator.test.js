@@ -369,3 +369,18 @@ test('defaults: an isolated job can run a check that needs the project\'s instal
   process.env.TANDEM_WORKTREE_LINKS = 'none';
   try { assert.deepEqual(config().worktreeLinks, [], 'opt-out'); } finally { delete process.env.TANDEM_WORKTREE_LINKS; }
 });
+
+test('a check whose program is missing: unverified (not failed), no escalation, no routing evidence', async () => {
+  clean();
+  const verify = require('../server/verify');
+  for (const [command, tail, env] of [['pytest -q', "'pytest' is not recognized as an internal or external command,", true], ['npm test', 'bash: npm: command not found', true],
+    ['npm test', 'sh: ./build.sh: not found', false], ['cargo test', 'test result: FAILED', false]]) {
+    assert.equal(!!verify.environmentFailure({ ok: false, timedOut: false, code: 1, command, tail }), env, command + ' / ' + tail);
+  }
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+  const j = await run(orch(), { cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: 'tandem-no-such-program-xyz --check' });
+  assert.equal(j.status, 'unverified');
+  assert.equal(j.attempts.length, 1, 'no escalation');
+  assert.match(j.result.verification.environment, /tandem-no-such-program-xyz/);
+  assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).length, 0, 'not evidence about the model');
+});

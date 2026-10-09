@@ -87,6 +87,18 @@ const testChanges = (before = {}, after = {}) =>
   [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter(f => Object.hasOwn(before, f) ? before[f] !== after[f] : CONFTEST.test(f));
 
+// The check could not start because its own program is missing. That says nothing about the change,
+// so it is neither routing evidence nor a reason to escalate. Only the command's first word counts: a
+// missing program deeper in the test run may be the change's fault and stays an ordinary failure.
+function environmentFailure(v) {
+  if (v.ok || v.timedOut) return null;
+  const prog = String(v.command).trim().split(/\s+/)[0].replace(/^["']|["']$/g, '');
+  if (!prog) return null;
+  const esc = prog.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|[\\s'"/\\\\:])${esc}(\\.exe|\\.cmd)?['"]?(: command not found|: not found| is not recognized as an internal or external command)`, 'im');
+  return re.test(v.tail) ? `the check program "${prog}" is not installed or not on PATH` : null;
+}
+
 function run(command, cwd, timeoutMs) {
   return new Promise(resolve => {
     const started = Date.now();
@@ -109,4 +121,4 @@ function run(command, cwd, timeoutMs) {
   });
 }
 
-module.exports = { detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, TEST_FILE };
+module.exports = { environmentFailure, detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, TEST_FILE };

@@ -14,7 +14,8 @@ function formatJob(j, full = false) {
   if (j.attempts && j.attempts.length) L.push('attempts: ' + j.attempts.map(a => `${a.model}@${a.effort}${a.verified === true ? ' ✓' : a.verified === false ? ' ✗' : ''}${a.errorKind ? ' (' + a.errorKind + ')' : ''}`).join(' -> '));
   if (r.usage) L.push(`codex tokens: in ${k(r.usage.input)} (cached ${k(r.usage.cached)}), out ${k(r.usage.output)}`);
   if (rep.summary) L.push(frame(`codex report (${rep.status})`, rep.summary + (full && rep.verification ? `\nclaimed verification: ${rep.verification}` : '')));
-  if (r.verification) L.push(`verification: \`${r.verification.command}\` ${r.verification.ok ? 'PASSED' : 'FAILED (exit ' + r.verification.code + ')'}` + (r.verification.tail ? '\n' + frame('test output', r.verification.tail) : ''));
+  if (r.verification && r.verification.environment) L.push(`verification: could not run \`${r.verification.command}\`: ${r.verification.environment}. The change is UNVERIFIED; fix the environment and run the check yourself.`);
+  else if (r.verification) L.push(`verification: \`${r.verification.command}\` ${r.verification.ok ? 'PASSED' : 'FAILED (exit ' + r.verification.code + ')'}` + (r.verification.tail ? '\n' + frame('test output', r.verification.tail) : ''));
   else if (j.mode === 'implement' && rep.status) L.push('verification: none run by Tandem — verify before trusting');
   if (r.integrity) L.push(`INTEGRITY: ${r.integrity.verifyDefinitionChanged ? 'test definition changed (' + r.integrity.verifyDefinitionChanged.join(', ') + ') ' : ''}${r.integrity.deletedTests ? 'tests deleted (' + r.integrity.deletedTests.join(', ') + ') ' : ''}${r.integrity.modifiedTests ? 'test files changed (' + r.integrity.modifiedTests.join(', ') + ')' : ''} — pass not counted as verified; review the diff`);
   if (r.changed) L.push(`changed: ${r.changed.join(', ') || 'none'}`);

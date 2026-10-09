@@ -360,6 +360,8 @@ class Orchestrator {
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;
       ledger.patch(projDir, job.id, { attempts });
+      verification.environment = verify.environmentFailure(verification);
+      if (verification.environment) break; // not the change's fault: no evidence, no escalation
       const ok = verification.ok && report.status === 'done';
       if (ok) break;
       obs(false, !verification.ok);
@@ -375,7 +377,7 @@ class Orchestrator {
     let status;
     if (job.mode !== 'implement') status = report ? (report.status === 'done' ? 'answered' : report.status) : 'failed';
     else if (!report) status = 'failed';
-    else if (verification) status = verification.ok && report.status === 'done' ? 'verified' : 'failed_verification';
+    else if (verification) status = verification.environment ? 'unverified' : verification.ok && report.status === 'done' ? 'verified' : 'failed_verification';
     else status = report.status === 'done' ? 'unverified' : report.status;
 
     // ---- integrity: a pass obtained by changing the check itself is not a pass ----
@@ -405,7 +407,7 @@ class Orchestrator {
     const { cfg } = this;
     const result = { report: x.report || null, usage: x.usage, error: x.error || null };
     if (x.suspension) { result.suspension = x.suspension; result.resumeFrom = x.resumeFrom || null; }
-    if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200) };
+    if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200), environment: x.verification.environment || null };
     if (x.integrity && Object.keys(x.integrity).length) result.integrity = x.integrity;
     if (job.mode === 'implement' && !wt && x.dirtyBefore) {
       const foreign = ledger.concurrentWrites(projDir, job.id);
