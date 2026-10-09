@@ -93,14 +93,28 @@ test('auth failure and transient errors', async () => {
   assert.equal(t.attempts[0].model + t.attempts[0].effort, t.attempts[1].model + t.attempts[1].effort);
 });
 
-test('integrity: a pass obtained by editing the test definition is not "verified"', async () => {
+test('integrity: edited test definitions cannot execute their test command', async () => {
   clean();
   const pkg = s => JSON.stringify({ name: 'x', scripts: { test: s } });
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'package.json': pkg('node -e "process.exit(0)"') }] }, { 'package.json': pkg('node -e "process.exit(1)"') });
   const j = await run(orch(), { cwd: dir, task: 'make tests pass', mode: 'implement', difficulty: 'normal', paths: ['package.json'] });
-  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.result.verification.ok, false, 'preflight refuses the edited test script');
+  assert.match(j.result.verification.environment, /preflight blocked/);
   assert.equal(j.status, 'unverified');
   assert.deepEqual(j.result.integrity.verifyDefinitionChanged, ['package.json']);
+});
+
+test('preflight prevents an agent-modified package test script from running outside the sandbox', async () => {
+  clean();
+  const marker = 'escaped-test-script.txt';
+  const unsafe = JSON.stringify({ name: 'x', scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'escaped-test-script.txt\',\'executed\')"' } });
+  const safe = JSON.stringify({ name: 'x', scripts: { test: 'node -e "process.exit(1)"' } });
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'package.json': unsafe }] }, { 'package.json': safe });
+  const j = await run(orch(), { cwd: dir, task: 'tamper with test script', mode: 'implement', difficulty: 'normal',
+    paths: ['package.json'], verify: 'auto', isolation: 'inplace' });
+  assert.equal(j.status, 'unverified');
+  assert.match(j.result.verification.environment, /preflight blocked/);
+  assert.equal(H.read(dir, marker), null, 'modified package.json test script must never execute');
 });
 
 test('in-place scope audit detects edits to already-dirty tracked files', async () => {
@@ -115,13 +129,14 @@ test('in-place scope audit detects edits to already-dirty tracked files', async 
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
 });
 
-test('test content tampering cannot yield verified even when the configured check passes', async () => {
+test('test content tampering blocks verification before executing the check', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },
     { 'a.txt': 'old', 'a.test.js': 'original test' });
   const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal',
     paths: ['a.txt', 'a.test.js'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
-  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.result.verification.ok, false, 'modified tests are not executed by Tandem');
+  assert.match(j.result.verification.environment, /preflight blocked/);
   assert.equal(j.status, 'unverified');
   assert.deepEqual(j.result.integrity.modifiedTests, ['a.test.js']);
   assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).filter(x => x.ok).length, 0,
