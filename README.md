@@ -1,93 +1,146 @@
 <div align="center">
 
-<sub>CLAUDE CODE × OPENAI CODEX</sub>
+### CLAUDE CODE × OPENAI CODEX
 
 # tandem ⚡
 
-### Two brains. One terminal. Zero tab gymnastics.
+### Two brains. One terminal. No stand-up meetings.
 
-**Claude leads. Codex works in the background. Tandem keeps everyone in sync.**
+**Claude leads. Codex builds in the background. Tandem handles the teamwork.**
 
-An intelligent, open-source Claude Code plugin for model routing, parallel coding, test-backed handoffs, and shared project memory. No extra chat windows. No copy-paste relay races.
+Adaptive model routing, parallel jobs, test-backed delegation, and shared project memory — inside the Claude Code experience you already use.
+
+[**Get started ↓**](#get-started) · [**See the evidence ↓**](#the-evidence) · [**Explore the architecture ↗**](docs/ARCHITECTURE.md)
 
 <p>
-  <a href="https://github.com/brutalstein/tandem/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/brutalstein/tandem/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/brutalstein/tandem/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/brutalstein/tandem/actions/workflows/codeql.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-8b5cf6?style=flat"></a>
-  <img alt="Node.js 20+" src="https://img.shields.io/badge/Node.js-20%2B-1f883d?style=flat">
+  <a href="https://github.com/brutalstein/tandem/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/brutalstein/tandem/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/brutalstein/tandem/actions/workflows/codeql.yml"><img alt="CodeQL status" src="https://github.com/brutalstein/tandem/actions/workflows/codeql.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8b5cf6"></a>
+  <img alt="Node.js 20+" src="https://img.shields.io/badge/Node.js-20%2B-1f883d">
 </p>
-
-**[Get started](#get-started)** · **[See the evidence](#the-evidence)** · **[How it works](docs/ARCHITECTURE.md)**
 
 </div>
 
 ---
 
-## One workflow. A very capable team.
+## One conversation. A whole engineering team.
 
-| | |
+| | What Tandem actually does |
 |:--|:--|
-| 🧠 **Smart routing** | Picks an available Codex model and reasoning effort based on task difficulty and observed outcomes. |
-| 🌳 **Parallel, without the pile-up** | Coordinates file ownership and isolated Git worktrees when needed. |
-| 🧪 **Trust tests, not confidence** | Checks coding results with project tests; flags conflicts and suspicious changes. |
-| 🧩 **Memory that sticks** | Shares decisions and findings between agents, with provenance and staleness checks. |
+| 🧠 **Thinks before spending** | Chooses an available Codex model and reasoning level for the job. Learns from outcomes. |
+| 🌳 **Works in parallel** | Coordinates file ownership and Git worktrees so agents don't write over each other. |
+| 🧪 **Asks for receipts** | Runs project tests instead of trusting an AI's “done ✅”. |
+| 🧩 **Remembers the important bits** | Shares project decisions and findings, with sources and stale-data checks. |
 
-**The idea:** ask Claude normally → delegate when it makes sense → Codex handles a scoped job → Tandem checks the result. Claude stays your only interface.
+**The workflow:** You talk to Claude → Claude delegates a well-scoped task → Codex works → Tandem verifies → Claude reports back.
+
+No separate Codex window. No human-powered copy-paste API.
+
+---
 
 ## The evidence
 
+Real numbers, readable charts, and the fine print. Because **“trust me, bro” isn't a benchmark.**
+
+### 01 / Does smarter routing help?
+
+Tandem doesn't automatically pick the biggest model. It estimates the cost of *getting a result that passes checks* and adjusts as it learns.
+
+**Routing study · 30 seeds × 5 simulated environments**
+
+| Strategy | Average cost above a hindsight oracle |
+|:--|--:|
+| **Tandem v2** | **15.7%** |
+| Strongest model, medium reasoning | 22.5% |
+| Tandem v1 static routing | 49.1% |
+| Strongest model, maximum reasoning | 70.0% |
+
+**Lower is better.** These numbers come from synthetic simulations, *not* a real-world guarantee of token savings.
+
 <div align="center">
-
-| **62 / 62** | **8 / 8** | **12 / 12** | **5–11 ms** |
-|:--:|:--:|:--:|:--:|
-| Deterministic tests¹ | Real Codex checks² | Install lifecycle² | Hook overhead³ |
-
-<a href="docs/ROUTING.md"><img src="docs/charts/routing-regret.svg" alt="Measured routing policy performance in five simulated worlds; lower cost above hindsight oracle is better" width="48%"></a>
-<a href="docs/BENCHMARKS.md"><img src="docs/charts/overhead.svg" alt="Locally measured Tandem process and hook overhead on Windows" width="48%"></a>
-
-<sub>Click a chart for methodology and underlying data. No decorative numbers were harmed.</sub>
-
+  <a href="docs/charts/routing-regret.svg">
+    <img src="docs/charts/routing-regret.svg" alt="Full-width routing comparison across five simulated environments, including uncertainty intervals; lower is better" width="100%">
+  </a>
 </div>
 
-**Routing study:** Tandem averaged **15.7%** extra cost above a hindsight oracle, versus **22.5%** for the fixed strongest-model / medium-effort baseline (**30 seeds × 5 simulated worlds**). This is a *simulation*, not a claim that real AI tasks are universally 30% cheaper.
+**[Open the chart full-size ↗](docs/charts/routing-regret.svg)** · [Methodology, confidence intervals & raw data](docs/ROUTING.md)
 
-¹ Simulated-provider tests across Windows/Linux/macOS CI. ² Recorded real-provider and installation checks. ³ Extra time above Node startup, measured locally on Windows. Real-provider comparisons are still a [small pilot](docs/BENCHMARKS.md)—sometimes delegating takes longer. **We publish the awkward numbers too.**
+### 02 / What's the overhead?
+
+It should help your editor, not become your editor's second job.
+
+**Measured locally on Windows · median latency**
+
+| Operation | Measured result |
+|:--|--:|
+| Extra time per edit guard (above Node startup) | **5–11 ms** |
+| MCP server startup | **61 ms** |
+| Idle MCP server memory | **49.1 MB** |
+
+<div align="center">
+  <a href="docs/charts/overhead.svg">
+    <img src="docs/charts/overhead.svg" alt="Full-width measured startup and hook overhead comparison between Tandem v1 and v2, including variability" width="100%">
+  </a>
+</div>
+
+**[Open the chart full-size ↗](docs/charts/overhead.svg)** · [Measurements & environment](docs/BENCHMARKS.md)
+
+### 03 / Does it work outside a slide deck?
+
+| Validation | Recorded outcome |
+|:--|--:|
+| Deterministic tests (simulated Codex) | **62 / 62** |
+| Real Codex integration checks | **8 / 8** |
+| Real plugin installation lifecycle checks | **12 / 12** |
+
+The deterministic suite is exercised in [GitHub Actions](https://github.com/brutalstein/tandem/actions) across Windows, Linux, and macOS. Real-provider checks are reported separately.
+
+**Real-world pilot:** Tandem used fewer Codex tokens on two read-only tasks, but delegating a coding task from Claude **roughly doubled completion time** in one comparison. The sample is too small for broad claims. We publish the awkward numbers too.
+
+[Full benchmark report](docs/BENCHMARKS.md) · [Verification notes](docs/VERIFICATION.md) · [Release readiness](docs/RELEASE_READINESS.md)
+
+---
 
 ## Get started
 
-**You'll need:** [Claude Code](https://code.claude.com/docs/en/overview), [Codex CLI](https://github.com/openai/codex), **Node.js 20+**, and **Git**.
+**You need:** [Claude Code](https://code.claude.com/docs/en/overview), [Codex CLI](https://github.com/openai/codex), Node.js 20+, and Git.
 
-In your terminal:
+**1. Install Codex and connect your account**
 
 ```bash
 npm install -g @openai/codex
 codex login
+```
+
+**2. Add Tandem to Claude Code**
+
+```bash
 claude plugin marketplace add brutalstein/tandem
 claude plugin install tandem@tandem-local
 ```
 
-Restart Claude Code. Then type:
+**3. Restart Claude Code, then check**
 
 ```text
 /tandem:status
 ```
 
-**That's it.** Keep asking Claude to build things as usual—or hand off work explicitly:
+**That's it.** Keep talking to Claude as normal. When you want to be explicit:
 
 ```text
-/tandem:delegate Fix the failing tests and verify the changes
+/tandem:delegate Fix the failing tests and verify the result
 /tandem:review
 /tandem:memory audit
 ```
 
-Want to tune token use, reasoning ceilings, or parallel jobs? Open Claude Code's `/plugin` configuration. The defaults are ready to try.
+Configure model ceilings, parallelism, or the speed-versus-token objective through Claude Code's `/plugin` settings.
 
 <details>
-<summary><b>For the curious: what's under the hood?</b></summary>
+<summary><b>Under the hood — for people who like opening the engine bay</b></summary>
 
-**Claude Code plugin + MCP + Codex CLI + Node.js + Git.** Expected-cost routing, background jobs, file claims, independent verification, and persistent project memory. No third-party runtime dependencies.
+Claude Code plugin + MCP + Codex CLI + Node.js + Git. Expected-cost routing, cross-session job coordination, isolated worktrees, independent verification, and project memory. No third-party runtime packages.
 
-[Architecture](docs/ARCHITECTURE.md) · [Routing math](docs/ROUTING.md) · [Benchmark data](docs/BENCHMARKS.md) · [Security](SECURITY.md) · [Release readiness](docs/RELEASE_READINESS.md)
+[Architecture](docs/ARCHITECTURE.md) · [Routing math](docs/ROUTING.md) · [Security & limitations](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 </details>
 
@@ -97,6 +150,6 @@ Want to tune token use, reasoning ceilings, or parallel jobs? Open Claude Code's
 
 **Less model juggling. More shipping.**
 
-<sub>MIT licensed · Tandem v2 · Codex usage follows your account limits · No quota sorcery</sub>
+MIT licensed · Tandem v2 · Uses your own Claude and Codex accounts, quotas included. No quota sorcery.
 
 </div>
