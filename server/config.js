@@ -50,6 +50,9 @@ function config() {
     worktreeLinks: list('worktree_links').includes('none') ? [] : list('worktree_links'),
     jobTimeoutMs: num('job_timeout_min', 30, 1, 240) * 60000,
     verifyTimeoutMs: num('verify_timeout_min', 10, 1, 120) * 60000,
+    // Checks execute code the job wrote: OS-sandboxed by default, unsandboxed only on explicit opt-out.
+    verifyIsolation: pick('verify_isolation', ['sandbox', 'contain', 'off'], 'sandbox'),
+    verifyDenyPaths: (opt('verify_deny_paths') || '').split(',').map(s => s.trim()).filter(Boolean),
     problems,
   };
 }

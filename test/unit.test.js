@@ -409,6 +409,25 @@ test('verify: detection, fingerprint of scripts only, deleted tests, timeout', a
   assert.ok(bg.ms < 6000, `took ${bg.ms} ms`);
 });
 
+test('verify sandbox arguments: profile, scrubbed environment, credential denies, exact command transport', () => {
+  const dir = H.repo(null, { 'x.txt': 'x' });
+  const secret = path.join(H.TMP, `secret-${process.pid}`);
+  fs.mkdirSync(secret, { recursive: true });
+  assert.deepEqual(verify.denyList([secret, path.join(H.TMP, 'no-such-path'), 'relative/path']).filter(p => p.startsWith(H.TMP)).map(p => path.basename(p)),
+    [path.basename(secret)], 'only existing absolute paths are denied');
+  const cmd = 'node -e "process.exit(3)" && echo "a b"';
+  const a = verify.sandboxArgs(dir, cmd, [secret]);
+  assert.deepEqual(a.slice(0, 5), ['sandbox', '-P', 'tandem-verify', '-C', dir]);
+  assert.ok(a.includes('permissions.tandem-verify.extends=":workspace"'));
+  assert.ok(a.includes('shell_environment_policy.inherit=core'));
+  const table = a.find(x => x.startsWith('permissions.tandem-verify.filesystem='));
+  assert.ok(table.includes(`${JSON.stringify(secret.replace(/\\/g, '/'))}="deny"`), table);
+  if (process.platform === 'win32') {
+    assert.deepEqual(a.slice(-5), ['cmd.exe', '/d', '/s', '/c', '%TANDEM_VERIFY_CMD%'], 'cmd.exe gets no quoted argument to misparse');
+    assert.equal(JSON.parse(a.find(x => x.startsWith('shell_environment_policy.set.TANDEM_VERIFY_CMD=')).split('=').slice(1).join('=')), cmd);
+  } else assert.deepEqual(a.slice(-3), ['/bin/sh', '-c', cmd]);
+});
+
 test('retryBusy only retries transient filesystem errors within a monotonic deadline', () => {
   const store = require('../server/store');
   let attempts = 0;
@@ -480,6 +499,44 @@ test('store: 8 processes × 100 transactions with crash-left locks planted meanw
   assert.deepEqual(await Promise.all(procs.map(c => new Promise(r => c.on('close', r)))), Array(8).fill(0));
   assert.equal(store.readJson(f).n, 800);
   assert.deepEqual(fs.readdirSync(path.dirname(f)).filter(n => n.endsWith('.stale') || n.endsWith('.tmp')), []);
+});
+
+test('store: writers killed (SIGKILL) at random points never leave unreadable state, a stuck lock, or a lost acknowledged update', async t => {
+  // Process-crash recovery only; power loss is a different failure (see ARCHITECTURE.md, Durability).
+  const dir = path.join(H.TMP, `killstress-${process.pid}`);
+  const f = path.join(dir, 'counter.json');
+  store.mkdirp(dir);
+  const script = id => `
+    const s = require(${JSON.stringify(path.join(H.ROOT, 'server', 'store.js'))});
+    const fs = require('fs');
+    for (;;) { s.update(${JSON.stringify(f)}, { n: 0 }, d => { d.n++; }); fs.appendFileSync(${JSON.stringify(path.join(dir, 'ack-'))} + ${JSON.stringify(id)}, '.'); }`;
+  const { spawn } = require('child_process');
+  let kills = 0, next = 0;
+  const live = new Set();
+  const start = () => { const c = spawn(process.execPath, ['-e', script(String(next++))], { env: process.env, stdio: 'ignore' }); live.add(c); c.on('exit', () => live.delete(c)); };
+  for (let i = 0; i < 4; i++) start();
+  const end = Date.now() + 5000;
+  while (Date.now() < end) {
+    await new Promise(r => setTimeout(r, 30 + Math.random() * 120));
+    const victim = [...live][Math.floor(Math.random() * live.size)];
+    if (victim) { victim.kill('SIGKILL'); kills++; start(); }
+    // The state on disk is a complete document at every moment, not only after recovery.
+    try { assert.equal(typeof JSON.parse(fs.readFileSync(f, 'utf8')).n, 'number'); } catch (e) { if (e.code !== 'ENOENT' && e.code !== 'EBUSY' && e.code !== 'EPERM') throw e; }
+  }
+  await Promise.all([...live].map(c => new Promise(r => { c.on('exit', r); c.kill('SIGKILL'); kills++; })));
+  const acked = fs.readdirSync(dir).filter(n => n.startsWith('ack-')).reduce((s, n) => s + fs.readFileSync(path.join(dir, n), 'utf8').length, 0);
+  const n = JSON.parse(fs.readFileSync(f, 'utf8')).n; // the main file itself, not a .bak fallback
+  assert.ok(acked > 50, `enough transactions to mean something (${acked})`);
+  // Every acknowledged update landed; at most one unacknowledged commit per killed process.
+  assert.ok(n >= acked && n <= acked + kills, `n=${n} acked=${acked} kills=${kills}`);
+  // A lock left by a killed holder is broken at once (its owner is dead), not after the 30 s stale timeout.
+  let left = null; try { left = fs.readFileSync(f + '.lock', 'utf8'); } catch {}
+  t.diagnostic('lock left by the kills: ' + JSON.stringify(left));
+  const t0 = Date.now();
+  store.update(f, { n: 0 }, d => { d.n++; });
+  assert.ok(Date.now() - t0 < 5000, `recovered the lock ${JSON.stringify(left)} in ${Date.now() - t0} ms`);
+  const leftovers = fs.readdirSync(dir).filter(n => n.endsWith('.tmp') || n.endsWith('.new'));
+  assert.ok(leftovers.length <= kills, 'at most one orphaned temp or lock-content file per kill');
 });
 
 test('testFingerprint never hashes through a link; errors.log rotates at its limit', () => {

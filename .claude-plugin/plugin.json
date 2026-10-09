@@ -83,6 +83,23 @@
       "description": "Optional comma-separated dependency folders to link into isolated worktrees (off by default). Writable links can modify your real project dependencies. Enable only for trusted tasks; 'none' disables.",
       "default": ""
     },
+    "verify_isolation": {
+      "type": "string",
+      "title": "Verification isolation",
+      "description": "sandbox: run checks (which execute code the job wrote) in the Codex OS sandbox: writes confined to the workspace and temp, no network, scrubbed environment, credential stores unreadable (measured before each check); if that cannot be ensured the check is not run and the job stays unverified. contain: same, but also run when the sandbox fails to deny reading some credential stores. off: run checks unsandboxed with your full privileges.",
+      "default": "sandbox",
+      "options": [
+        "sandbox",
+        "contain",
+        "off"
+      ]
+    },
+    "verify_deny_paths": {
+      "type": "string",
+      "title": "Extra paths checks may not read",
+      "description": "Optional comma-separated absolute paths (files or small folders holding secrets) added to the built-in credential-store list that sandboxed checks cannot read or write.",
+      "default": ""
+    },
     "objective": {
       "type": "string",
       "title": "Routing objective",
@@ -111,6 +128,8 @@
         "TANDEM_LEAN_CODEX": "${user_config.lean_codex}",
         "TANDEM_ISOLATION": "${user_config.isolation}",
         "TANDEM_WORKTREE_LINKS": "${user_config.worktree_links}",
+        "TANDEM_VERIFY_ISOLATION": "${user_config.verify_isolation}",
+        "TANDEM_VERIFY_DENY_PATHS": "${user_config.verify_deny_paths}",
         "TANDEM_OBJECTIVE": "${user_config.objective}"
       }
     }

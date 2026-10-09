@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — hardening (branch hardening-v4)
+
+### Security
+- **Verification runs in the Codex OS sandbox.** Checks execute code the job wrote; they now run under `codex sandbox` with a Tandem profile: workspace-and-temp writes only, no network, core environment only, credential stores denied (plus `verify_deny_paths`). A probe inside the sandbox confirms each deny before checks run. If the sandbox cannot start or a deny is not enforced, the check is not run and the job stays `unverified` (no escalation, no routing evidence). New option `verify_isolation`: `sandbox` (default), `contain` (accept readable credential stores), `off` (previous behaviour). Results record the isolation level. Measured on Windows: Codex 0.154.0 did not reliably enforce deny rules there, so the default refuses on that machine (SECURITY.md).
+- On Windows, the check command reaches `cmd.exe` through an environment variable: Codex's argument quoting is not parsed by `cmd.exe`.
+- On Linux and macOS, a check's process group is killed after it ends.
+
+### Fixed
+- **Empty lock after a crash** (each with a regression test): a writer killed between creating and filling a lock file left an empty lock; every other writer then waited 25–28 s. Locks are now published complete via a hard link.
+- **Lost update window widened by flushing**: the commit check now runs immediately before the rename (1 lost update in 800 observed when flushing preceded it; 0 in 25 runs after).
+- **Session end during an integration wait**: a job could integrate after the session ended when the suspend freed its blocking claim; cancellation is now checked before every attempt.
+- **Post-integration re-check**: if the re-check cannot run (sandbox or check program missing), the landed change is kept and marked `unverified` instead of being reverted as failed.
+- **Windows file replacement** (from the upstream fix): failure path tested with a real handle held past the wait budget; the temporary file's removal is retried.
+
+### Changed
+- State files are flushed to disk before they replace the old copy (power-loss safety of Tandem's own state; about 5 ms per write). Not tested by cutting power.
+
 ## Unreleased — continuity and capabilities (branch feat/continuity-v3)
 
 ### Changed

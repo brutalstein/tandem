@@ -2,10 +2,11 @@
 // Verification: detect a project's check command, run it with a hard timeout, and fingerprint the
 // files that define it so a job cannot "pass" by weakening its own test definition.
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
-const { spawn, execFileSync } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
 const { sha1, readJson } = require('./store');
-const { killTree } = require('./codex');
+const { killTree, codexCommand } = require('./codex');
 
 const DEFINITION_FILES = ['package.json', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js'];
 const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|(^|\/)test_[^/]+\.py$/i;
@@ -91,6 +92,7 @@ const testChanges = (before = {}, after = {}) =>
 // so it is neither routing evidence nor a reason to escalate. Only the command's first word counts: a
 // missing program deeper in the test run may be the change's fault and stays an ordinary failure.
 function environmentFailure(v) {
+  if (v.isolation === 'unavailable') return `the check was not run because the verification sandbox is not usable: ${v.tail}. Fix the Codex sandbox (SECURITY.md), or set verify_isolation=contain (accept readable credential stores) or off (no sandbox)`;
   if (v.ok || v.timedOut) return null;
   const prog = String(v.command).trim().split(/\s+/)[0].replace(/^["']|["']$/g, '');
   if (!prog) return null;
@@ -99,10 +101,86 @@ function environmentFailure(v) {
   return re.test(v.tail) ? `the check program "${prog}" is not installed or not on PATH` : null;
 }
 
-function run(command, cwd, timeoutMs) {
+// ---- isolation: a check executes code the job wrote ----
+// It runs inside the Codex OS sandbox (Seatbelt on macOS, bubblewrap/Landlock on Linux, the elevated sandbox users
+// on Windows): writes confined to the workspace and temp, no network, environment reduced to the core variables,
+// and these credential stores neither readable nor writable. Where a secret lives in one file, the file is denied:
+// on Windows every denied folder is re-ACLed recursively on each run.
+const IS_WIN = process.platform === 'win32';
+const SECRET_PATHS = ['.codex/auth.json', '.claude/.credentials.json', '.ssh', '.gnupg', '.aws', '.azure', '.kube/config',
+  '.docker/config.json', '.config/gh/hosts.yml', '.config/gcloud', '.git-credentials', '.netrc', '.npmrc', '.pypirc',
+  '.cargo/credentials', '.cargo/credentials.toml', 'AppData/Roaming/GitHub CLI/hosts.yml'];
+
+function denyList(extra = []) {
+  const out = new Set();
+  for (const p of [...SECRET_PATHS.map(s => path.join(os.homedir(), s)), ...extra]) {
+    if (!path.isAbsolute(p) || !fs.existsSync(p)) continue;
+    out.add(path.resolve(p));
+    try { out.add(fs.realpathSync(p)); } catch {} // a linked store is denied at its target too
+  }
+  return [...out];
+}
+
+function sandboxArgs(cwd, command, extraDeny) {
+  const deny = denyList(extraDeny).map(p => `${JSON.stringify(p.replace(/\\/g, '/'))}="deny"`);
+  const a = ['sandbox', '-P', 'tandem-verify', '-C', cwd, '-c', 'permissions.tandem-verify.extends=":workspace"',
+    ...(deny.length ? ['-c', `permissions.tandem-verify.filesystem={${deny.join(',')}}`] : []),
+    '-c', 'shell_environment_policy.inherit=core'];
+  // cmd.exe cannot parse the quoting Codex applies to arguments, so the command travels in the environment.
+  return IS_WIN ? [...a, '-c', 'shell_environment_policy.set.TANDEM_VERIFY_CMD=' + JSON.stringify(command), 'cmd.exe', '/d', '/s', '/c', '%TANDEM_VERIFY_CMD%']
+    : [...a, '/bin/sh', '-c', command];
+}
+
+// Is the sandbox usable, and does it really deny the credential stores? Measured, not assumed: on Windows Codex
+// enforces deny rules as ACLs, and observed runs both enforced them and silently did not (an explicit allow on
+// the file, an ACL lost when the file was replaced). The probe opens each denied path from inside the sandbox
+// and reports only which ones opened; it reads no content. Concurrent checks share one probe: on Windows a
+// changed policy makes Codex re-ACL the home folder (minutes on a large one), and a probe killed meanwhile
+// leaves its setup helper running beside the next one.
+const PROBE = "const fs=require('fs');const ps=JSON.parse(Buffer.from(process.argv[1],'base64').toString());"
+  + "console.log('TANDEM_PROBE '+JSON.stringify(ps.filter(p=>{try{fs.statSync(p).isDirectory()?fs.readdirSync(p):fs.closeSync(fs.openSync(p,'r'));return true}catch{return false}})))";
+let probe = null;
+function sandboxCheck(bin, cwd, extraDeny, timeoutMs) {
+  if (!bin) return Promise.resolve({ problem: 'Codex CLI not found' });
+  if (probe && (!probe.at || Date.now() - probe.at < 60e3)) return probe.done;
+  const deny = denyList(extraDeny);
+  const cmd = `"${process.execPath}" -e "${PROBE}" ${Buffer.from(JSON.stringify(deny)).toString('base64')}`;
+  const p = { at: 0 };
+  p.done = new Promise(resolve => execFile(bin[0], [...bin[1], ...sandboxArgs(cwd, cmd, extraDeny)], { timeout: timeoutMs, windowsHide: true, maxBuffer: 1 << 20 },
+    (err, out, errOut) => {
+      p.at = Date.now();
+      const m = /TANDEM_PROBE (\[.*\])/.exec(String(out));
+      if (err || !m) {
+        const why = String(errOut || '').split(/\r?\n/).filter(l => l.trim() && !/^WARNING/.test(l)).pop();
+        return resolve({ problem: (err && err.killed ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || String(err ? err.message : 'no probe result')).slice(0, 300) });
+      }
+      resolve({ problem: null, unprotected: JSON.parse(m[1]) });
+    }));
+  probe = p;
+  return p.done;
+}
+
+// opts: config ({ verifyIsolation, verifyDenyPaths }). sandbox: the check runs only if every denied path is
+// really unreadable in the sandbox. contain: also when some are readable (writes, network and environment are
+// still confined). off: unsandboxed.
+async function run(command, cwd, timeoutMs, opts = {}) {
+  if (opts.verifyIsolation === 'off') return exec(command, cwd, timeoutMs, null);
+  const bin = codexCommand();
+  const s = await sandboxCheck(bin, cwd, opts.verifyDenyPaths, timeoutMs);
+  const exposed = s.unprotected && s.unprotected.length ? s.unprotected : null;
+  const refuse = s.problem || (exposed && opts.verifyIsolation !== 'contain'
+    && `it does not deny reading ${exposed.length} credential store(s), e.g. ${exposed[0]}`);
+  if (refuse) return { ok: false, code: null, timedOut: false, tail: refuse, ms: 0, command, isolation: 'unavailable' };
+  const r = await exec(command, cwd, timeoutMs, [bin[0], [...bin[1], ...sandboxArgs(cwd, command, opts.verifyDenyPaths)]]);
+  if (exposed) { r.isolation = 'contain'; r.readable = exposed.length; }
+  return r;
+}
+
+function exec(command, cwd, timeoutMs, sandboxed) {
   return new Promise(resolve => {
     const started = Date.now();
-    const child = spawn(command, { cwd, shell: true, windowsHide: true, detached: process.platform !== 'win32' });
+    const opt = { cwd, windowsHide: true, detached: !IS_WIN };
+    const child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
     let out = '', timedOut = false;
     const keep = d => { out = (out + d).slice(-8000); };
     child.stdout.on('data', keep); child.stderr.on('data', keep);
@@ -113,7 +191,9 @@ function run(command, cwd, timeoutMs) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ ok: code === 0 && !timedOut, code, timedOut, tail: (out + (timedOut ? '\n[tandem] verification timed out' : '')).slice(-2500).trim(), ms: Date.now() - started, command });
+      // What the check left behind in its process group dies with it (POSIX; a process that left the group survives).
+      if (!IS_WIN) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
+      resolve({ ok: code === 0 && !timedOut, code, timedOut, tail: (out + (timedOut ? '\n[tandem] verification timed out' : '')).slice(-2500).trim(), ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
     };
     child.on('close', finish);
     // A test command may leave a process (dev server, watcher) holding the output pipe: don't wait for it.
@@ -121,4 +201,5 @@ function run(command, cwd, timeoutMs) {
   });
 }
 
-module.exports = { environmentFailure, detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, TEST_FILE };
+const resetSandboxProbe = () => { probe = null; }; // tests switch between a working and a failing sandbox
+module.exports = { environmentFailure, detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };

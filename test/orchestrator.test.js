@@ -443,3 +443,56 @@ test('a check whose program is missing: unverified (not failed), no escalation, 
   assert.match(j.result.verification.environment, /tandem-no-such-program-xyz/);
   assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).length, 0, 'not evidence about the model');
 });
+
+test('verification sandbox: checks run through it; when it cannot start the check is not run and the job stays unverified', async () => {
+  clean();
+  const verify = require('../server/verify');
+  const log = path.join(H.TMP, `sandbox-${process.pid}.jsonl`);
+  const ranCheck = `node -e "require('fs').writeFileSync('ran.txt','x');process.exit(require('fs').readFileSync('a.txt','utf8').trim()==='good'?0:1)"`;
+  process.env.FAKE_SANDBOX_LOG = log;
+  try {
+    verify.resetSandboxProbe();
+    const ok = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+    const j = await run(orch(), { cwd: ok, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'ran.txt'], verify: ranCheck });
+    assert.equal(j.status, 'verified');
+    assert.equal(j.result.verification.isolation, 'sandbox');
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    assert.ok(calls.length >= 2 && calls.every(a => a.includes('shell_environment_policy.inherit=core') && a[a.indexOf('-P') + 1] === 'tandem-verify'), 'probe and check both sandboxed');
+
+    process.env.FAKE_SANDBOX_FAIL = '1';
+    verify.resetSandboxProbe();
+    const down = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+    const k = await run(orch(), { cwd: down, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'ran.txt'], verify: ranCheck });
+    assert.equal(k.status, 'unverified');
+    assert.equal(k.attempts.length, 1, 'no escalation: the sandbox, not the change, failed');
+    assert.equal(k.result.verification.isolation, 'unavailable');
+    assert.match(k.result.verification.environment, /not run because the verification sandbox is not usable: windows sandbox failed: fake sandbox unavailable/);
+    assert.ok(!fs.existsSync(path.join(down, 'ran.txt')), 'the check never ran unsandboxed');
+
+    // The sandbox starts but does not enforce a deny rule: not run by default, run under `contain`, and said so.
+    delete process.env.FAKE_SANDBOX_FAIL;
+    process.env.FAKE_SANDBOX_LEAK = path.join(H.TMP, 'leaky-secret');
+    verify.resetSandboxProbe();
+    const leak = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+    const l = await run(orch(), { cwd: leak, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'ran.txt'], verify: ranCheck });
+    assert.equal(l.status, 'unverified');
+    assert.match(l.result.verification.environment, /not usable: it does not deny reading 1 credential store\(s\), e\.g\. .*leaky-secret\. .*verify_isolation=contain/);
+    assert.ok(!fs.existsSync(path.join(leak, 'ran.txt')), 'not run while a credential store is readable');
+    verify.resetSandboxProbe();
+    const leak2 = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+    const c = await run(orch({ verifyIsolation: 'contain' }), { cwd: leak2, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'ran.txt'], verify: ranCheck });
+    assert.equal(c.status, 'verified');
+    assert.equal(c.result.verification.isolation, 'contain');
+    assert.equal(c.result.verification.readableCredentialStores, 1);
+    delete process.env.FAKE_SANDBOX_LEAK;
+
+    // Explicit opt-out: runs with the user's privileges and says so.
+    const off = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+    const m = await run(orch({ verifyIsolation: 'off' }), { cwd: off, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'ran.txt'], verify: ranCheck });
+    assert.equal(m.status, 'verified');
+    assert.equal(m.result.verification.isolation, 'none');
+  } finally {
+    delete process.env.FAKE_SANDBOX_FAIL; delete process.env.FAKE_SANDBOX_LOG; delete process.env.FAKE_SANDBOX_LEAK;
+    verify.resetSandboxProbe();
+  }
+});

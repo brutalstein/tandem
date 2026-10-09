@@ -29,6 +29,37 @@ Real Codex run, 2026-10-09 13:22 UTC, codex-cli 0.154.0: every job routed to `gp
 
 Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the fixed code (no local CodeQL; runs on push), several real Claude sessions delegating to Codex at the same time (covered by the multi-process ledger and lock stress tests), power-loss consistency.
 
+## Hardening branch (hardening-v4, 2026-10-10)
+
+| Check | Result | Kind |
+|---|---|---|
+| `npm test`, Windows 11, Node 24.11.0 | 123 tests: 122 pass, 1 POSIX-only skip | simulated Codex |
+| `npm test`, Ubuntu 24.04 (WSL 2), Node 22.22.2 | 123 tests: 121 pass, 2 Windows-only skips | simulated Codex |
+| Windows CI failure "replacing a file another program holds open…" | root cause: the replacement wait (~1 s) was shorter than the handle plus a scan of the new file on the runner. Upstream raised it to a 10 s monotonic deadline with re-validation; the failure path (handle held past the budget) is now tested: originals intact, earlier writes rolled back, no temp files. 25 / 25 local repeats | real file handles (PowerShell) |
+| `node --test test/sandbox.test.js` (Windows, Codex CLI 0.154.0, elevated sandbox) | 4 / 4. Default setting refuses: 2 of 7 denied paths readable inside the sandbox. Under `contain`: writes outside, write through a junction, `.git/config`, network and inherited env all blocked; exit codes intact; timeout kill works; a detached child outlives the check but stays confined | **real OS sandbox** |
+| Sandbox fail-safes | not started → not run; denied path readable → not run under `sandbox`, run and recorded under `contain`; `off` recorded as `none`. Mutation check: removing the guard fails the test | simulated Codex |
+| SIGKILL fault injection on the store | 4 writers killed at random for 5 s: 15 / 15 runs pass after the fix; before it, 3 of 4 runs waited 25–28 s on an empty lock | real processes |
+| Lock stress (8 × 100 with planted crash locks) | 1 lost update (799/800) once the flush was added after the commit check; 25 / 25 after moving the check to just before the rename | real processes |
+| Integration wait during session end | race found on WSL (a job slipped into integration when the suspend freed its blocking claim); fixed, 5 / 5 repeats on WSL | simulated Codex |
+
+### Windows: stale Codex sandbox permissions (found during this work)
+
+A Codex sandbox run that denied the whole home folder was interrupted (by a test timeout) while Codex was applying the deny across it. Every top-level home folder it had reached kept an inherited `DENY` for the `CodexSandboxUsers` group, while the home folder itself no longer had it. Later Codex runs did not repair this. Reproduced on a disposable 60 000-file tree: killing the run after 2.5 s left 7 of 40 folders with the stale entry, and a later clean run left them in place.
+
+Detect (read-only):
+
+```powershell
+Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | Select-Object -ExpandProperty Name
+```
+
+Repair (rewrites only the access list of each affected folder, so Windows re-derives the inherited entries from the parent; owner unchanged; tested on the disposable tree, where it removed every stale entry):
+
+```powershell
+Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | ForEach-Object { $a = $_.GetAccessControl('Access'); $a.SetAccessRuleProtection($false, $false); $_.SetAccessControl($a); "repaired $($_.Name)" }
+```
+
+Tandem itself never denies the home folder; its deny list names individual credential files and small folders.
+
 ## Continuity branch (feat/continuity-v3, 2026-10-09)
 
 | Check | Result | Kind |

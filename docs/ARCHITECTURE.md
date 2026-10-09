@@ -145,6 +145,7 @@ Installing is explicit (`tandem skills add`), project-local (`<repo>/.agents/ski
 
 - **Timeouts and cancel.** A job timeout (default 30 min) or a cancel kills the whole process tree: `taskkill /T /F` on Windows, process-group `SIGKILL` elsewhere.
 - **Hang protection.** A Codex turn and a verification command both settle 1.5 s after their main process exits, even if a leftover grandchild still holds the output pipe. Without this, an orphaned `git` started by Codex during a cancel hung a job indefinitely.
+- **Verification isolation.** Checks run through `codex sandbox` with a Tandem permission profile. A probe, run inside the same sandbox, first confirms that every denied credential store is unreadable. Results are cached for a minute, and concurrent checks share one probe. On POSIX the check's process group is killed after it ends. See SECURITY.md for the threat model and the measured limits. Cost: about +1.1 s per check (+2.3 s for the first, with the probe) on Windows.
 - **Session end.** When the MCP server exits, its running jobs are suspended (process tree killed, work kept, resumable). A job whose server crashed is reaped as `interrupted` by the next session, and can be resumed too.
 
 ## State
@@ -164,14 +165,21 @@ projects/<name>-<hash>/
 worktrees/<project>/<job>-<rnd>/ isolated worktrees (transient, or kept on conflict)
 ```
 
-All JSON writes are locked transactions. A temporary file is renamed into place, and the previous good copy is kept as `.bak`. A corrupted file is recovered from `.bak` and the recovery is logged.
+All JSON writes are locked transactions. A temporary file is written and flushed to disk, then renamed into place, and the previous good copy is kept as `.bak`. A corrupted file is recovered from `.bak` and the recovery is logged.
 
 Locks: the lock file holds `<pid> <time> <token>`.
+- A lock is published complete: its content is written to a private file that is then hard-linked to the lock name. Before this, a holder killed between creating and filling the lock left an empty lock whose dead owner could not be identified, and every writer waited 25–28 s (measured). Filesystems without hard links fall back to create-then-fill.
 - A lock is stale when its owner is dead or it is older than 30 s. The age bound keeps a reused PID from blocking every writer; transactions take milliseconds, so a live owner only crosses it when suspended.
 - A stale lock is moved aside and verified before deletion, and put back if it turned out to be a new owner's.
-- Before committing, a transaction checks that it still holds its lock; if not, it is discarded and re-run on fresh state (up to 5 times). Release deletes only the caller's own lock.
-- Remaining window: a stall of more than 30 s exactly between that check and the rename can still lose one update.
-- Tested with 8 processes × 100 transactions with crash-left locks planted meanwhile (no update lost).
+- Before committing, a transaction checks that it still holds its lock; if not, it is discarded and re-run on fresh state (up to 5 times). The check is the last step before the rename; writing, flushing and the `.bak` copy happen before it. Release deletes only the caller's own lock.
+- Remaining window: if a stale-lock breaker moves a live lock aside, and a third writer takes the lock before it is put back, the original holder can commit after its check and lose one update. Measured once (799 of 800) while flushing happened after the check; not observed in 25 runs since the check moved to just before the rename. Closing it fully needs OS-level locks Node does not expose.
+- Tested: 8 processes × 100 transactions with crash-left locks planted meanwhile (no update lost); 4 writers SIGKILLed at random points for 5 s (state always a complete document, every acknowledged update present, lock recovered immediately).
+
+### Durability
+
+- **Process crash** (kill, Ctrl+C, crash of Node or the host app): tested as above, plus journal recovery of an interrupted integration (a real process killed mid-integration) and resume of interrupted jobs. A crash leaves at most one orphaned `.tmp` or lock-content file per kill.
+- **Power loss or OS crash**: state files are flushed (`fsync`) before the rename that publishes them, and on Linux and macOS the directory is flushed after it, so a completed write should survive on journaling filesystems (NTFS, ext4, APFS). This follows the standard pattern but was **not tested** by cutting power. Not covered: the `.bak` copy is not flushed, files Tandem integrates into your project are not flushed, and a power loss during an integration may leave the journal and the files out of step.
+- Cost of flushing: about 5 ms per state write on the development machine (1.9 → 6.9 ms), roughly 0.1–0.2 s per job.
 
 ## Memory
 

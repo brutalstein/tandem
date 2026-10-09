@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const CFG = {
   codexMaxModel: 'gpt-6.1-sol', codexAllowedModels: [], codexMaxEffort: 'xhigh', claudeMaxModel: 'opus', maxParallel: 2,
   leanCodex: true, isolation: 'auto', objective: 'balanced', exploration: false, worktreeLinks: ['node_modules'],
-  jobTimeoutMs: 20000, verifyTimeoutMs: 20000, problems: [],
+  jobTimeoutMs: 20000, verifyTimeoutMs: 20000, verifyIsolation: 'sandbox', verifyDenyPaths: [], problems: [],
 };
 const MODELS = [
   { slug: 'gpt-6-astra', efforts: ['low', 'medium', 'high', 'xhigh', 'max'], visibility: 'list' },

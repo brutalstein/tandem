@@ -2,3 +2,4 @@ node_modules/
 *.tmp
 *.lock
 bench/runs/*/work/
+test/.sbx/

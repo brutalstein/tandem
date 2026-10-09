@@ -19,6 +19,29 @@ if (args[0] === 'debug' && args[1] === 'models') {
   ] }));
   process.exit(0);
 }
+// `codex sandbox`: no isolation here (the real sandbox has its own test); runs the command so jobs can verify.
+// FAKE_SANDBOX_FAIL simulates a machine where the OS sandbox cannot start.
+if (args[0] === 'sandbox') {
+  if (process.env.FAKE_SANDBOX_FAIL) { console.error('windows sandbox failed: fake sandbox unavailable'); process.exit(1); }
+  const env = { ...process.env };
+  let i = 1, cwd = process.cwd();
+  for (; i < args.length && args[i].startsWith('-'); i += 2) {
+    if (args[i] === '-C') cwd = args[i + 1];
+    const set = args[i] === '-c' && /^shell_environment_policy\.set\.(\w+)=(.*)$/s.exec(args[i + 1]);
+    if (set) env[set[1]] = JSON.parse(set[2]);
+  }
+  if (process.env.FAKE_SANDBOX_LOG) fs.appendFileSync(process.env.FAKE_SANDBOX_LOG, JSON.stringify(args) + '\n');
+  // Tandem's deny probe: an enforcing sandbox opens none of the denied paths; FAKE_SANDBOX_LEAK simulates one that
+  // silently does not enforce them (observed with Codex on Windows).
+  const probeArg = (env.TANDEM_VERIFY_CMD || args.at(-1)).match(/TANDEM_PROBE.* (\S+)$/);
+  if (probeArg) {
+    JSON.parse(Buffer.from(probeArg[1], 'base64').toString()); // the denied paths arrive intact
+    console.log('TANDEM_PROBE ' + JSON.stringify(process.env.FAKE_SANDBOX_LEAK ? [process.env.FAKE_SANDBOX_LEAK] : []));
+    process.exit(0);
+  }
+  const r = require('child_process').spawnSync(args[i], args.slice(i + 1), { cwd, env, stdio: 'inherit', windowsVerbatimArguments: args[i] === 'cmd.exe' });
+  process.exit(r.status ?? 1);
+}
 if (args[0] !== 'exec') { console.error('unsupported ' + args.join(' ')); process.exit(2); }
 
 let prompt = '';

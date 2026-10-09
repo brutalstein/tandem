@@ -89,12 +89,24 @@ function retryBusy(fn, timeoutMs = 1000) {
 }
 const renameRetry = (from, to) => retryBusy(() => fs.renameSync(from, to));
 
-function writeJson(file, obj) {
+// The content is flushed before the rename publishes it: after power loss a renamed file must not come back
+// empty (both it and its .bak would then be unreadable and the state silently reset). Costs ~5 ms per write.
+function writeJson(file, obj) { commitJson(prepareJson(file, obj), file); }
+
+// Everything slow happens here, before update()'s fence; commitJson is only the rename.
+function prepareJson(file, obj) {
   mkdirp(path.dirname(file));
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(obj));
+  const fd = fs.openSync(tmp, 'w');
+  try { fs.writeSync(fd, JSON.stringify(obj)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
   try { fs.copyFileSync(file, file + '.bak'); } catch {}
+  return tmp;
+}
+
+function commitJson(tmp, file) {
   renameRetry(tmp, file);
+  // POSIX: make the rename itself durable. Windows cannot open a directory this way; NTFS journals the rename.
+  if (process.platform !== 'win32') { try { const d = fs.openSync(path.dirname(file), 'r'); try { fs.fsyncSync(d); } finally { fs.closeSync(d); } } catch {} }
 }
 
 // Lock file content "<pid> <time> <token>". A lock is stale when its owner is dead or it is older
@@ -118,6 +130,20 @@ function breakLock(lock, seen) {
   } finally { try { fs.unlinkSync(tomb); } catch {} }
 }
 
+// Create the lock already filled in: content goes to a private file that is then hard-linked to the lock name
+// (fails with EEXIST if the lock exists). A holder killed between creating and filling the lock file used to leave
+// an empty lock whose dead owner could not be identified, so every writer waited for the 30 s age rule.
+function publishLock(lock, content) {
+  const mine = `${lock}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.new`;
+  fs.writeFileSync(mine, content);
+  try { fs.linkSync(mine, lock); } catch (e) {
+    if (!['ENOTSUP', 'ENOSYS', 'EXDEV'].includes(e.code)) throw e;
+    // No hard links on this filesystem: create-exclusive, then fill (the empty-lock window remains here).
+    const fd = fs.openSync(lock, 'wx');
+    try { fs.writeSync(fd, content); } finally { fs.closeSync(fd); }
+  } finally { try { fs.unlinkSync(mine); } catch {} }
+}
+
 function withLock(file, fn) {
   const lock = file + '.lock';
   mkdirp(path.dirname(file));
@@ -128,9 +154,7 @@ function withLock(file, fn) {
   const deadline = Date.now() + LOCK_STALE_MS + 10000;
   for (let wait = 2; ; wait = Math.min(wait * 2, 40)) {
     try {
-      const fd = fs.openSync(lock, 'wx');
-      fs.writeSync(fd, `${process.pid} ${Date.now()} ${token}`);
-      fs.closeSync(fd);
+      publishLock(lock, `${process.pid} ${Date.now()} ${token}`);
       break;
     } catch (e) {
       if (e.code !== 'EEXIST' && e.code !== 'EPERM') throw e;
@@ -162,10 +186,15 @@ function update(file, fallback, mutator, migrate) {
         const value = readJson(file, typeof fallback === 'function' ? fallback() : structuredClone(fallback));
         if (migrate) migrate(value);
         const result = mutator(value);
-        // Fence: never commit after losing the lock. shortcut: a stall between this check and the
-        // rename can still lose an update; closing that needs OS-level locks Node does not expose.
-        if (!held()) throw Object.assign(new Error(`lock lost before commit: ${file}.lock (transaction discarded)`), { code: 'ELOCKLOST' });
-        writeJson(file, value);
+        const tmp = prepareJson(file, value);
+        // Fence: never commit after losing the lock, checked right before the rename. shortcut: a stall
+        // between this check and the rename can still lose an update; closing that needs OS-level locks
+        // Node does not expose.
+        if (!held()) {
+          try { fs.unlinkSync(tmp); } catch {}
+          throw Object.assign(new Error(`lock lost before commit: ${file}.lock (transaction discarded)`), { code: 'ELOCKLOST' });
+        }
+        commitJson(tmp, file);
         return result;
       });
     } catch (e) { if (e.code !== 'ELOCKLOST' || attempt >= 5) throw e; }

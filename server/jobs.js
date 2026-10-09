@@ -394,7 +394,7 @@ class Orchestrator {
         break;
       }
       this.onProgress(job.id, `verifying: ${verifyCmd}`, projDir);
-      verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
+      verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs, cfg);
       att.verified = verification.ok; att.verifyMs = verification.ms;
       ledger.patch(projDir, job.id, { attempts });
       verification.environment = verify.environmentFailure(verification);
@@ -440,7 +440,7 @@ class Orchestrator {
     const { cfg } = this;
     const result = { report: x.report || null, usage: x.usage, error: x.error || null };
     if (x.suspension) { result.suspension = x.suspension; result.resumeFrom = x.resumeFrom || null; }
-    if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200), environment: x.verification.environment || null };
+    if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200), environment: x.verification.environment || null, isolation: x.verification.isolation || null, ...(x.verification.readable ? { readableCredentialStores: x.verification.readable } : {}) };
     if (x.integrity && Object.keys(x.integrity).length) result.integrity = x.integrity;
     if (job.mode === 'implement' && !wt && x.dirtyBefore) {
       const foreign = ledger.concurrentWrites(projDir, job.id);
@@ -488,10 +488,16 @@ class Orchestrator {
       const integrable = ['verified', 'unverified'].includes(status) && !result.outOfScope.length && !(x.integrity && Object.keys(x.integrity).length);
       if (integrable && changes.length) {
         // Integrate under a short path claim; wait for any in-place writer on those paths.
-        let acq, delay = 100;
+        let acq = { acquired: false }, delay = 100;
         const deadline = Date.now() + cfg.jobTimeoutMs;
-        while (!(acq = ledger.tryIntegrate(projDir, job.id, result.changed)).acquired) {
-          if (acq.gone) return ledger.get(projDir, job.id);
+        // Cancellation is checked before every attempt: a suspend that frees the blocking claim (its holder is
+        // stopped too) must not let this job slip in and write after the session ended.
+        for (;;) {
+          if (!(entry.cancelled || Date.now() >= deadline)) {
+            acq = ledger.tryIntegrate(projDir, job.id, result.changed);
+            if (acq.acquired) break;
+            if (acq.gone) return ledger.get(projDir, job.id);
+          }
           if (entry.cancelled && entry.suspendReason) {
             status = 'suspended'; // the finished work stays in the kept worktree; a resume re-checks and integrates it
             result.suspension = entry.suspendReason;
@@ -517,9 +523,12 @@ class Orchestrator {
           if (a.error) { status = 'conflict'; result.integration = { conflicts: [{ path: '-', reason: a.error }], rolledBack: a.rolledBack, worktree: wt.path }; }
           else if (drift && x.verifyCmd && status === 'verified') {
             // The user's tree moved since the snapshot: the verified state is not what landed. Re-check.
-            const post = await verify.run(x.verifyCmd, job.root, cfg.verifyTimeoutMs);
-            result.integration.postVerify = { ok: post.ok, code: post.code, ms: post.ms };
-            if (!post.ok) {
+            const post = await verify.run(x.verifyCmd, job.root, cfg.verifyTimeoutMs, cfg);
+            result.integration.postVerify = { ok: post.ok, code: post.code, ms: post.ms, isolation: post.isolation };
+            const postEnv = verify.environmentFailure(post);
+            // The re-check could not run (sandbox or check program missing): the change stays, unconfirmed.
+            if (postEnv) { result.integration.postVerify.environment = postEnv; status = 'unverified'; }
+            else if (!post.ok) {
               result.integration.reverted = worktree.revert(job.root, p.actions);
               result.integration.postVerifyTail = post.tail.slice(-800);
               status = 'failed_verification';
