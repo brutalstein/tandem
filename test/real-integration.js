@@ -109,6 +109,9 @@ function project(name) {
     must(isolated.isolation === 'worktree', `clamp isolation ${isolated.isolation}`);
     must(isolated.finished > inplace.started, 'did not overlap in time');
     must(!(inplace.result.changed || []).includes('lib/clamp.js'), 'in-place writer duplicated the isolated job work');
+    // Attribution excludes concurrently integrated paths, so also require that the in-place writer had not
+    // touched clamp.js when the isolated result landed (a fast-forward means it was still the snapshot's).
+    must((isolated.result.integration.applied || []).some(a => a.path === 'lib/clamp.js' && a.how === 'fast-forward'), 'clamp.js was not a fast-forward');
     execFileSync('node', ['--test'], { cwd: dir, stdio: 'ignore' }); // independent re-check of both in the user's tree
     must(fs.existsSync(path.join(dir, 'node_modules', 'keep', 'index.js')), 'linked node_modules content was lost');
     must(!fs.existsSync(isolated.worktree.path), 'worktree not cleaned up');
@@ -116,6 +119,17 @@ function project(name) {
       inplace: { attempts: att(inplace), usage: tok(inplace), changed: inplace.result.changed, ms: inplace.finished - inplace.started },
       isolated: { attempts: att(isolated), usage: tok(isolated), integration: isolated.result.integration, ms: isolated.finished - isolated.started },
     };
+  });
+
+  await check('isolated job adds a new test file: verified with linked dependencies, integrated, existing tests untouched', async () => {
+    const before = fs.readFileSync(path.join(dir, 'slug.test.js'));
+    const j = await o.submit({ cwd: dir, task: 'Create lib/pad.js exporting padLeft(s, n, ch = " ") that left-pads String(s) to length n with ch. Add lib/pad.test.js with node:test tests for it; the test file must also assert that require("keep") equals 1.', mode: 'implement', difficulty: 'trivial', paths: ['lib/pad.js', 'lib/pad.test.js'], verify: 'node --test lib/pad.test.js', isolation: 'worktree' }).promise;
+    must(j.status === 'verified', `pad: ${j.status} ${JSON.stringify(j.result).slice(0, 600)}`);
+    must(!j.result.integrity, `integrity flags: ${JSON.stringify(j.result.integrity)}`);
+    must(fs.existsSync(path.join(dir, 'lib', 'pad.test.js')), 'new test file not integrated');
+    must(fs.readFileSync(path.join(dir, 'slug.test.js')).equals(before), 'an existing test changed');
+    execFileSync('node', ['--test', 'lib/pad.test.js'], { cwd: dir, stdio: 'ignore' });
+    return { attempts: att(j), usage: tok(j), integration: j.result.integration, ms: j.finished - j.started };
   });
 
   await check('thread resume keeps context (Tandem resume argv: stdin prompt, -c sandbox, schema)', async () => {

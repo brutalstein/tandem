@@ -212,3 +212,16 @@ test('journal recovery undoes a partial multi-file integration and never clobber
   assert.ok(!fs.existsSync(jf));
   assert.equal(wt.recover(jf), null, 'idempotent');
 });
+
+test('in-place audit snapshots: staged, unstaged, untracked, rename, delete and CRLF are attributed exactly', () => {
+  const root = H.repo(null, { 'clean.txt': 'c\n', 'dirty.txt': 'd\n', 'staged.txt': 's\n', 'mv-src.txt': 'm\n', 'del.txt': 'x\n', 'crlf.txt': 'l1\r\nl2\r\n', '.gitignore': 'ignored.env\n' });
+  H.write(root, { 'dirty.txt': 'user dirty\n', 'staged.txt': 'user staged\n', 'untracked.txt': 'u\n' });
+  H.git(root, 'add', 'staged.txt');
+  H.git(root, 'config', 'core.autocrlf', 'true');
+  const before = wt.snapshot(root, []).tree;
+  assert.deepEqual(wt.diffTrees(root, before, wt.snapshot(root, []).tree), [], 'no change, no attribution (autocrlf on a CRLF file)');
+  // the job: edits an already-dirty file and an already-staged one, renames, deletes, adds, touches an ignored file
+  H.write(root, { 'dirty.txt': 'job edit\n', 'staged.txt': 'job edit\n', 'mv-src.txt': null, 'mv-dst.txt': 'm\n', 'del.txt': null, 'new.txt': 'n\n', 'ignored.env': 'SECRET=1' });
+  assert.deepEqual(wt.diffTrees(root, before, wt.snapshot(root, []).tree).sort(), ['del.txt', 'dirty.txt', 'mv-dst.txt', 'mv-src.txt', 'new.txt', 'staged.txt']);
+  assert.equal(H.git(root, 'diff', '--cached', '--name-only'), 'staged.txt', 'the user\'s index is untouched');
+});
