@@ -358,12 +358,18 @@ test('memory: concurrent writers from 4 processes lose nothing', () => {
 });
 
 // ---------------- verify / store ----------------
-test('testFingerprint detects modifications to tracked and untracked tests', () => {
-  const root = H.repo(null, { 'src/a.test.js': 'original', 'main.js': 'original' });
+test('testFingerprint detects modifications to tracked and untracked tests; additions are allowed', () => {
+  const root = H.repo(null, { 'src/a.test.js': 'original', 'main.js': 'original', 'gone.test.js': 'x' });
+  H.write(root, { 'extra.test.js': 'untracked original' });
   const a = verify.testFingerprint(root);
-  H.write(root, { 'src/a.test.js': 'weakened', 'extra.test.js': 'new', 'main.js': 'changed' });
+  H.write(root, { 'src/a.test.js': 'weakened', 'extra.test.js': 'weakened', 'gone.test.js': null, 'brand-new.test.js': 'new', 'main.js': 'changed' });
   const b = verify.testFingerprint(root);
-  assert.deepEqual(verify.testChanges(a, b).sort(), ['extra.test.js', 'src/a.test.js']);
+  assert.deepEqual(verify.testChanges(a, b).sort(), ['extra.test.js', 'gone.test.js', 'src/a.test.js']);
+  H.write(root, { 'sub/tests/conftest.py': 'collect_ignore_glob = ["*"]' });
+  assert.deepEqual(verify.testChanges(b, verify.testFingerprint(root)), ['sub/tests/conftest.py'], 'new conftest.py is configuration');
+  const plain = path.join(H.TMP, `plain-${Date.now()}`);
+  H.write(plain, { 'tests/t.py': 'a', 'node_modules/x/y.test.js': 'dep' });
+  assert.deepEqual(Object.keys(verify.testFingerprint(plain)), ['tests/t.py'], 'outside git: walked, dependencies skipped');
 });
 
 test('verify: detection, fingerprint of scripts only, deleted tests, timeout', async () => {
@@ -388,4 +394,25 @@ test('store: stale lock from a dead process is broken; live lock waits', () => {
   fs.writeFileSync(f + '.lock', `999999 ${Date.now()}`); // pid that does not exist
   assert.equal(store.update(f, { n: 0 }, d => ++d.n), 1);
   assert.ok(!fs.existsSync(f + '.lock'));
+});
+
+test('store: an old lock held by a reused (live) PID is broken, not waited on forever', () => {
+  const f = path.join(H.TMP, 'reused.json');
+  fs.writeFileSync(f + '.lock', `${process.pid} ${Date.now() - 120000} deadbeef`); // live pid, stale age
+  const t0 = Date.now();
+  assert.equal(store.update(f, { n: 0 }, d => ++d.n), 1);
+  assert.ok(Date.now() - t0 < 2000, `took ${Date.now() - t0} ms`);
+});
+
+test('store: a holder that lost its lock neither commits nor deletes the new owner\'s lock', () => {
+  const f = path.join(H.TMP, 'fenced.json');
+  store.writeJson(f, { n: 1 });
+  const theirs = `${process.pid} ${Date.now()} 0123456789abcdef`;
+  assert.throws(() => store.update(f, { n: 0 }, d => {
+    d.n = 99;
+    fs.writeFileSync(f + '.lock', theirs); // another process broke our lock after a stall and took it
+  }), /lock lost/);
+  assert.equal(store.readJson(f).n, 1, 'stale write discarded');
+  assert.equal(fs.readFileSync(f + '.lock', 'utf8'), theirs, 'new owner\'s lock untouched');
+  fs.unlinkSync(f + '.lock');
 });

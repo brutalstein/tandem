@@ -176,4 +176,22 @@ function heldClaims(projDir) {
     .map(j => ({ id: j.id, paths: j.status === 'integrating' ? j.integrating : claimPaths(j), status: j.status }));
 }
 
-module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, heartbeat, list, get, heldClaims, overlaps, anyOverlap, migrate, reap };
+// Paths other Tandem jobs could have written in the main tree while job `id` ran: claims of in-place
+// writers and paths of integrations that were live at any point since it started. A scope audit of
+// `id` must not attribute these to it. Edits by the user or Claude cannot be attributed this way.
+function concurrentWrites(projDir, id) {
+  const doc = readJson(file(projDir), null);
+  const me = doc && doc.jobs && doc.jobs[id];
+  if (!me) return [];
+  const since = me.started || me.created;
+  const paths = [];
+  for (const o of Object.values(doc.jobs)) {
+    if (o.id === id || o.mode !== 'implement' || (!HOLDING.has(o.status) && !(o.finished > since))) continue;
+    if (o.isolation === 'inplace') paths.push(...claimPaths(o));
+    else if (o.integrating) paths.push(...o.integrating);
+    else if (o.result && o.result.integration && o.result.integration.applied) paths.push(...o.result.integration.applied.map(a => a.path));
+  }
+  return [...new Set(paths)];
+}
+
+module.exports = { VERSION, LEASE_MS, HEARTBEAT_MS, ACTIVE, HOLDING, SUCCESS, SESSION_ID, file, submit, tryAcquire, tryIntegrate, patch, heartbeat, list, get, heldClaims, concurrentWrites, overlaps, anyOverlap, migrate, reap };

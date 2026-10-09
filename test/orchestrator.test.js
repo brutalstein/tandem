@@ -106,7 +106,8 @@ test('in-place scope audit detects edits to already-dirty tracked files', async 
   H.write(dir, { 'b.txt': 'existing user edit' });
   const j = await run(orch(), { cwd: dir, task: 'edit a only', mode: 'implement', difficulty: 'normal',
     paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
-  assert.equal(j.status, 'failed_verification');
+  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.status, 'unverified', 'a scope violation is never verified');
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
 });
 
@@ -217,8 +218,75 @@ test('in-place: changes outside the declared paths are reported as out of scope'
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'b.txt': 'surprise' }] }, { 'a.txt': 'old', 'b.txt': 'b' });
   const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
-  assert.equal(j.status, 'failed_verification', 'scope violations cannot be verified');
+  assert.equal(j.status, 'unverified', 'scope violations cannot be verified');
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
+  assert.match(j.result.error, /Out-of-scope/);
+  assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).filter(x => x.ok).length, 0,
+    'a scope violation is no routing success');
+});
+
+test('new test files are allowed (verified and integrated); a new conftest.py is a definition change', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: {
+    'TASK-NEW': { writes: { 'src/a.js': 'good', 'test/a.test.js': 'new test' } },
+    'TASK-CONF': { writes: { 'src/b.js': 'good', 'tests/conftest.py': 'collect_ignore_glob = ["*"]' } },
+  } }, { 'src/a.js': 'old', 'src/b.js': 'old' });
+  const a = await run(orch(), { cwd: dir, task: 'TASK-NEW', mode: 'implement', difficulty: 'normal', paths: ['src/a.js', 'test'], verify: H.CHECK('src/a.js'), isolation: 'worktree' });
+  assert.equal(a.status, 'verified');
+  assert.equal(a.result.integrity, undefined);
+  assert.equal(H.read(dir, 'test/a.test.js'), 'new test', 'integrated');
+  const b = await run(orch(), { cwd: dir, task: 'TASK-CONF', mode: 'implement', difficulty: 'normal', paths: ['src/b.js', 'tests'], verify: H.CHECK('src/b.js'), isolation: 'worktree' });
+  assert.equal(b.status, 'unverified');
+  assert.deepEqual(b.result.integrity.modifiedTests, ['tests/conftest.py']);
+  assert.equal(H.read(dir, 'tests/conftest.py'), null, 'not integrated');
+});
+
+test('in-place audit: a concurrent job\'s edits (in place or integrated) are not attributed to this job', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: {
+    'TASK-A': { delayMs: 2500, writes: { 'a.txt': 'good' } },
+    'TASK-B': { writes: { 'b.txt': 'good', 'b.test.js': 'updated test' } },
+    'TASK-C': { writes: { 'c.txt': 'good' } },
+  } }, { 'a.txt': 'old', 'b.txt': 'old', 'b.test.js': 'test', 'c.txt': 'old' });
+  const o = orch({ maxParallel: 3 });
+  const pa = run(o, { cwd: dir, task: 'TASK-A', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
+  await waitFor(() => H.calls(dir).length >= 1);
+  const pb = run(o, { cwd: dir, task: 'TASK-B', mode: 'implement', difficulty: 'normal', paths: ['b.txt', 'b.test.js'], verify: 'none', isolation: 'inplace' });
+  const pc = run(o, { cwd: dir, task: 'TASK-C', mode: 'implement', difficulty: 'normal', paths: ['c.txt'], verify: 'none', isolation: 'worktree' });
+  const [a, b, c] = await Promise.all([pa, pb, pc]);
+  assert.equal(b.status, 'unverified');
+  assert.equal(H.read(dir, 'c.txt'), 'good', 'C integrated while A ran');
+  assert.ok(c.finished < a.finished && b.finished < a.finished);
+  assert.deepEqual(a.result.outOfScope, []);
+  assert.equal(a.result.integrity, undefined, 'B\'s test edit is not A\'s');
+  assert.equal(a.status, 'verified');
+});
+
+test('allow_non_git: an in-place implement job outside git runs and can be verified', async () => {
+  clean();
+  const dir = path.join(H.TMP, `nogit-${Date.now()}`);
+  H.write(dir, { 'a.txt': 'old', 'a.test.js': 'test', '.fake-scenario.json': JSON.stringify({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }) });
+  const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), allow_non_git: true });
+  assert.equal((j.result && j.result.error) || null, null);
+  assert.equal(j.status, 'verified');
+});
+
+test('routing evidence: every observation says whether an independent check decided it', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: {
+    'ASK-PARTIAL': { status: 'partial' }, 'ASK-DONE': {},
+    'IMPL-NOCHECK': { writes: { 'a.txt': 'x' } }, 'IMPL-FAILCHECK': { writes: { 'b.txt': 'bad' } },
+  } }, { 'a.txt': 'old', 'b.txt': 'old' });
+  const o = orch();
+  await run(o, { cwd: dir, task: 'ASK-PARTIAL', mode: 'ask', difficulty: 'normal' });
+  await run(o, { cwd: dir, task: 'ASK-DONE', mode: 'ask', difficulty: 'normal' });
+  const nc = await run(o, { cwd: dir, task: 'IMPL-NOCHECK', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: 'none', isolation: 'inplace' });
+  assert.equal(nc.status, 'unverified');
+  await run(o, { cwd: dir, task: 'IMPL-FAILCHECK', mode: 'implement', difficulty: 'hard', paths: ['b.txt'], verify: H.CHECK('b.txt'), isolation: 'inplace', max_attempts: 1 });
+  const ev = policy.loadEvidence(store.projectDir(dir)).classes;
+  assert.deepEqual(ev['ask|normal'].map(x => [x.ok, x.verified]), [[false, false], [true, false]], 'self-reports on both sides are weak');
+  assert.deepEqual(ev['implement|normal'].map(x => [x.ok, x.verified]), [[true, false]], 'a clean unchecked completion is weak positive evidence');
+  assert.ok(ev['implement|hard'].every(x => x.ok === false && x.verified === true), 'a failed check is independent evidence');
 });
 
 // ---- v1 regressions kept ----

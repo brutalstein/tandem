@@ -9,6 +9,7 @@ const { killTree } = require('./codex');
 
 const DEFINITION_FILES = ['package.json', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js'];
 const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|(^|\/)test_[^/]+\.py$/i;
+const CONFTEST = /(^|\/)conftest\.py$/i;
 
 function detect(dir) {
   const has = f => fs.existsSync(path.join(dir, f));
@@ -45,11 +46,11 @@ function testFingerprint(dir) {
   const fp = {};
   let names;
   try {
-    names = execFileSync('git', ['ls-files', '-c', '-o', '--exclude-standard', '-z'], {
+    names = fs.existsSync(path.join(dir, '.git')) ? execFileSync('git', ['ls-files', '-c', '-o', '--exclude-standard', '-z'], {
       cwd: dir, windowsHide: true, maxBuffer: 64 << 20,
-    }).toString('utf8').split(String.fromCharCode(0));
+    }).toString('utf8').split(String.fromCharCode(0)) : walk(dir);
   } catch (e) { return { __scan_error__: String(e.message).slice(0, 200) }; }
-  for (const rel of new Set(names.filter(p => TEST_FILE.test(p.replaceAll(String.fromCharCode(92), '/'))))) {
+  for (const rel of new Set(names.filter(p => TEST_FILE.test(p) || CONFTEST.test(p)))) {
     const full = path.join(dir, rel);
     try {
       const st = fs.lstatSync(full);
@@ -58,9 +59,23 @@ function testFingerprint(dir) {
   }
   return fp;
 }
-const testChanges = (before, after) =>
-  [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])]
-    .filter(f => (before || {})[f] !== (after || {})[f]);
+// Outside git (allow_non_git): list files without descending into links or dependency folders.
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.venv', 'venv', '__pycache__', 'target']);
+function walk(root, rel = '', out = []) {
+  for (const d of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    const p = rel ? `${rel}/${d.name}` : d.name;
+    if (d.isDirectory() && !SKIP_DIRS.has(d.name)) walk(root, p, out);
+    else if (!d.isDirectory()) out.push(p);
+    if (out.length > 200000) throw new Error('too many files to scan for tests');
+  }
+  return out;
+}
+
+// Changing or deleting an existing test weakens the check; adding a test does not, except a pytest
+// conftest.py, which is auto-loaded configuration that can skip or rewrite other tests.
+const testChanges = (before = {}, after = {}) =>
+  [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter(f => Object.hasOwn(before, f) ? before[f] !== after[f] : CONFTEST.test(f));
 
 function run(command, cwd, timeoutMs) {
   return new Promise(resolve => {

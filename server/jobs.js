@@ -200,7 +200,7 @@ class Orchestrator {
     // Snapshot complete current state, including pre-existing dirty files; status alone cannot
     // detect a second edit to an already-modified tracked file.
     let inplaceBase = null;
-    if (job.mode === 'implement' && job.isolation === 'inplace') {
+    if (job.mode === 'implement' && job.isolation === 'inplace' && store.isGitRepo(job.root)) {
       try { inplaceBase = worktree.snapshot(job.root, []).tree; }
       catch (e) { return end('failed', { error: 'cannot establish an in-place safety snapshot: ' + e.message }); }
     }
@@ -243,7 +243,8 @@ class Orchestrator {
       attempts.push(att);
       ledger.patch(projDir, job.id, { attempts });
       if (entry.cancelled) break;
-      const obs = ok => policy.record(projDir, cls, { r: catalog.key(rung), ok, cond: n > 1 && lastFail !== null, tin: u.input, tc: u.cached, tout: u.output, sec: (res.durationMs + (att.verifyMs || 0)) / 1000 });
+      // verified: an independent observation (exit, crash, check) rather than the model's own report.
+      const obs = (ok, verified) => policy.record(projDir, cls, { r: catalog.key(rung), ok, verified, cond: n > 1 && lastFail !== null, tin: u.input, tc: u.cached, tout: u.output, sec: (res.durationMs + (att.verifyMs || 0)) / 1000 });
 
       if (!res.ok) {
         if (res.errorKind === 'model_unavailable') {
@@ -260,7 +261,7 @@ class Orchestrator {
         }
         if (res.errorKind === 'auth' || res.errorKind === 'missing') return end('codex_unavailable', { error: sanitize(res.error, 300), attempts });
         if (res.errorKind === 'transient' && !transientRetried) { transientRetried = true; extra++; continue; }
-        obs(false);
+        obs(false, true);
         lastFail = { text: `The previous attempt ended with an error: ${sanitize(res.error, 800)}`, report };
         if (res.threadId) { threadId = res.threadId; threadModel = rung.model; }
         idx = policy.next(projDir, { cls, rungs, cfg, at: idx, attemptsLeft: job.maxAttempts + extra - n });
@@ -273,16 +274,16 @@ class Orchestrator {
       report.files_changed.forEach(f => { try { reported.add(confine(workdir, f)); } catch {} });
       // Only successful FINAL results train the router positively (after scope, integrity
       // and integration checks in finish). A failed intermediate attempt is still evidence.
-      if (job.mode !== 'implement') { if (report.status !== 'done') obs(false); break; }
-      if (report.status === 'blocked') { obs(false); break; }
-      if (!verifyCmd) { if (report.status !== 'done') obs(false); break; }
+      if (job.mode !== 'implement') { if (report.status !== 'done') obs(false, false); break; }
+      if (report.status === 'blocked') { obs(false, false); break; }
+      if (!verifyCmd) { if (report.status !== 'done') obs(false, false); break; }
       this.onProgress(job.id, `verifying: ${verifyCmd}`);
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;
       ledger.patch(projDir, job.id, { attempts });
       const ok = verification.ok && report.status === 'done';
       if (ok) break;
-      obs(false);
+      obs(false, !verification.ok);
       lastFail = { text: `Verification command \`${verifyCmd}\` ${verification.ok ? 'passed but you reported status ' + report.status : 'failed (exit ' + verification.code + ')'}:\n${verification.tail}`, report };
       idx = policy.next(projDir, { cls, rungs, cfg, at: idx, attemptsLeft: job.maxAttempts + extra - n });
     }
@@ -302,7 +303,9 @@ class Orchestrator {
       const afterTests = verify.testFingerprint(workdir);
       if (Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(afterTests, '__scan_error__'))
         integrity.testScanError = 'could not inspect test files';
-      const changedTests = verify.testChanges(testsBefore, afterTests);
+      // In place, a concurrent job's own tests are not this job's change.
+      const foreign = wt ? [] : ledger.concurrentWrites(projDir, job.id);
+      const changedTests = verify.testChanges(testsBefore, afterTests).filter(f => !foreign.some(p => ledger.overlaps(p, f)));
       if (changedTests.length) integrity.modifiedTests = changedTests;
     }
     let wtChanges = null;
@@ -321,25 +324,28 @@ class Orchestrator {
     if (x.verification) result.verification = { command: x.verification.command, ok: x.verification.ok, code: x.verification.code, ms: x.verification.ms, tail: x.verification.ok ? '' : x.verification.tail.slice(-1200) };
     if (x.integrity && Object.keys(x.integrity).length) result.integrity = x.integrity;
     if (job.mode === 'implement' && !wt && x.dirtyBefore) {
-      const held = ledger.heldClaims(projDir).filter(c => c.id !== job.id).flatMap(c => c.paths);
+      const foreign = ledger.concurrentWrites(projDir, job.id);
+      const mine = f => !foreign.some(p => ledger.overlaps(p, f));
       let changed;
       if (x.inplaceBase) {
         try {
-          changed = new Set(worktree.diffTrees(job.root, x.inplaceBase, worktree.snapshot(job.root, []).tree));
+          changed = new Set(worktree.diffTrees(job.root, x.inplaceBase, worktree.snapshot(job.root, []).tree).filter(mine));
         } catch (e) {
           result.integrity = { ...(result.integrity || {}), scopeScanError: String(e.message).slice(0, 200) };
-          if (status === 'verified') status = 'failed_verification';
+          if (status === 'verified') status = 'unverified';
         }
       }
       if (!changed) {
         changed = new Set(x.reported || []);
-        for (const f of gitDirty(job.root)) if (!x.dirtyBefore.has(f) && !held.some(p => ledger.overlaps(p, f))) changed.add(f);
+        for (const f of gitDirty(job.root)) if (!x.dirtyBefore.has(f) && mine(f)) changed.add(f);
       }
       result.changed = [...changed].sort();
       result.outOfScope = job.paths.length ? result.changed.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
+      // The check passed, but the tree it passed on holds changes outside the job's scope (the job's,
+      // or a concurrent user edit Tandem cannot tell apart): never verified, never a dependency's success.
       if (result.outOfScope.length && ['verified', 'unverified'].includes(status)) {
-        status = 'failed_verification';
-        result.error = 'Out-of-scope in-place changes detected. Review the diff; Tandem did not revert user files.';
+        status = 'unverified';
+        result.error = 'Out-of-scope in-place changes detected (by this job, or edits made meanwhile outside Tandem). Review the diff; Tandem did not revert any file.';
       }
     }
     if (wt) {
@@ -401,7 +407,10 @@ class Orchestrator {
     result.memoryIds = ids;
     // The final outcome (including a merge, scope check and test-integrity check) is the
     // only source of positive routing evidence. Earlier failed attempts were already recorded.
-    if ((status === 'verified' || status === 'answered') && x.attempts && x.attempts.length) {
+    // A clean completion without any check is the model's word: weak evidence, as its failures are.
+    const cleanUnchecked = status === 'unverified' && job.mode === 'implement' && !x.verifyCmd && x.report && x.report.status === 'done' &&
+      !result.integrity && !(result.outOfScope || []).length;
+    if ((status === 'verified' || status === 'answered' || cleanUnchecked) && x.attempts && x.attempts.length) {
       const a = x.attempts.at(-1), u = a.tokens || {};
       if (!a.errorKind) {
         try {

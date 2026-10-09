@@ -76,41 +76,61 @@ function writeJson(file, obj) {
   renameRetry(tmp, file);
 }
 
-// Lock file content "<pid> <time>": a lock whose owner died is broken at once; a live owner's lock
-// is broken only after LOCK_STALE_MS (a hung holder), so a slow-but-alive writer is never preempted early.
+// Lock file content "<pid> <time> <token>". A lock is stale when its owner is dead or it is older
+// than LOCK_STALE_MS. The age bound is what keeps a reused PID (a dead owner's PID now held by an
+// unrelated live process) from blocking every writer forever. Transactions take milliseconds, so a
+// live owner only crosses it when suspended; it then loses the lock, and the fence in update()
+// makes its late commit fail instead of overwriting the new owner's state.
+function holdsLock(lock, token) {
+  try { return fs.readFileSync(lock, 'utf8').split(' ')[2] === token; } catch { return false; }
+}
+
+// Break a stale lock without check-then-act races: move it aside, and if what was moved is not the
+// lock that was judged stale (another waiter broke it and a new owner took it meanwhile), put it back.
+function breakLock(lock, seen) {
+  const tomb = `${lock}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.stale`;
+  try { fs.renameSync(lock, tomb); } catch { return; }
+  try {
+    if (fs.readFileSync(tomb, 'utf8') !== seen) { try { fs.linkSync(tomb, lock); } catch {} }
+  } finally { try { fs.unlinkSync(tomb); } catch {} }
+}
+
 function withLock(file, fn) {
   const lock = file + '.lock';
   mkdirp(path.dirname(file));
+  const token = crypto.randomBytes(8).toString('hex');
   const deadline = Date.now() + 20000;
   for (let wait = 2; ; wait = Math.min(wait * 2, 40)) {
     try {
       const fd = fs.openSync(lock, 'wx');
-      fs.writeSync(fd, `${process.pid} ${Date.now()}`);
+      fs.writeSync(fd, `${process.pid} ${Date.now()} ${token}`);
       fs.closeSync(fd);
       break;
     } catch (e) {
       if (e.code !== 'EEXIST' && e.code !== 'EPERM') throw e;
       try {
-        const [pid, t] = fs.readFileSync(lock, 'utf8').split(' ').map(Number);
-        // Never steal a live owner's lock because a transaction ran longer than expected.
-        // Fail with a timeout instead of allowing two writers into the same critical section.
+        const seen = fs.readFileSync(lock, 'utf8');
+        const [pid, t] = seen.split(' ').map(Number);
         const age = Date.now() - (t || fs.statSync(lock).mtimeMs);
-        if (pid && !pidAlive(pid)) fs.unlinkSync(lock);
-        else if (!pid && age > LOCK_STALE_MS) fs.unlinkSync(lock);
+        if ((pid && !pidAlive(pid)) || age > LOCK_STALE_MS) breakLock(lock, seen);
       } catch {}
       if (Date.now() > deadline) throw new Error(`lock timeout: ${lock}`);
       sleepMs(wait);
     }
   }
-  try { return fn(); } finally { try { fs.unlinkSync(lock); } catch {} }
+  // Release only our own lock: after a stall it may belong to someone else.
+  try { return fn(() => holdsLock(lock, token)); } finally { if (holdsLock(lock, token)) try { fs.unlinkSync(lock); } catch {} }
 }
 
 // Read-modify-write transaction. `migrate` upgrades older document versions in place.
 function update(file, fallback, mutator, migrate) {
-  return withLock(file, () => {
+  return withLock(file, held => {
     const value = readJson(file, typeof fallback === 'function' ? fallback() : structuredClone(fallback));
     if (migrate) migrate(value);
     const result = mutator(value);
+    // Fence: never commit after losing the lock. shortcut: a stall between this check and the
+    // rename can still lose an update; closing that needs OS-level locks Node does not expose.
+    if (!held()) throw new Error(`lock lost before commit: ${file}.lock (transaction discarded)`);
     writeJson(file, value);
     return result;
   });
