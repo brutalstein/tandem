@@ -212,6 +212,11 @@ test('policy migrates v1 router-stats into observations once', () => {
 });
 
 // ---------------- codex adapter ----------------
+test('safe dependency links default off; explicitly configured links remain possible', () => {
+  const cfg = require('../server/config').config();
+  assert.deepEqual(cfg.worktreeLinks, []);
+});
+
 test('classifyError and retryAfterMs', () => {
   const cases = {
     "You've hit your usage limit. Try again in 2h 5m.": 'rate_limited', '429 Too Many Requests': 'rate_limited',
