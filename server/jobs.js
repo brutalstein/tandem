@@ -154,9 +154,16 @@ class Orchestrator {
       store.logError('job ' + job.id, e);
       ledger.patch(projDir, job.id, { status: 'failed', result: { error: String(e && e.message || e) } });
       return ledger.get(projDir, job.id);
-    }).then(j => { entry.job = j || entry.job; entry.settled = true; this.wake(); return entry.job; });
+    }).then(j => { entry.job = j || entry.job; entry.settled = true; this.wake(); this.pruneFinished(); return entry.job; });
     this.live.set(job.id, entry);
     return { job, promise: entry.promise };
+  }
+
+  // Keep a bounded window for codex_wait/diagnostics. Finished jobs remain durably
+  // available in the ledger; retaining every completed promise leaks memory on long sessions.
+  pruneFinished(keep = 128) {
+    const done = [...this.live.entries()].filter(([, e]) => e.settled);
+    for (const [id] of done.slice(0, Math.max(0, done.length - keep))) this.live.delete(id);
   }
 
   async run(job, projDir, entry) {
