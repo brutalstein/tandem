@@ -109,6 +109,23 @@ test('install: project-local, pinned, scripts need consent, tamper detected, rol
   assert.ok(fs.existsSync(path.join(root, '.agents', 'skills', 'mine')));
 });
 
+test('skill lock survives corruption through the last good backup; double corruption fails closed', () => {
+  const root = H.repo();
+  const src = path.join(H.TMP, 'lock-recovery-skill');
+  skill(src, 'name: checkpoint-skill\ndescription: Safely checkpoint changes');
+  const first = cap.install(root, src, { source: src });
+  fs.writeFileSync(path.join(src, 'SKILL.md'), '---\nname: checkpoint-skill\ndescription: Safely checkpoint changes v2\n---\n');
+  cap.install(root, src, { source: src, force: true });
+  const lockPath = path.join(root, '.agents', 'skills', 'tandem-lock.json');
+  assert.ok(fs.existsSync(lockPath + '.bak'), 'atomic updates retain a last good registry');
+  fs.writeFileSync(lockPath, '{broken');
+  assert.equal(cap.readLock(root)['checkpoint-skill'].sha256, first.sha256, 'backup can be recovered');
+  fs.writeFileSync(lockPath + '.bak', '{broken too');
+  assert.throws(() => cap.readLock(root), /corrupt/);
+  assert.throws(() => cap.uninstall(root, 'checkpoint-skill'), /corrupt/);
+  assert.ok(fs.existsSync(path.join(root, '.agents', 'skills', 'checkpoint-skill')), 'corrupt metadata never deletes user files');
+});
+
 test('CLI: a git source must be pinned to a commit and is fetched at exactly that commit', () => {
   const root = H.repo();
   const srcRepo = H.repo(null, { 'skills/hello/SKILL.md': '---\nname: hello\ndescription: Say hello politely\n---\n' });
