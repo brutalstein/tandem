@@ -40,7 +40,9 @@ function logError(where, err) {
   try {
     const f = path.join(mkdirp(DATA), 'errors.log');
     if (fs.existsSync(f) && fs.statSync(f).size > 256 * 1024) fs.renameSync(f, f + '.1');
-    fs.appendFileSync(f, `${new Date().toISOString()} ${where}: ${String(err && err.stack || err).split('\n').slice(0, 4).join(' | ')}\n`);
+    const raw = String(err && err.stack || err).split('\n').slice(0, 4).join(' | ');
+    const safe = require('./security').redactSecrets(raw).text;
+    fs.appendFileSync(f, `${new Date().toISOString()} ${where}: ${safe}\n`);
   } catch {}
 }
 
@@ -93,7 +95,7 @@ function withLock(file, fn) {
         // Never steal a live owner's lock because a transaction ran longer than expected.
         // Fail with a timeout instead of allowing two writers into the same critical section.
         const age = Date.now() - (t || fs.statSync(lock).mtimeMs);
-        if (pid && !pidAlive(pid) && age >= 1000) fs.unlinkSync(lock);
+        if (pid && !pidAlive(pid)) fs.unlinkSync(lock);
         else if (!pid && age > LOCK_STALE_MS) fs.unlinkSync(lock);
       } catch {}
       if (Date.now() > deadline) throw new Error(`lock timeout: ${lock}`);
