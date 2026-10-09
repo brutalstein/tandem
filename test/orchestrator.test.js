@@ -162,7 +162,7 @@ test('worktree: out-of-scope changes are not integrated; deleted tests downgrade
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'other.txt': 'sneaky', 'test/a.test.js': null }] }, { 'a.txt': 'old', 'other.txt': 'o', 'test/a.test.js': 'x' });
   const j = await run(orch(), { cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'worktree' });
-  assert.equal(j.status, 'unverified');
+  assert.equal(j.status, 'conflict', 'out-of-scope worktree edits must not land');
   assert.deepEqual(j.result.integrity.deletedTests, ['test/a.test.js']);
   assert.deepEqual(j.result.outOfScope.sort(), ['other.txt', 'test/a.test.js']);
   assert.equal(H.read(dir, 'a.txt'), 'old', 'nothing integrated');
