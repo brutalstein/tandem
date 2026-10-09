@@ -82,6 +82,15 @@ function snapshot(root, links = []) {
   } finally { try { fs.unlinkSync(tmpIndex); } catch {} }
 }
 
+// Two snapshot trees reveal edits to already-dirty tracked files as well as new files.
+function diffTrees(root, before, after) {
+  if (!/^[0-9a-f]{40,64}$/.test(before) || !/^[0-9a-f]{40,64}$/.test(after))
+    throw new Error('invalid Git tree id');
+  if (before === after) return [];
+  const raw = git(root, ['diff', '--name-only', '--no-renames', '-z', before, after]);
+  return [...new Set(raw.toString('utf8').split(String.fromCharCode(0)).filter(Boolean))];
+}
+
 function create(root, jobId, base, links = []) {
   const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), jobId);
   if (fs.existsSync(dir)) throw new Error('worktree already exists; refusing to discard interrupted work: ' + dir);
@@ -239,4 +248,4 @@ function remove(root, wt) {
 // Has the user's working state moved since `tree` was snapshotted?
 function drifted(root, tree, links) { try { return snapshot(root, links).tree !== tree; } catch { return true; } }
 
-module.exports = { snapshot, create, changes, plan, apply, revert, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };
+module.exports = { snapshot, diffTrees, create, changes, plan, apply, revert, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };
