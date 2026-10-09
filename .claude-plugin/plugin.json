@@ -80,7 +80,7 @@
     "worktree_links": {
       "type": "string",
       "title": "Dependency folders for isolated worktrees",
-      "description": "Comma-separated top-level folders linked into isolated worktrees so checks can run there (default node_modules, .venv, venv). Writes through a link reach your real folder, as an in-place job's would. 'none' disables linking.",
+      "description": "Optional comma-separated dependency folders to link into isolated worktrees (off by default). Writable links can modify your real project dependencies. Enable only for trusted tasks; 'none' disables.",
       "default": ""
     },
     "objective": {

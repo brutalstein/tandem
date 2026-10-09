@@ -116,8 +116,10 @@ function select(task, skills, k = 3) {
 function usage(jobs) {
   const u = {};
   for (const j of jobs) for (const n of j.skills || []) {
-    const x = u[n] = u[n] || { jobs: 0, verified: 0 };
-    x.jobs++; if (['verified', 'answered'].includes(j.status)) x.verified++;
+    const x = u[n] = u[n] || { jobs: 0, verified: 0, answered: 0 };
+    x.jobs++;
+    if (j.status === 'verified') x.verified++; // only a genuine passing check counts
+    if (j.status === 'answered') x.answered++; // not independent verification
   }
   return u;
 }

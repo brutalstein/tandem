@@ -81,7 +81,7 @@ function skills(root, projDir, o) {
       console.log(`${p}: ${xs.length} skills`);
       for (const s of p === 'claude' ? xs.filter(s => s.scope !== 'plugin') : xs) {
         const u = used[s.name];
-        console.log(`  ${s.name} [${s.trust}${s.ref ? ' ' + String(s.ref).slice(0, 12) : ''}${s.hasScripts ? ', scripts' : ''}${s.implicit ? '' : ', explicit only'}] ${(u ? `(${u.verified}/${u.jobs} jobs ok) ` : '')}${s.description.slice(0, 90)}`);
+        console.log(`  ${s.name} [${s.trust}${s.ref ? ' ' + String(s.ref).slice(0, 12) : ''}${s.hasScripts ? ', scripts' : ''}${s.implicit ? '' : ', explicit only'}] ${(u ? `(${u.verified}/${u.jobs} verified${u.answered ? ', ' + u.answered + ' answers' : ''}) ` : '')}${s.description.slice(0, 90)}`);
       }
       if (p === 'claude') console.log(`  + ${xs.filter(s => s.scope === 'plugin').length} from enabled plugins`);
     }

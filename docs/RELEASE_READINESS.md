@@ -4,7 +4,7 @@ Date: 2026-10-09. Scope: everything in this repository at the commit that contai
 
 ## Verdict
 
-**Ready as a release candidate for early adopters on Windows and Linux, including the safety hardening of PR #1 with the audit fixes. Not yet ready for a general public release.**
+**Early-adopter release candidate only; not a fully validated autonomous engineering platform.** Latest main-line continuity, skill discovery, and standalone CLI are implemented; they remain subject to current cross-platform CI, sandbox limits and real-provider benchmarks.
 
 The core is verified in four ways (details: [VERIFICATION.md](VERIFICATION.md)):
 - deterministic tests on Windows, Linux (WSL) and an OneDrive-hosted directory;
@@ -14,18 +14,18 @@ The core is verified in four ways (details: [VERIFICATION.md](VERIFICATION.md)):
 
 That core covers coordination, isolation, verification, safety and failure handling. Every defect found during this work was fixed with a regression test, including two data-loss and hang bugs that only real runs exposed.
 
-Three things stand between this and a general release:
+Release blockers and open evidence gaps:
 
 1. **Statistically meaningful real-provider performance evidence.** The repeated benchmark was cut short by the Codex account's usage limit; only a pilot exists (one run per cell). Until the scheduled run completes, the claims Tandem can make about cost against plain Codex are directional, not statistical.
 2. **CI on the audited branch.** CI on PR #1 passed on Windows, Linux and macOS (Node 20, 22, 24), but CodeQL reported two file-system-race alerts (fixed on the audit branch, not yet re-scanned) and dependency review fails because the repository's dependency graph is disabled (a repository setting).
 3. **Security reporting.** The repository is public. Verify that GitHub private vulnerability reporting is enabled before advertising it as the preferred disclosure channel.
 4. **Verification runs outside the Codex sandbox** and executes code the job wrote. This is documented in SECURITY.md; users with untrusted input should use `verify: none` and review.
 
-## Addendum: continuity branch (feat/continuity-v3)
+## Continuity and skill discovery (now included in main)
 
-Not merged, not released. Adds suspend/resume, takeover, checkpoint, the standalone CLI and the skill registry (CHANGELOG "Unreleased"). Verified by 98 deterministic tests (97 pass + 1 platform-specific skip on each of Windows and Linux) and one real-provider suspend/resume check (6/6). Open before merging:
+Suspend/resume, takeover, checkpoint, the standalone CLI and skill registry have landed on main. They were checked against 98 deterministic cases (97 passes plus 1 platform skip per Windows/Linux run) and a limited real-provider suspend/resume check (6/6). Before release:
 - real quota exhaustion and reset have not been observed end to end on this branch (the simulated path is tested);
-- macOS and Node 20 are CI-only and CI has not run on this branch (nothing pushed);
+- latest main CI has failed on macOS due to two tests comparing aliased temporary directory paths (/var and /private/var); the reliability branch canonicalizes those paths and must pass on macOS;
 - the per-job skill pointers have a labelled-set check (5/5, no false positives) but no measured effect on task success yet.
 
 Deliberately not built on this branch (no measured need yet; each would add per-job cost):
@@ -37,7 +37,7 @@ Deliberately not built on this branch (no measured need yet; each would add per-
 
 | Area | Status | Evidence |
 |---|---|---|
-| Deterministic tests | ✅ 81 / 81 Windows; 80 + 1 Windows-only skip on Linux | [VERIFICATION.md](VERIFICATION.md) |
+| Deterministic tests | ⚠️ 98 cases in prior continuity validation; latest main CI has two macOS failures, and new regression tests require a green run | [VERIFICATION.md](VERIFICATION.md) |
 | Real Codex integration | ✅ 9 / 9 on this branch | `bench/data/real-integration-audit.json` |
 | Real install lifecycle | ✅ 12 / 12 (Windows) | `test/install-smoke.js` |
 | Real Claude → Tandem → Codex delegation | ✅ 1 task, verified | [BENCHMARKS.md](BENCHMARKS.md) |
@@ -54,7 +54,7 @@ Deliberately not built on this branch (no measured need yet; each would add per-
 | Local overhead | ✅ hooks 5–11 ms over Node start; safety work +0.1–0.7 s per job | BENCHMARKS.md |
 | macOS | ⚠️ CI only (passed on PR #1) | GitHub Actions |
 | Node 20 | ⚠️ CI only (passed on PR #1) | GitHub Actions |
-| CI / CodeQL / dependency review | ⚠️ tests pass on PR #1; CodeQL alerts fixed but not re-scanned; dependency review needs the dependency graph enabled | `.github/workflows` |
+| CI / CodeQL / dependency review | ⚠️ latest main CodeQL passed; macOS test job failed; dependency review needs GitHub dependency graph enabled | `.github/workflows` |
 | Docs | ✅ README, architecture, routing, benchmarks, verification, security, contributing, changelog | |
 | Personal data in bundle | ✅ none (scanned); CI scans too | |
 
@@ -76,3 +76,9 @@ These were reported, not changed, by instruction:
 - **Broken `apiKeyHelper`.** The Claude Code `apiKeyHelper` points to a missing script, which prevents `claude --bare`.
 - **Leftover test data.** `~/.claude/plugins/data/tandem-inline/` is left over from v1 testing and is safe to delete.
 - **Orphaned `git` process.** An orphaned `git.exe` started by Codex during the cancel that exposed the hang bug may still be running. It is harmless and can be ended in Task Manager.
+
+## Reliability follow-up (2026-10-09)
+
+The safety improvement branch adds pre-execution verification checks so a worker-modified test script or pre-existing test is not executed before Tandem notices the change. This is a mitigation, **not** a verification sandbox: unchanged test code and new application code may still execute with local user privileges. Writable worktree dependency links are opt-in; critical tasks are isolated under auto mode; completed in-memory jobs are bounded. Skill statistics now separate verified implementation results from unverified answers. Check the exact branch and CI SHA before asserting these fixes are released.
+
+Broadly optimal Claude-vs-Codex delegation, large-repository indexing and enterprise-scale cross-repository awareness remain unproven. Do not describe these as 10/10.

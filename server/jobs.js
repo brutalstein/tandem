@@ -137,7 +137,9 @@ class Orchestrator {
     if (mode === 'implement' && !git && !spec.allow_non_git) {
       throw new Error('implement mode needs a git repository so changes can be reviewed and reverted (pass allow_non_git: true to override).');
     }
-    const isolation = spec.isolation || this.cfg.isolation;
+    // Critical changes default to isolation when the user selected auto. Explicit
+    // per-job and global isolation choices remain authoritative.
+    const isolation = spec.isolation || (spec.difficulty === 'critical' && this.cfg.isolation === 'auto' ? 'worktree' : this.cfg.isolation);
     const job = ledger.submit(projDir, {
       root, mode, difficulty: spec.difficulty || 'normal', task: spec.task.trim(), context: spec.context ? String(spec.context) : '',
       paths, after: spec.after || [], verify: spec.verify ?? 'auto', model: spec.model || null, effort: spec.effort || null,
@@ -154,9 +156,16 @@ class Orchestrator {
       store.logError('job ' + job.id, e);
       ledger.patch(projDir, job.id, { status: 'failed', result: { error: String(e && e.message || e) } });
       return ledger.get(projDir, job.id);
-    }).then(j => { entry.job = j || entry.job; entry.settled = true; this.wake(); return entry.job; });
+    }).then(j => { entry.job = j || entry.job; entry.settled = true; this.wake(); this.pruneFinished(); return entry.job; });
     this.live.set(job.id, entry);
     return { job, promise: entry.promise };
+  }
+
+  // Keep a bounded window for codex_wait/diagnostics. Finished jobs remain durably
+  // available in the ledger; retaining every completed promise leaks memory on long sessions.
+  pruneFinished(keep = 128) {
+    const done = [...this.live.entries()].filter(([, e]) => e.settled);
+    for (const [id] of done.slice(0, Math.max(0, done.length - keep))) this.live.delete(id);
   }
 
   async run(job, projDir, entry) {
@@ -359,6 +368,31 @@ class Orchestrator {
       if (job.mode !== 'implement') { if (report.status !== 'done') obs(false, false); break; }
       if (report.status === 'blocked') { obs(false, false); break; }
       if (!verifyCmd) { if (report.status !== 'done') obs(false, false); break; }
+      // PRE-EXECUTION integrity check: never run an altered test command or a modified
+      // pre-existing test with the user's full privileges. A post-run warning is too late
+      // to prevent malicious package scripts or test fixtures from executing.
+      const preDefinitions = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
+      const preTestsNow = verify.testFingerprint(workdir);
+      // Other Tandem jobs may legitimately update separate test files while this
+      // in-place job runs. Such files are excluded by the same ledger attribution
+      // rule used by the final integrity audit.
+      const foreignTests = wt ? [] : ledger.concurrentWrites(projDir, job.id);
+      const preTests = verify.testChanges(testsBefore, preTestsNow)
+        .filter(f => !foreignTests.some(p => ledger.overlaps(p, f)));
+      const scanFailed = Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(preTestsNow, '__scan_error__');
+      if (preDefinitions.length || preTests.length || scanFailed) {
+        verification = {
+          command: verifyCmd, ok: false, code: null, ms: 0,
+          environment: 'verification preflight blocked: test definitions or existing tests changed; review changes before running code with local user privileges',
+          tail: [
+            preDefinitions.length && 'changed definitions: ' + preDefinitions.join(', '),
+            preTests.length && 'changed tests: ' + preTests.join(', '),
+            scanFailed && 'test-file fingerprint scan failed',
+          ].filter(Boolean).join('; '),
+        };
+        this.onProgress(job.id, 'verification blocked: test integrity preflight failed');
+        break;
+      }
       this.onProgress(job.id, `verifying: ${verifyCmd}`);
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;

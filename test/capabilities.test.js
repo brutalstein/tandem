@@ -26,6 +26,15 @@ skill(path.join(SK, 'react-components'), 'name: react-components\ndescription: |
 skill(path.join(SK, 'deploy-prod'), 'name: deploy-prod\ndescription: Deploy the service to production Kubernetes clusters', { 'agents/openai.yaml': 'policy:\n  allow_implicit_invocation: false\n' });
 skill(path.join(HOME, '.claude', 'skills', 'claude-only'), 'name: claude-only\ndescription: Fix failing pytest tests the Claude way\ndisable-model-invocation: true');
 
+test('skill effectiveness never counts an unverified answer as a verified change', () => {
+  const u = cap.usage([
+    { skills: ['pytest-fixer'], status: 'answered' },
+    { skills: ['pytest-fixer'], status: 'verified' },
+    { skills: ['pytest-fixer'], status: 'unverified' },
+  ]);
+  assert.deepEqual(u['pytest-fixer'], { jobs: 3, verified: 1, answered: 1 });
+});
+
 test('front matter: plain, quoted, folded and literal values', () => {
   assert.deepEqual(cap.frontMatter('---\na: x\nb: "q: v"\nc: >\n  one\n  two\nd: |\n  l1\n  l2\n---\n'), { a: 'x', b: 'q: v', c: 'one two', d: 'l1\nl2' });
   assert.deepEqual(cap.frontMatter('no front matter'), {});

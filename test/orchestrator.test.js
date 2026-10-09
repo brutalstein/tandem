@@ -93,14 +93,49 @@ test('auth failure and transient errors', async () => {
   assert.equal(t.attempts[0].model + t.attempts[0].effort, t.attempts[1].model + t.attempts[1].effort);
 });
 
-test('integrity: a pass obtained by editing the test definition is not "verified"', async () => {
+test('finished job cache stays bounded without removing running entries', () => {
+  const o = orch();
+  for (let i = 0; i < 200; i++) o.live.set('done' + i, { settled: true, job: { id: 'done' + i } });
+  o.live.set('active', { settled: false, job: { id: 'active' } });
+  o.pruneFinished();
+  assert.equal(o.live.size, 129);
+  assert.ok(o.live.has('active'));
+  assert.ok(o.live.has('done199'));
+  assert.ok(!o.live.has('done0'));
+});
+
+test('critical tasks default to isolated worktrees under auto mode', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+  const j = await run(orch(), { cwd: dir, task: 'critical fix', mode: 'implement', difficulty: 'critical',
+    paths: ['a.txt'], verify: H.CHECK('a.txt') });
+  assert.equal(j.isolation, 'worktree');
+  assert.equal(j.status, 'verified');
+  assert.equal(H.read(dir, 'a.txt'), 'good');
+});
+
+test('integrity: edited test definitions cannot execute their test command', async () => {
   clean();
   const pkg = s => JSON.stringify({ name: 'x', scripts: { test: s } });
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'package.json': pkg('node -e "process.exit(0)"') }] }, { 'package.json': pkg('node -e "process.exit(1)"') });
   const j = await run(orch(), { cwd: dir, task: 'make tests pass', mode: 'implement', difficulty: 'normal', paths: ['package.json'] });
-  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.result.verification.ok, false, 'preflight refuses the edited test script');
+  assert.match(j.result.verification.environment, /preflight blocked/);
   assert.equal(j.status, 'unverified');
   assert.deepEqual(j.result.integrity.verifyDefinitionChanged, ['package.json']);
+});
+
+test('preflight prevents an agent-modified package test script from running outside the sandbox', async () => {
+  clean();
+  const marker = 'escaped-test-script.txt';
+  const unsafe = JSON.stringify({ name: 'x', scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'escaped-test-script.txt\',\'executed\')"' } });
+  const safe = JSON.stringify({ name: 'x', scripts: { test: 'node -e "process.exit(1)"' } });
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'package.json': unsafe }] }, { 'package.json': safe });
+  const j = await run(orch(), { cwd: dir, task: 'tamper with test script', mode: 'implement', difficulty: 'normal',
+    paths: ['package.json'], verify: 'auto', isolation: 'inplace' });
+  assert.equal(j.status, 'unverified');
+  assert.match(j.result.verification.environment, /preflight blocked/);
+  assert.equal(H.read(dir, marker), null, 'modified package.json test script must never execute');
 });
 
 test('in-place scope audit detects edits to already-dirty tracked files', async () => {
@@ -115,13 +150,14 @@ test('in-place scope audit detects edits to already-dirty tracked files', async 
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
 });
 
-test('test content tampering cannot yield verified even when the configured check passes', async () => {
+test('test content tampering blocks verification before executing the check', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },
     { 'a.txt': 'old', 'a.test.js': 'original test' });
   const j = await run(orch(), { cwd: dir, task: 'fix', mode: 'implement', difficulty: 'normal',
     paths: ['a.txt', 'a.test.js'], verify: H.CHECK('a.txt'), isolation: 'inplace' });
-  assert.equal(j.result.verification.ok, true);
+  assert.equal(j.result.verification.ok, false, 'modified tests are not executed by Tandem');
+  assert.match(j.result.verification.environment, /preflight blocked/);
   assert.equal(j.status, 'unverified');
   assert.deepEqual(j.result.integrity.modifiedTests, ['a.test.js']);
   assert.equal((policy.loadEvidence(store.projectDir(dir)).classes['implement|normal'] || []).filter(x => x.ok).length, 0,
@@ -355,13 +391,17 @@ test('owner killed mid-integration (post-verification): the next start restores 
   assert.equal(fs.readdirSync(path.join(store.projectDir(dir), 'integrations')).length, 0);
 });
 
-test('defaults: an isolated job can run a check that needs the project\'s installed dependencies', async () => {
+test('explicit dependency-link opt-in runs isolated tests without reinstalling trusted dependencies', async () => {
   clean();
   const { config } = require('../server/config');
   const d = config();
+  assert.deepEqual(d.worktreeLinks, [], 'safe default does not expose original dependencies');
+  process.env.TANDEM_WORKTREE_LINKS = 'node_modules';
+  const trusted = config();
+  delete process.env.TANDEM_WORKTREE_LINKS;
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.js': 'module.exports = require("dep")' }] }, { 'a.js': 'old', '.gitignore': 'node_modules/\n' });
   H.write(dir, { 'node_modules/dep/index.js': 'module.exports = 42' });
-  const j = await run(orch({ isolation: d.isolation, worktreeLinks: d.worktreeLinks }), { cwd: dir, task: 'use dep', mode: 'implement', difficulty: 'normal', paths: ['a.js'],
+  const j = await run(orch({ isolation: d.isolation, worktreeLinks: trusted.worktreeLinks }), { cwd: dir, task: 'use dep', mode: 'implement', difficulty: 'normal', paths: ['a.js'],
     verify: `node -e "process.exit(require('./a.js')===42?0:1)"`, isolation: 'worktree', max_attempts: 1 });
   assert.equal(j.status, 'verified', JSON.stringify(j.result.verification));
   assert.equal(H.read(dir, 'node_modules/dep/index.js'), 'module.exports = 42', 'dependencies intact after cleanup');

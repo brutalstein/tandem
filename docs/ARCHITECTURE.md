@@ -50,7 +50,7 @@ Terminal states:
    - Implement jobs choose their isolation here:
      - `inplace` writes to your working tree under a path claim;
      - `worktree` writes to an isolated copy;
-     - `auto` (the default) edits in place if no writer holds the paths, otherwise isolates. `worktree` isolates every job, at a setup cost per job (see BENCHMARKS.md).
+     - `auto` (the default) edits in place if no writer holds the paths, otherwise isolates; **critical** implement tasks automatically use `worktree` unless isolation was explicitly chosen. `worktree` isolates every job, at a setup cost per job (see BENCHMARKS.md).
 2. **Routing.** `catalog` → eligible rungs; `policy.decide` → escalation plan. The plan is stored with the job.
 3. **Execution.**
    - `codex exec --json` runs with `-m`, effort, the sandbox (`workspace-write` or `read-only`), an output schema and, by default, lean flags.
@@ -58,7 +58,7 @@ Terminal states:
    - The job holds a lease that is renewed every 15 s; a lease expires after 60 s without renewal.
 4. **Verification.**
    - Implement jobs run the check: `verify`, or auto-detected `npm test`, `pytest`, `cargo test` or `go test`.
-   - Test definitions and tracked/untracked test-file contents are fingerprinted before and after. Modifying or deleting an existing test, or adding a `conftest.py`, downgrades the result; adding new tests does not.
+   - Test definitions and tracked/untracked test-file contents are fingerprinted before each check. Altered definitions or existing tests **block the check before execution**, and cannot be marked verified; new test files may be added. The after-run fingerprint also detects changes made during verification.
    - In-place jobs are audited against a snapshot of the whole working state taken at start, so a second edit to an already-dirty file is seen. Paths written meanwhile by other Tandem jobs (in-place claims, integrations) are not attributed to the job. Edits made meanwhile by you or by Claude through a shell cannot be told apart from the job's. Files ignored by `.gitignore` are not audited. Out-of-scope changes make the result `unverified` (never `verified`), and Tandem reverts nothing in place.
    - A failed check feeds the failure output into the next attempt. On the same model the thread is resumed; on a new model the prompt is fresh plus a summary.
 5. **Integration (worktree jobs).**
@@ -94,7 +94,7 @@ Additional coordination:
 - **Snapshot.** The snapshot is built in a temporary index file (`GIT_INDEX_FILE`), started from a copy of the real index. HEAD, the index, branches, the stash and your files are never modified. `.gitignore` is respected.
 - **Worktree location.** Worktrees live only under the plugin data directory (`worktrees/<project>/<job>-<random>`); an existing directory is never reused or deleted. Removal and discard accept only a direct child of that project's directory that is not itself a link.
 - **Integration paths.** Every component of a destination and source path is checked with `lstat`: a symlink or junction anywhere, a path escaping the repository, or a directory target makes it a conflict. Each file is replaced atomically (temporary file + rename, retried while Windows reports the file busy). A race on a parent directory between the check and the rename remains possible; closing it needs OS-level primitives Node does not expose.
-- **Dependency links.** Dependency folders (`node_modules`, `.venv`, `venv`; `worktree_links` option, `none` to disable) are linked into the worktree (a junction on Windows, a symlink elsewhere), so checks can run there without reinstalling. Writes through a link reach your real folder, the same exposure an in-place job has. Link names must be plain folder names. The links are recorded in the ledger.
+- **Dependency links.** Dependency folders are not linked by default, to avoid exposing original dependencies to worktree writes. Users may opt in to individual top-level folders through `worktree_links` for trusted workloads. Writes through a link reach your real folder, the same exposure an in-place job has. Link names must be plain folder names. The links are recorded in the ledger.
   - **Removal never deletes through a link.** On Windows, `git worktree remove --force` follows junctions and deletes the target's contents; this deleted a real `node_modules` during development. Tandem therefore removes links first, then deletes the worktree with Node's `rm` (which does not follow links), then runs `git worktree prune`.
   - **Surviving worktrees hold no links.** A worktree that outlives its job (kept after a conflict, or left by a crashed session and reaped) has its links removed. If you clean it up yourself with `git worktree remove --force`, that cannot reach your project either.
   - Tests cover removal, kept worktrees followed by a user's `git worktree remove --force`, and crash reaping.
