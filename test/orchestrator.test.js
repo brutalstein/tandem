@@ -93,6 +93,27 @@ test('auth failure and transient errors', async () => {
   assert.equal(t.attempts[0].model + t.attempts[0].effort, t.attempts[1].model + t.attempts[1].effort);
 });
 
+test('finished job cache stays bounded without removing running entries', () => {
+  const o = orch();
+  for (let i = 0; i < 200; i++) o.live.set('done' + i, { settled: true, job: { id: 'done' + i } });
+  o.live.set('active', { settled: false, job: { id: 'active' } });
+  o.pruneFinished();
+  assert.equal(o.live.size, 129);
+  assert.ok(o.live.has('active'));
+  assert.ok(o.live.has('done199'));
+  assert.ok(!o.live.has('done0'));
+});
+
+test('critical tasks default to isolated worktrees under auto mode', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+  const j = await run(orch(), { cwd: dir, task: 'critical fix', mode: 'implement', difficulty: 'critical',
+    paths: ['a.txt'], verify: H.CHECK('a.txt') });
+  assert.equal(j.isolation, 'worktree');
+  assert.equal(j.status, 'verified');
+  assert.equal(H.read(dir, 'a.txt'), 'good');
+});
+
 test('integrity: edited test definitions cannot execute their test command', async () => {
   clean();
   const pkg = s => JSON.stringify({ name: 'x', scripts: { test: s } });
