@@ -17,11 +17,12 @@ const { frame } = require('./security');
 const VERSION = require('../.claude-plugin/plugin.json').version;
 const cfg = config();
 store.publishDataDir();
-const progressTokens = new Map(); // jobId -> progressToken of the call waiting on it
+const progressTokens = new Map(); // project+job -> progressToken
+const progressKey = (projDir, id) => projDir + ':' + id;
 let progressCount = 0;
 const orch = new Orchestrator(cfg, {
-  onProgress: (id, message) => {
-    const token = progressTokens.get(id);
+  onProgress: (id, message, projDir) => {
+    const token = progressTokens.get(progressKey(projDir, id));
     if (token !== undefined) send({ jsonrpc: '2.0', method: 'notifications/progress', params: { progressToken: token, progress: ++progressCount, message: `${id} ${message}` } });
   },
 });
@@ -58,7 +59,7 @@ const TOOLS = [
   {
     name: 'codex_wait',
     description: 'Wait for background Codex jobs started by this session and return their results.',
-    inputSchema: { type: 'object', properties: { ids: strs('Job ids (default: all unfinished jobs of this session).'), timeout_s: { type: 'integer', minimum: 1, description: 'Max wait (default 540).' } } },
+    inputSchema: { type: 'object', properties: { ids: strs('Job ids (default: all unfinished jobs of this session).'), cwd: str('Project directory to disambiguate job IDs.'), timeout_s: { type: 'integer', minimum: 1, description: 'Max wait (default 540).' } } },
   },
   {
     name: 'codex_jobs',
