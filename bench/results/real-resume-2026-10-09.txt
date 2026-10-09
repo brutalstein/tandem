@@ -1,0 +1,12 @@
+  j1 attempt 1: gpt-6-astra@low
+  j1 $ "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Set-C
+  j1 $ "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Start
+PASS stopped job is suspended (not cancelled) - suspended
+PASS Codex thread recorded for continuation - 01a120f3-fa55-7151-8c30-e5263b68c2c9
+PASS worktree kept
+  partial files at stop: a
+PASS resumed job finishes verified - verified
+PASS resumed attempt continued the Codex conversation - {"model":"gpt-6-astra","effort":"low","resumed":true}
+PASS result integrated into the project
+  tokens: first run in 0 (cached 0) out 0; resumed run in 120103 (cached 101504) out 343
+6/6 checks passed

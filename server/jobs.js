@@ -292,7 +292,8 @@ class Orchestrator {
       let suspendTree = null;
       if (inplace && inplaceBase) { try { suspendTree = worktree.snapshot(job.root, []).tree; } catch {} }
       if (job.mode === 'implement') store.writeJson(rfile, { ...baselines, suspendTree });
-      return { threadId: tid || null, model: rung ? rung.model : null, effort: rung ? rung.effort : null,
+      // ask/review turns are ephemeral (no saved session to continue): those restart, cheaply.
+      return { threadId: (job.mode === 'implement' && tid) || null, model: rung ? rung.model : null, effort: rung ? rung.effort : null,
         worktree: wt ? { path: wt.path, base: snap.commit, tree: snap.tree } : null };
     };
     const reported = new Set();
@@ -318,7 +319,8 @@ class Orchestrator {
       const att = { model: rung.model, effort: rung.effort, ms: res.durationMs, firstEventMs: res.firstEventMs, tokens: { in: u.input, cached: u.cached, out: u.output }, errorKind: res.errorKind || null, error: res.error ? sanitize(res.error, 300) : null, resumed: !!resume };
       attempts.push(att);
       ledger.patch(projDir, job.id, { attempts });
-      if (entry.cancelled) break;
+      // Stopped mid-turn: keep the conversation so a resume can continue it.
+      if (entry.cancelled) { if (res.threadId) { threadId = res.threadId; threadModel = rung.model; } break; }
       // verified: an independent observation (exit, crash, check) rather than the model's own report.
       const obs = (ok, verified) => policy.record(projDir, cls, { r: catalog.key(rung), ok, verified, cond: n > 1 && lastFail !== null, tin: u.input, tc: u.cached, tout: u.output, sec: (res.durationMs + (att.verifyMs || 0)) / 1000 });
 
