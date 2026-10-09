@@ -91,12 +91,19 @@ function diffTrees(root, before, after) {
   return [...new Set(raw.toString('utf8').split(String.fromCharCode(0)).filter(Boolean))];
 }
 
+// Dependency links may only be simple directory names. Never interpret a configured
+// link as a relative path that can escape the worktree or traverse its parents.
+function validLinkName(name) {
+  return typeof name === 'string' && /^[a-zA-Z0-9_.-]+$/.test(name) && name !== '.' && name !== '..';
+}
+
 function create(root, jobId, base, links = []) {
   const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), jobId);
   if (fs.existsSync(dir)) throw new Error('worktree already exists; refusing to discard interrupted work: ' + dir);
   git(root, ['worktree', 'add', '--detach', '--quiet', dir, base]);
   const linked = [];
   for (const l of links) {
+    if (!validLinkName(l)) throw new Error('unsafe dependency link name');
     const src = path.join(root, l), dst = path.join(dir, l);
     if (fs.existsSync(src) && fs.statSync(src).isDirectory() && !fs.existsSync(dst)) {
       fs.symlinkSync(src, dst, process.platform === 'win32' ? 'junction' : 'dir');
@@ -230,8 +237,10 @@ function integrate(root, wt, changed) {
 // Unlink dependency links. Anything that deletes recursively through them would delete the user's real
 // folder — `git worktree remove --force` follows Windows junctions. Called before removal and whenever a
 // worktree outlives its job (kept on conflict, owner crashed), so a user's own cleanup is safe too.
-function unlinkLinks(wt) {
+function unlinkLinks(wt, root) {
+  if (root) assertManaged(root, wt.path);
   for (const l of wt.linked || []) {
+    if (!validLinkName(l)) continue;
     const p = path.join(wt.path, l);
     try { if (!fs.lstatSync(p).isSymbolicLink()) continue; } catch { continue; }
     try { fs.unlinkSync(p); } catch { fs.rmdirSync(p); }
