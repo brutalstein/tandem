@@ -406,13 +406,39 @@ test('store: an old lock held by a reused (live) PID is broken, not waited on fo
 
 test('store: a holder that lost its lock neither commits nor deletes the new owner\'s lock', () => {
   const f = path.join(H.TMP, 'fenced.json');
-  store.writeJson(f, { n: 1 });
   const theirs = `${process.pid} ${Date.now()} 0123456789abcdef`;
-  assert.throws(() => store.update(f, { n: 0 }, d => {
-    d.n = 99;
+  store.withLock(f, held => {
+    assert.equal(held(), true);
     fs.writeFileSync(f + '.lock', theirs); // another process broke our lock after a stall and took it
-  }), /lock lost/);
-  assert.equal(store.readJson(f).n, 1, 'stale write discarded');
-  assert.equal(fs.readFileSync(f + '.lock', 'utf8'), theirs, 'new owner\'s lock untouched');
+    assert.equal(held(), false);
+  });
+  assert.equal(fs.readFileSync(f + '.lock', 'utf8'), theirs, 'new owner\'s lock untouched on release');
   fs.unlinkSync(f + '.lock');
+  // update(): the transaction that lost its lock is not committed; it is re-run on fresh state.
+  store.writeJson(f, { n: 1 });
+  let calls = 0;
+  store.update(f, { n: 0 }, d => {
+    if (++calls === 1) { d.n = 99; fs.writeFileSync(f + '.lock', `999999 ${Date.now()} lost`); } // new owner, since crashed
+    else d.n += 1;
+  });
+  assert.equal(calls, 2);
+  assert.equal(store.readJson(f).n, 2, 'the discarded attempt never landed; the retry did, once');
+  assert.ok(!fs.existsSync(f + '.lock'));
+});
+
+test('store: 8 processes × 100 transactions with crash-left locks planted meanwhile lose no update', async () => {
+  const f = path.join(H.TMP, 'stress', 'counter.json');
+  const script = `
+    const s = require(${JSON.stringify(path.join(H.ROOT, 'server', 'store.js'))});
+    const fs = require('fs');
+    for (let i = 0; i < 100; i++) {
+      s.update(${JSON.stringify(f)}, { n: 0 }, d => { d.n++; });
+      // A crashed holder leaves a lock behind (dead pid); others must break it without losing updates.
+      if (Math.random() < 0.05) try { fs.writeFileSync(${JSON.stringify(f + '.lock')}, '999999 ' + Date.now() + ' dead', { flag: 'wx' }); } catch {}
+    }`;
+  const { spawn } = require('child_process');
+  const procs = Array.from({ length: 8 }, () => spawn(process.execPath, ['-e', script], { env: process.env, stdio: 'inherit' }));
+  assert.deepEqual(await Promise.all(procs.map(c => new Promise(r => c.on('close', r)))), Array(8).fill(0));
+  assert.equal(store.readJson(f).n, 800);
+  assert.deepEqual(fs.readdirSync(path.dirname(f)).filter(n => n.endsWith('.stale') || n.endsWith('.tmp')), []);
 });

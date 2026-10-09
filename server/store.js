@@ -123,18 +123,24 @@ function withLock(file, fn) {
   try { return fn(() => holdsLock(lock, token)); } finally { if (holdsLock(lock, token)) try { fs.unlinkSync(lock); } catch {} }
 }
 
-// Read-modify-write transaction. `migrate` upgrades older document versions in place.
+// Read-modify-write transaction. `migrate` upgrades older document versions in place. A transaction
+// that lost its lock is discarded and re-run on fresh state, so mutators must not have side effects
+// beyond the document other than idempotent ones.
 function update(file, fallback, mutator, migrate) {
-  return withLock(file, held => {
-    const value = readJson(file, typeof fallback === 'function' ? fallback() : structuredClone(fallback));
-    if (migrate) migrate(value);
-    const result = mutator(value);
-    // Fence: never commit after losing the lock. shortcut: a stall between this check and the
-    // rename can still lose an update; closing that needs OS-level locks Node does not expose.
-    if (!held()) throw new Error(`lock lost before commit: ${file}.lock (transaction discarded)`);
-    writeJson(file, value);
-    return result;
-  });
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return withLock(file, held => {
+        const value = readJson(file, typeof fallback === 'function' ? fallback() : structuredClone(fallback));
+        if (migrate) migrate(value);
+        const result = mutator(value);
+        // Fence: never commit after losing the lock. shortcut: a stall between this check and the
+        // rename can still lose an update; closing that needs OS-level locks Node does not expose.
+        if (!held()) throw Object.assign(new Error(`lock lost before commit: ${file}.lock (transaction discarded)`), { code: 'ELOCKLOST' });
+        writeJson(file, value);
+        return result;
+      });
+    } catch (e) { if (e.code !== 'ELOCKLOST' || attempt >= 5) throw e; }
+  }
 }
 
 function sha1(buf) { return crypto.createHash('sha1').update(buf).digest('hex'); }
