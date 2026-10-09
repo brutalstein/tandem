@@ -90,12 +90,12 @@ It should help your editor, not become your editor's second job.
 
 | Validation | Recorded outcome |
 |:--|--:|
-| Deterministic tests (simulated Codex) | **97 / 98** pass, 1 platform-specific skip (Windows and Linux) |
+| Deterministic tests (simulated Codex) | **100+** regression cases (platform-specific skips documented) |
 | Real Codex integration checks | **9 / 9** |
 | Real suspend → resume in the same Codex thread | **6 / 6** |
 | Real plugin installation lifecycle checks | **12 / 12** |
 
-The deterministic suite is exercised in [GitHub Actions](https://github.com/brutalstein/tandem/actions) across Windows, Linux, and macOS. Real-provider checks are reported separately.
+The deterministic suite runs through [GitHub Actions](https://github.com/brutalstein/tandem/actions) on Windows, Linux and macOS. Always check the current CI status: a successful local run does not prove all platforms. Real-provider checks are reported separately.
 
 **Real-world pilot:** Tandem used fewer Codex tokens on two read-only tasks, but delegating a coding task from Claude **roughly doubled completion time** in one comparison. The sample is too small for broad claims. We publish the awkward numbers too.
 
