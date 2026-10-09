@@ -73,11 +73,17 @@ function readJson(file, fallback) {
 }
 
 // Windows: rename and delete fail transiently while a reader, editor, indexer or AV scanner holds the file.
-function retryBusy(fn) {
-  for (let i = 0; ; i++) {
+// Use a monotonic deadline for transient Windows file-sharing contention.
+function retryBusy(fn, timeoutMs = 1000) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 0 || timeoutMs > 30000)
+    throw new Error('invalid busy-retry timeout');
+  const deadline = process.hrtime.bigint() + BigInt(Math.ceil(timeoutMs * 1e6));
+  for (let attempts = 0; ; attempts++) {
     try { return fn(); } catch (e) {
-      if (i >= 40 || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
-      sleepMs(25);
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
+      const remainingMs = Number(deadline - process.hrtime.bigint()) / 1e6;
+      if (remainingMs <= 0) throw e;
+      sleepMs(Math.min(remainingMs, Math.min(25 + attempts * 5, 125)));
     }
   }
 }
