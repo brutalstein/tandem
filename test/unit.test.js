@@ -377,6 +377,21 @@ test('testFingerprint detects modifications to tracked and untracked tests; addi
   assert.deepEqual(Object.keys(verify.testFingerprint(plain)), ['tests/t.py'], 'outside git: walked, dependencies skipped');
 });
 
+test('independent verification policy blocks changed tests and honors foreign ownership', () => {
+  const ti = require('../server/test-integrity');
+  const root = H.repo(null, { 'src/worker.test.js': 'assert true', 'src/a.js': 'original' });
+  const before = verify.testFingerprint(root);
+  const defs = verify.fingerprint(root);
+  assert.equal(ti.blocked(ti.inspect(root, defs, before)), false);
+  H.write(root, { 'src/worker.test.js': 'assert false', 'src/a.js': 'changed' });
+  const now = ti.inspect(root, defs, before);
+  assert.equal(ti.blocked(now), true);
+  assert.deepEqual(now.changedTests, ['src/worker.test.js']);
+  assert.match(ti.reason(now), /changed tests: src\/worker.test.js/);
+  const concurrent = ti.inspect(root, defs, before, ['src/worker.test.js'], (a, b) => a === b);
+  assert.equal(ti.blocked(concurrent), false, 'another recorded job owns this changed test');
+});
+
 test('verify: detection, fingerprint of scripts only, deleted tests, timeout', async () => {
   const dir = H.repo(null, { 'package.json': JSON.stringify({ scripts: { test: 'node t.js' }, dependencies: { a: '1' } }) });
   assert.equal(verify.detect(dir), 'npm test --silent');
