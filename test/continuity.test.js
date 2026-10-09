@@ -190,3 +190,104 @@ test('CLI Ctrl+C: running jobs are suspended (resumable), not lost', { skip: pro
   assert.equal(after.status, 'suspended');
   assert.equal(after.result.suspension.kind, 'user_interrupt');
 });
+
+// ---- regressions from the independent review of this branch ----
+const ledgerM = require('../server/ledger');
+const cliRun = (dir, ...a) => require('child_process').spawnSync(process.execPath, [path.join(H.ROOT, 'bin', 'tandem.js'), ...a, '--cwd', dir], { encoding: 'utf8', timeout: 60000 });
+
+test('review: a job that ran isolated resumes in its kept worktree even when auto isolation would now pick in place', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'a.txt': 'half' }, { 'a.txt': 'good' }] }, { 'a.txt': 'old' });
+  const o = orch();
+  const j = await o.submit({ cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'worktree' }).promise;
+  ledgerM.annotate(store.projectDir(dir), j.id, { isolationPref: 'auto' }); // as if it had been isolated only because the paths were busy
+  scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
+  const r = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(r.status, 'verified');
+  assert.equal(path.resolve(H.calls(dir).at(-1).cwd), path.resolve(j.result.resumeFrom.worktree.path));
+  assert.equal(H.read(dir, 'a.txt'), 'good');
+});
+
+test('review: a session end while a verified job waits to integrate suspends it and keeps its work', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: { HOLDER: { action: 'hang' }, FIXER: { writes: { 'a.txt': 'good' } } } }, { 'a.txt': 'old' });
+  const o = orch();
+  const holder = o.submit({ cwd: dir, task: 'HOLDER', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: 'none', isolation: 'inplace' });
+  await waitFor(() => H.calls(dir).length >= 1);
+  const fixer = o.submit({ cwd: dir, task: 'FIXER', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'worktree' });
+  await waitFor(() => { const x = ledgerM.get(store.projectDir(dir), fixer.job.id); return x && (x.attempts || []).some(a => a.verified); }, 30000);
+  await new Promise(r => setTimeout(r, 300)); // now waiting for the in-place holder's claim
+  o.suspendAll('session_ended', 'test');
+  const [f] = await Promise.all([fixer.promise, holder.promise]);
+  assert.equal(f.status, 'suspended');
+  assert.equal(H.read(f.result.resumeFrom.worktree.path, 'a.txt'), 'good', 'verified work kept');
+  assert.equal(H.read(dir, 'a.txt'), 'old');
+});
+
+test('review: a missing check program never turns an incomplete report into an integrable result', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok', status: 'partial' }, writes: [{ 'a.txt': 'half' }] }, { 'a.txt': 'old' });
+  const j = await orch().submit({ cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: 'tandem-no-such-program-xyz', isolation: 'worktree' }).promise;
+  assert.equal(j.status, 'partial');
+  assert.equal(H.read(dir, 'a.txt'), 'old', 'not integrated');
+});
+
+test('review: stored and current ceilings both apply on resume (the stricter wins)', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' } });
+  const wide = { codexMaxModel: 'gpt-6.1-sol', codexAllowedModels: [], codexMaxEffort: 'xhigh' };
+  const o = orch({ codexMaxEffort: 'low' });
+  const j = await o.submit({ cwd: dir, task: 'q', mode: 'ask', difficulty: 'critical', ceiling: wide }).promise;
+  assert.ok(j.attempts.every(a => a.effort === 'low' || a.effort === 'minimal'), JSON.stringify(j.attempts));
+  const x = await o.submit({ cwd: dir, task: 'q', mode: 'ask', difficulty: 'normal', effort: 'high', ceiling: wide }).promise;
+  assert.equal(x.status, 'rejected');
+});
+
+test('review: edits the stopped run made in place stay in the scope check after a drift-forced isolated resume', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'a.txt': 'half', 'z.txt': 'stray' }] }, { 'a.txt': 'old', 'b.txt': 'b' });
+  const o = orch();
+  const j = await o.submit({ cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: H.CHECK('a.txt'), isolation: 'inplace' }).promise;
+  assert.equal(j.status, 'suspended');
+  H.write(dir, { 'b.txt': 'user edit while stopped' });
+  scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
+  const r = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(r.isolation, 'worktree');
+  assert.deepEqual(r.result.changedBeforeResume, ['a.txt', 'z.txt'], 'the run\'s own edits, not the user\'s b.txt');
+  assert.equal(r.status, 'unverified');
+  assert.match(r.result.error, /z\.txt/);
+  assert.equal(H.read(dir, 'b.txt'), 'user edit while stopped');
+});
+
+test('review: a dependency the lead took over satisfies its dependents', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: { FIRST: { action: 'ratelimit' } } });
+  const o = orch();
+  const a = await o.submit({ cwd: dir, task: 'FIRST', mode: 'ask', difficulty: 'normal' }).promise;
+  clean(); codex.clearUnavailable('*');
+  const b = await o.submit({ cwd: dir, task: 'SECOND', mode: 'ask', difficulty: 'normal', after: [a.id] }).promise;
+  assert.equal(b.status, 'suspended');
+  o.takeOver(a.id, dir, 'claude', 'did it inline');
+  assert.equal((await o.resume(b.id, dir).promise).status, 'answered');
+});
+
+test('review CLI: continue runs dependency-suspended jobs after their dependency; old jobs without ceilings and bad ids start nothing', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'ok' }, byPrompt: { FIRST: { action: 'ratelimit' } } });
+  const o = orch();
+  const a = await o.submit({ cwd: dir, task: 'FIRST', mode: 'ask', difficulty: 'normal' }).promise;
+  clean(); codex.clearUnavailable('*');
+  const b = await o.submit({ cwd: dir, task: 'SECOND', mode: 'ask', difficulty: 'normal', after: [a.id] }).promise;
+  const c = await o.submit({ cwd: dir, task: 'FIRST legacy', mode: 'ask', difficulty: 'normal' }).promise;
+  ledgerM.annotate(store.projectDir(dir), c.id, { ceiling: null }); // a job from before ceilings were recorded
+  clean(); codex.clearUnavailable('*'); // c hit the limit too; the provider is back now
+  const bad = cliRun(dir, 'resume', b.id, 'j999');
+  assert.notEqual(bad.status, 0);
+  assert.equal(ledgerM.get(store.projectDir(dir), b.id).status, 'suspended', 'nothing started');
+  assert.match(cliRun(dir, 'resume', c.id).stderr, /resume it from Claude Code/);
+  scenario(dir, { default: { action: 'ok' } });
+  const r = cliRun(dir, 'continue', '--now'); // the limit's recorded reset is 2 h away; the user says it is back
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const pd = store.projectDir(dir);
+  assert.deepEqual([a, b, c].map(x => ledgerM.get(pd, x.id).status), ['answered', 'answered', 'suspended']);
+});

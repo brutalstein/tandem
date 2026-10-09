@@ -25,7 +25,7 @@ const HOLDING = new Set(['running', 'integrating']);
 const SUCCESS = new Set(['verified', 'answered']); // unverified changes must not satisfy dependencies
 // Stopped, not finished: the work can continue later (provider limit, session ended, owner crashed).
 // Never pruned, and a dependent of one is suspended with it rather than skipped.
-const RESUMABLE = new Set(['suspended', 'interrupted', 'codex_unavailable']);
+const RESUMABLE = new Set(['suspended', 'interrupted']);
 
 const SESSION_ID = `${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 const file = projDir => path.join(projDir, 'ledger.json');
@@ -98,7 +98,7 @@ function tryAcquire(projDir, id, { maxParallel, isolationPref = 'auto', canIsola
         j.result = { suspension: { kind: 'dependency', reason: `dependency ${dep} is ${d.status}`, at: Date.now() } };
         return { suspend: j.result.suspension.reason };
       }
-      if (!SUCCESS.has(d.status)) { j.status = 'skipped'; j.finished = Date.now(); j.note = `dependency ${dep} ended ${d.status}`; return { skip: j.note }; }
+      if (!SUCCESS.has(d.status) && d.status !== 'taken_over') { j.status = 'skipped'; j.finished = Date.now(); j.note = `dependency ${dep} ended ${d.status}`; return { skip: j.note }; }
     }
     const others = Object.values(doc.jobs).filter(o => o.id !== id);
     const holding = others.filter(o => HOLDING.has(o.status));
@@ -172,6 +172,7 @@ function resume(projDir, id) {
     (j.history = j.history || []).push({ at: Date.now(), from: j.status, by: SESSION_ID, reason: (j.result && j.result.suspension && j.result.suspension.reason) || j.note || null });
     // A crashed owner left no summary: continue from its recorded worktree (in place, the drift check decides).
     j.resumeFrom = (j.result && j.result.resumeFrom) || { worktree: j.worktree || null };
+    if (j.resumeFrom.worktree) j.isolationPref = 'worktree'; // continue where its partial work is
     Object.assign(j, { status: 'queued', owner: { pid: process.pid, sid: SESSION_ID, hb: Date.now() }, resumed: (j.resumed || 0) + 1 });
     delete j.finished; delete j.result; delete j.integrating;
     return structuredClone(j);

@@ -207,6 +207,9 @@ class Orchestrator {
   async execute(job, projDir, entry) {
     const provider = this.provider;
     const cfg = job.ceiling ? { ...this.cfg, ...job.ceiling } : this.cfg;
+    // Both the ceilings the job was authorized under and the ones in force now apply: the stricter wins.
+    const within = (model, effort) => [cfg, this.cfg].every(c => catalog.ceilingCheck(model, c).allowed && EFFORTS.indexOf(effort) <= EFFORTS.indexOf(c.codexMaxEffort));
+    const permitted = rs => rs.filter(r => within(r.model, r.effort));
     let wt = null;
     const end = (status, x) => this.finish(job, projDir, entry, wt, status, x);
     const env = await provider.discover();
@@ -219,14 +222,14 @@ class Orchestrator {
 
     // ---- routing ----
     const cls = `${job.mode}|${job.difficulty}`;
-    let rungs = catalog.rungs(env.models, cfg, unav);
+    let rungs = permitted(catalog.rungs(env.models, cfg, unav));
     let seq, route;
     if (job.model || job.effort) {
       const model = job.model || (rungs[policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: 1 }).seq[0]] || {}).model;
-      const allowed = model && catalog.ceilingCheck(model, cfg);
+      const allowed = model && [cfg, this.cfg].map(c => catalog.ceilingCheck(model, c)).find(c => !c.allowed) || (model && { allowed: true });
       if (!allowed || !allowed.allowed) return end('rejected', { error: `model ${model} not permitted: ${allowed ? allowed.reason : 'unknown'}` });
       const effort = job.effort || 'medium';
-      if (!EFFORTS.includes(effort) || EFFORTS.indexOf(effort) > EFFORTS.indexOf(cfg.codexMaxEffort)) return end('rejected', { error: `effort ${effort} is unknown or exceeds the ceiling ${cfg.codexMaxEffort}` });
+      if (!EFFORTS.includes(effort) || !within(model, effort)) return end('rejected', { error: `effort ${effort} is unknown or exceeds the ceiling` });
       let idx = rungs.findIndex(r => r.model === model && r.effort === effort);
       if (idx < 0) {
         const same = rungs.filter(r => r.model === model);
@@ -249,11 +252,14 @@ class Orchestrator {
     // Baselines live in a side file (they can be large); the ledger keeps only the small resume summary.
     const rfile = resumeFile(projDir, job.id);
     const rf = job.resumeFrom ? { ...store.readJson(rfile, {}), ...job.resumeFrom } : null;
-    let workdir = job.root, snap = null, resumeNote = null;
+    let workdir = job.root, snap = null, resumeNote = null, priorChanged = null;
     if (rf && rf.inplaceBase && job.isolation === 'inplace') {
       // Files changed while the job was stopped: continuing in place could overwrite them, so continue isolated.
       let now = null; try { now = worktree.snapshot(job.root, []).tree; } catch {}
       if (now !== rf.suspendTree) {
+        // What the stopped run changed in place becomes the worktree's base, so record it for the scope
+        // check. After a crash (no suspendTree) the run's edits and edits made meanwhile cannot be told apart.
+        try { priorChanged = worktree.diffTrees(job.root, rf.inplaceBase, rf.suspendTree || now); } catch { priorChanged = ['?']; }
         job = { ...job, isolation: 'worktree' };
         resumeNote = 'files changed while the job was stopped; continued in an isolated worktree';
         ledger.patch(projDir, job.id, { isolation: 'worktree', note: resumeNote });
@@ -341,7 +347,7 @@ class Orchestrator {
         if (res.errorKind === 'model_unavailable') {
           provider.markUnavailable(rung.model, res.error, 24 * 3600e3);
           if (route.override) return end('rejected', { error: `requested model unavailable: ${sanitize(res.error, 300)}`, attempts });
-          rungs = catalog.rungs(env.models, cfg, provider.unavailable());
+          rungs = permitted(catalog.rungs(env.models, cfg, provider.unavailable()));
           if (!rungs.length) return end('codex_unavailable', { error: 'no remaining Codex model is available to this account', attempts });
           const d = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: job.maxAttempts - n + 1 + extra });
           idx = d.seq[0]; extra++; threadId = null; continue;
@@ -408,7 +414,7 @@ class Orchestrator {
     let status;
     if (job.mode !== 'implement') status = report ? (report.status === 'done' ? 'answered' : report.status) : 'failed';
     else if (!report) status = 'failed';
-    else if (verification) status = verification.environment ? 'unverified' : verification.ok && report.status === 'done' ? 'verified' : 'failed_verification';
+    else if (verification) status = verification.environment ? (report.status === 'done' ? 'unverified' : report.status) : verification.ok && report.status === 'done' ? 'verified' : 'failed_verification';
     else status = report.status === 'done' ? 'unverified' : report.status;
 
     // ---- integrity: a pass obtained by changing the check itself is not a pass ----
@@ -427,7 +433,7 @@ class Orchestrator {
       if (del.length) integrity.deletedTests = del;
     }
     if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests || integrity.modifiedTests || integrity.testScanError)) status = 'unverified';
-    return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, inplaceBase, reported, wtChanges, snap, verifyCmd });
+    return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, inplaceBase, reported, wtChanges, snap, verifyCmd, priorChanged });
   }
 
   async finish(job, projDir, entry, wt, status, x) {
@@ -461,6 +467,14 @@ class Orchestrator {
         result.error = 'Out-of-scope in-place changes detected (by this job, or edits made meanwhile outside Tandem). Review the diff; Tandem did not revert any file.';
       }
     }
+    if (x.priorChanged && x.priorChanged.length) {
+      result.changedBeforeResume = x.priorChanged;
+      const oos = job.paths.length ? x.priorChanged.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
+      if (oos.length && ['verified', 'unverified'].includes(status)) {
+        status = 'unverified';
+        result.error = `Before the resume, files outside the job's scope changed in place (by the interrupted run, or by you meanwhile): ${oos.join(', ')}. Review them; Tandem did not revert anything.`;
+      }
+    }
     if (wt) {
       let changes = x.wtChanges;
       if (!changes) { try { changes = worktree.changes(wt); } catch { changes = []; } }
@@ -478,6 +492,12 @@ class Orchestrator {
         const deadline = Date.now() + cfg.jobTimeoutMs;
         while (!(acq = ledger.tryIntegrate(projDir, job.id, result.changed)).acquired) {
           if (acq.gone) return ledger.get(projDir, job.id);
+          if (entry.cancelled && entry.suspendReason) {
+            status = 'suspended'; // the finished work stays in the kept worktree; a resume re-checks and integrates it
+            result.suspension = entry.suspendReason;
+            result.resumeFrom = { threadId: null, worktree: { path: wt.path, base: x.snap.commit, tree: x.snap.tree } };
+            break;
+          }
           if (entry.cancelled || Date.now() >= deadline) {
             status = entry.cancelled ? 'cancelled' : 'conflict';
             result.integration = { conflicts: [{ path: '-', reason: 'integration wait cancelled or timed out' }] };

@@ -177,3 +177,17 @@ test('Claude gone: session end suspends the live job; the tandem CLI continues i
   assert.match(st.stdout, /\[todo\] i2 needs the lead/, 'non-delegated work is left for the lead');
   assert.equal(H.calls(dir).filter(x => /ITEMTASK/.test(x.prompt)).length, 1);
 });
+
+test('MCP: a suspended job reports how to continue, and its kept work cannot be discarded until it is closed', async () => {
+  H.resetEnv();
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'a.txt': 'half' }] }, { 'a.txt': 'old' });
+  const s = server(dir);
+  try {
+    await s.rpc('initialize', {});
+    const out = await s.text('codex_run', { task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt'], verify: 'none', isolation: 'worktree' });
+    assert.match(out, /SUSPENDED \((rate_limited|quota_exhausted)\)[\s\S]*codex_jobs resume=j1/);
+    assert.match(await s.text('codex_jobs', { discard: 'j1' }), /resumable; codex_jobs takeover=j1 first/);
+    assert.match(await s.text('codex_jobs', { takeover: 'j1', note: 'done by hand' }), /taken_over/);
+    assert.match(await s.text('codex_jobs', { discard: 'j1' }), /deleted worktree/);
+  } finally { s.close(); }
+});

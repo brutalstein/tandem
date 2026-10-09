@@ -118,10 +118,14 @@ What a resume reuses (`result.resumeFrom` in the ledger, baselines in `projects/
 - **Codex thread.** An implement turn continues the same Codex conversation (`codex exec resume`), with a prompt that says it was interrupted and that the tree holds its partial work. Ask/review turns are ephemeral and restart.
 - **Workspace.** An isolated job continues in its kept worktree; dependency links are re-created. An in-place job continues in place only if the project tree is byte-identical to when it stopped; otherwise it continues in an isolated worktree, so it cannot overwrite edits made meanwhile.
 - **Baselines.** The pre-job snapshot, dirty-file set and test fingerprints are those of the original run, so partial edits stay attributed to the job and test tampering before the stop is still detected. They are written when the run starts, so even a crashed run resumes with them.
-- **Authorization.** Each job records the ceilings it was submitted under (`ceiling`); a resume from the CLI or another session runs under those, never wider. A resume never changes the job's scope, mode or check.
+- **Authorization.** Each job records the ceilings it was submitted under (`ceiling`). A resume runs under both those and the ceilings in force now, so the stricter wins. The CLI refuses to resume a job without recorded ceilings (older Tandem); resume those from Claude Code. A resume never changes the job's scope, mode or check.
+- **Edits before an isolated resume.** When a resume is forced into a worktree, the files the stopped run changed in place are listed (`changedBeforeResume`) and scope-checked; one outside the job's paths makes the result `unverified`. After a crash, the run's edits and edits made meanwhile cannot be told apart, so both are listed.
+- **Integration wait.** A job stopped while waiting to integrate verified work is suspended with its worktree kept; a resume re-checks and integrates it.
 - **History.** Attempts from before the stop are kept, marked `before`; `history` records each transition.
 
-`takeover` closes a stopped job that Claude or the user finished another way, so it is never resumed and repeated.
+`takeover` closes a stopped job that Claude or the user finished another way, so it is never resumed and repeated. A taken-over job satisfies its dependents (the lead says the work exists). A resumable job's kept worktree cannot be discarded until the job is taken over.
+
+`tandem continue` resumes only jobs whose wait is over (`--now`: also those still waiting for a recorded reset), and a dependency-suspended job once its dependencies are due, running or done. `resume` checks every id before starting any.
 
 **Checkpoint.** `tandem_checkpoint` stores the objective, acceptance criteria, constraints, decisions and plan items outside any conversation. An item with a `delegate` spec (codex_run arguments, plus the ceilings in force when it was written) is authorized for Codex; `tandem continue` runs only those, and resumes due jobs. Items complete when their job ends verified, answered or taken over.
 

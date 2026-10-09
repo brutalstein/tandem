@@ -231,6 +231,8 @@ const handlers = {
       const kept = j && j.result && j.result.worktreeKept;
       if (!kept || !fs.existsSync(kept)) return `job ${a.discard} has no kept worktree`;
       if (ledger.ACTIVE.has(j.status)) return `job ${a.discard} is still ${j.status}`;
+      // Its partial work is what a resume continues from: decide first (takeover closes it).
+      if (ledger.RESUMABLE.has(j.status)) return `job ${a.discard} is ${j.status} and resumable; codex_jobs takeover=${a.discard} first, then discard`;
       // The persisted ledger is not a filesystem authority. Deletion must stay
       // within the managed worktree directory for this project.
       worktree.assertManaged(root, kept);

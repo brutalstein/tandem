@@ -7,6 +7,19 @@
 - **A provider stopping no longer fails the job.** A Codex usage/rate limit, lost login or missing CLI (before or during a turn), the Claude Code session ending, and Ctrl+C in the CLI now end a job `suspended` with its partial work kept; a crashed owner still ends `interrupted`. Both are resumable. Previously the first group ended `codex_unavailable` (a limit mid-turn) or `cancelled` (session end). `codex_unavailable` remains only for "no permitted model".
 - A dependent of a stopped job is suspended with it instead of being skipped.
 - A completed Codex turn clears a recorded provider-wide outage early.
+- A resume applies both the job's recorded ceilings and the current ones (stricter wins).
+- A taken-over dependency satisfies its dependents.
+
+### Fixed (independent review of this branch, each with a regression test)
+
+- A job isolated only because its paths were busy now resumes in its kept worktree instead of in place.
+- Suspending a verified job while it waits to integrate kept it `cancelled` and deleted its worktree; it is now suspended with the work kept.
+- A missing check program no longer turns a `partial`/`failed` report into an integrable `unverified` result.
+- `codex_unavailable` and pre-ceiling jobs are no longer picked up by `tandem continue`; `resume` validates every id before starting any.
+- Dependency-suspended jobs now run under `tandem continue`.
+- In-place edits made before a drift-forced isolated resume are scope-checked.
+- `discard` refuses a resumable job's worktree.
+- Skill lock entries are validated (no path names, no inherited keys); `--path` is compared by real path (absolute, other-drive, UNC and link targets refused).
 
 ### Added
 

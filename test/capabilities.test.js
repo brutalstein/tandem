@@ -161,3 +161,28 @@ test('CLI: a git source must be pinned to a commit and is fetched at exactly tha
   assert.match(cli('add', url, '--ref', sha, '--path', '../..').stderr, /escapes/);
   assert.match(cli('verify').stdout, /ok\s+hello/);
 });
+
+test('review: lock entries from the repository cannot name paths, and inherited names do not count as installed', () => {
+  const root = H.repo();
+  fs.mkdirSync(path.join(root, '.agents', 'skills', 'constructor'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.agents', 'skills', 'tandem-lock.json'), JSON.stringify({ v: 1, skills: { '../../src': { sha256: 'x' }, 'constructor': undefined } }));
+  H.write(root, { 'src/keep.txt': 'precious' });
+  assert.deepEqual(Object.keys(cap.readLock(root)), []);
+  assert.throws(() => cap.uninstall(root, '../../src'), /unsafe skill name/);
+  assert.throws(() => cap.rollback(root, '../../src'), /unsafe skill name/);
+  assert.equal(H.read(root, 'src/keep.txt'), 'precious');
+  const imp = path.join(H.TMP, 'ctor'); skill(imp, 'name: constructor\ndescription: imposter');
+  assert.throws(() => cap.install(root, imp, { source: imp, force: true }), /not installed by tandem/);
+});
+
+test('review CLI: --path cannot leave the source (absolute, other drive, ..)', () => {
+  const root = H.repo();
+  const src = path.join(H.TMP, 'pathsrc'); skill(path.join(src, 'inner'), 'name: inner\ndescription: inner skill');
+  const outside = path.join(H.TMP, 'outside'); skill(outside, 'name: outside\ndescription: outside skill');
+  const cli = (...a) => spawnSync(process.execPath, [path.join(H.ROOT, 'bin', 'tandem.js'), 'skills', ...a, '--cwd', root], { encoding: 'utf8' });
+  const srcRepo = H.repo(null, { 'x/SKILL.md': '---\nname: x\ndescription: x skill\n---\n' });
+  const url = 'file://' + srcRepo.replace(/\\/g, '/').replace(/^([A-Za-z]):/, '/$1:');
+  const sha = H.git(srcRepo, 'rev-parse', 'HEAD');
+  for (const p of [outside, '../outside', '..']) assert.match(cli('add', url, '--ref', sha, '--path', p).stderr, /escapes/, p);
+  assert.ok(!fs.existsSync(path.join(root, '.agents', 'skills', 'outside')));
+});

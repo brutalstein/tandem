@@ -47,8 +47,20 @@ function parse(argv) {
   return o;
 }
 
-const isDue = (j, now = Date.now()) => ledger.RESUMABLE.has(j.status) && !(j.result && j.result.suspension && j.result.suspension.kind === 'dependency') &&
-  (!(j.result && j.result.suspension) || j.result.suspension.waitFor !== 'time' || (j.result.suspension.until || 0) <= now);
+// Only jobs that carry their authorization (ceilings recorded at submission) run from here; older
+// stopped jobs are resumed from Claude Code, where the plugin's settings apply.
+const resumable = j => ledger.RESUMABLE.has(j.status) && !!j.ceiling;
+const kind = j => j.result && j.result.suspension && j.result.suspension.kind;
+const waitOver = (j, now) => { const sp = j.result && j.result.suspension; return !sp || sp.waitFor !== 'time' || (sp.until || 0) <= now; };
+const seq = id => Number(String(id).slice(1));
+function dueIds(jobs, now = Date.now()) {
+  const byId = new Map(jobs.map(j => [j.id, j]));
+  const due = new Set(jobs.filter(j => resumable(j) && kind(j) !== 'dependency' && waitOver(j, now)).map(j => j.id));
+  // A job stopped for its dependency is due once each dependency is due, running or done (in id order, so chains work).
+  const fine = d => due.has(d) || (byId.get(d) && (ledger.ACTIVE.has(byId.get(d).status) || ledger.SUCCESS.has(byId.get(d).status) || byId.get(d).status === 'taken_over'));
+  for (const j of jobs.filter(j => resumable(j) && kind(j) === 'dependency').sort((a, b) => seq(a.id) - seq(b.id))) if ((j.after || []).every(fine)) due.add(j.id);
+  return [...due];
+}
 
 async function status(orch, o) {
   const { root, projDir } = orch.ctx(o.cwd);
@@ -58,11 +70,11 @@ async function status(orch, o) {
   const L = [`project ${root}`,
     `codex: ${ps.state}${ps.until ? ' until ' + new Date(ps.until).toLocaleString() : ''}${ps.reason ? ' (' + ps.reason + ')' : ''}`,
     'claude: not observable from here (Tandem cannot read Claude quota); use Claude Code when it is available'];
-  const stopped = jobs.filter(j => ledger.RESUMABLE.has(j.status));
+  const stopped = jobs.filter(j => ledger.RESUMABLE.has(j.status)), due = new Set(dueIds(jobs));
   L.push(stopped.length ? 'stopped jobs (resumable):' : 'stopped jobs: none');
   for (const j of stopped) {
     const sp = (j.result && j.result.suspension) || {};
-    L.push(`  ${j.id} ${j.status}${sp.kind ? ' ' + sp.kind : ''}${sp.until ? ' until ' + new Date(sp.until).toLocaleString() : ''}${isDue(j) ? ' [due]' : ''} [${j.mode}] ${j.task.slice(0, 80)}`);
+    L.push(`  ${j.id} ${j.status}${sp.kind ? ' ' + sp.kind : ''}${sp.until ? ' until ' + new Date(sp.until).toLocaleString() : ''}${due.has(j.id) ? ' [due]' : j.ceiling ? '' : ' [resume from Claude Code]'} [${j.mode}] ${j.task.slice(0, 80)}`);
   }
   const active = jobs.filter(j => ledger.ACTIVE.has(j.status));
   if (active.length) L.push('active: ' + active.map(j => `${j.id} ${j.status}`).join(', '));
@@ -110,7 +122,19 @@ function skills(root, projDir, o) {
     } catch (e) { fs.rmSync(tmp, { recursive: true, force: true }); throw new Error('git fetch failed: ' + String(e.stderr || e.message).trim().slice(0, 300)); }
     dir = tmp; ref = o.ref;
   }
-  if (o.path) { dir = path.resolve(dir, o.path); if (path.relative(tmp || path.resolve(src), dir).startsWith('..')) throw new Error('--path escapes the source'); }
+  if (o.path) {
+    // Compare real paths: an absolute path, another drive, a UNC path or a link/junction must not lead outside the source.
+    const base = fs.realpathSync(tmp || path.resolve(src));
+    const target = path.resolve(base, o.path);
+    let real = null;
+    try { if (!fs.lstatSync(target).isSymbolicLink()) real = fs.realpathSync(target); } catch {}
+    const rel = real && path.relative(base, real);
+    if (path.isAbsolute(o.path) || rel === null || rel.startsWith('..') || path.isAbsolute(rel)) {
+      if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+      throw new Error('--path escapes the source (or is a link, or does not exist)');
+    }
+    dir = real;
+  }
   try {
     const r = capabilities.install(root, path.resolve(dir), { source: src + (o.path ? '#' + o.path : ''), ref, allowScripts: !!o['allow-scripts'], force: !!o.force });
     console.log(`installed ${r.name} -> ${r.path} (${r.files} files, sha256 ${r.sha256.slice(0, 16)})${r.executable.length ? '\nWARNING: contains executable content Codex may run: ' + r.executable.join(', ') : ''}`);
@@ -157,11 +181,16 @@ async function main() {
   }
   if (cmd === 'resume' || cmd === 'continue') {
     const jobs = ledger.list(projDir);
-    const ids = cmd === 'continue' || o.due ? jobs.filter(j => isDue(j)).map(j => j.id)
-      : o.all ? jobs.filter(j => ledger.RESUMABLE.has(j.status)).map(j => j.id) : o._;
+    const ids = cmd === 'continue' || o.due ? dueIds(jobs, o.now ? Infinity : Date.now()) : o.all ? jobs.filter(resumable).map(j => j.id) : o._;
     if (cmd === 'resume' && !ids.length && !o.due && !o.all) throw new Error('resume needs job ids, --due or --all');
+    // Check every id first: nothing starts unless all of them can.
+    for (const id of ids) {
+      const j = jobs.find(x => x.id === id);
+      if (!j || !ledger.RESUMABLE.has(j.status)) throw new Error(`${id} is ${j ? j.status : 'unknown'}; only suspended or interrupted jobs can be resumed`);
+      if (!j.ceiling) throw new Error(`${id} has no recorded authorization ceilings (older Tandem); resume it from Claude Code: codex_jobs resume=${id}`);
+    }
     // Dependencies first (lower ids), so a dependent queues behind its resumed dependency.
-    const started = ids.sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))).map((id, i) => orch.resume(id, o.cwd, { now: !!o.now && i === 0 }));
+    const started = ids.sort((a, b) => seq(a) - seq(b)).map((id, i) => orch.resume(id, o.cwd, { now: !!o.now && i === 0 }));
     if (cmd === 'continue') {
       const cp = checkpoint.load(projDir);
       for (const it of cp.items.filter(x => x.status === 'todo' && x.delegate && !x.job)) {

@@ -54,16 +54,23 @@ function locations(root) {
   return L;
 }
 
+// The lock lives in the repository and may come from someone else: only well-formed own entries count.
+const SAFE_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
+const ownEntries = skills => {
+  const out = Object.create(null);
+  for (const [n, e] of Object.entries(skills)) if (SAFE_NAME.test(n) && e && typeof e.sha256 === 'string') out[n] = e;
+  return out;
+};
 // A partially written skill lock must never be treated as an empty allow-list:
- // doing so loses ownership records and makes safe rollback impossible. Read the
- // last good backup, but fail closed if both copies exist and are invalid.
+// doing so loses ownership records and makes safe rollback impossible. Read the
+// last good backup, but fail closed if both copies exist and are invalid.
 function readLock(root) {
   const file = path.join(root, '.agents', 'skills', 'tandem-lock.json');
-  if (!fs.existsSync(file) && !fs.existsSync(file + '.bak')) return {};
+  if (!fs.existsSync(file) && !fs.existsSync(file + '.bak')) return Object.create(null);
   for (const p of [file, file + '.bak']) {
     try {
       const d = JSON.parse(fs.readFileSync(p, 'utf8'));
-      if (d && d.v === 1 && d.skills && typeof d.skills === 'object' && !Array.isArray(d.skills)) return d.skills;
+      if (d && d.v === 1 && d.skills && typeof d.skills === 'object' && !Array.isArray(d.skills)) return ownEntries(d.skills);
     } catch {}
   }
   throw new Error('Tandem skill lock is corrupt; refusing changes. Restore tandem-lock.json or its .bak');
@@ -173,7 +180,7 @@ function installUnlocked(root, src, { source, ref = null, allowScripts = false, 
   if (!fs.existsSync(path.join(src, 'SKILL.md'))) throw new Error(`no SKILL.md in ${src}`);
   const fm = frontMatter(fs.readFileSync(path.join(src, 'SKILL.md'), 'utf8'));
   const name = fm.name || path.basename(src);
-  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(name)) throw new Error(`unsafe skill name "${name}"`);
+  if (!SAFE_NAME.test(name)) throw new Error(`unsafe skill name "${name}"`);
   if (!fm.description) throw new Error('SKILL.md has no description');
   const files = listFiles(src);
   const bytes = files.reduce((a, f) => a + fs.statSync(path.join(src, f)).size, 0);
@@ -203,6 +210,7 @@ function verifyInstalled(root) {
 }
 
 function uninstallUnlocked(root, name) {
+  if (!SAFE_NAME.test(String(name))) throw new Error('unsafe skill name');
   const lock = readLock(root);
   if (!lock[name]) throw new Error(`${name} was not installed by tandem`);
   fs.rmSync(path.join(SKILLS(root), name), { recursive: true, force: true });
@@ -212,6 +220,7 @@ function uninstallUnlocked(root, name) {
 }
 
 function rollbackUnlocked(root, name) {
+  if (!SAFE_NAME.test(String(name))) throw new Error('unsafe skill name');
   const lock = readLock(root), e = lock[name];
   const dir = path.join(SKILLS(root), name), prev = path.join(SKILLS(root), `.${name}.prev`);
   if (!e || !e.prev || !fs.existsSync(prev)) throw new Error(`no previous version of ${name} to roll back to`);
