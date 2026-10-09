@@ -90,7 +90,11 @@ function withLock(file, fn) {
       if (e.code !== 'EEXIST' && e.code !== 'EPERM') throw e;
       try {
         const [pid, t] = fs.readFileSync(lock, 'utf8').split(' ').map(Number);
-        if ((pid && !pidAlive(pid)) || Date.now() - (t || fs.statSync(lock).mtimeMs) > LOCK_STALE_MS) fs.unlinkSync(lock);
+        // Never steal a live owner's lock because a transaction ran longer than expected.
+        // Fail with a timeout instead of allowing two writers into the same critical section.
+        const age = Date.now() - (t || fs.statSync(lock).mtimeMs);
+        if (pid && !pidAlive(pid) && age >= 1000) fs.unlinkSync(lock);
+        else if (!pid && age > LOCK_STALE_MS) fs.unlinkSync(lock);
       } catch {}
       if (Date.now() > deadline) throw new Error(`lock timeout: ${lock}`);
       sleepMs(wait);

@@ -18,6 +18,40 @@ const crypto = require('crypto');
 const { execFileSync, spawnSync } = require('child_process');
 const { DATA, mkdirp, projectKey } = require('./store');
 
+// Refuse path traversal and symlink/junction traversal, including in existing parents.
+// Lexical confinement alone is insufficient: fs.readFileSync/writeFileSync follow links.
+// This is defense-in-depth against accidental and model-created links, not an OS sandbox.
+function safeTarget(root, relative) {
+  if (typeof relative !== 'string' || !relative || relative.includes('\\0') || path.isAbsolute(relative))
+    throw new Error('invalid integration path');
+  const resolvedRoot = path.resolve(root);
+  const target = path.resolve(resolvedRoot, relative);
+  const rel = path.relative(resolvedRoot, target);
+  if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel))
+    throw new Error('integration path escapes repository');
+  let cur = resolvedRoot;
+  for (const part of rel.split(path.sep)) {
+    cur = path.join(cur, part);
+    let stat;
+    try { stat = fs.lstatSync(cur); }
+    catch (e) { if (e.code === 'ENOENT') continue; throw e; }
+    if (stat.isSymbolicLink()) throw new Error('symlink or junction in integration path: ' + relative);
+    if (cur === target && stat.isDirectory()) throw new Error('integration target is a directory: ' + relative);
+  }
+  return target;
+}
+
+// Only remove worktrees directly managed by Tandem for this exact repository.
+function assertManaged(root, wtPath) {
+  const parent = path.resolve(DATA, 'worktrees', projectKey(root));
+  const rel = path.relative(parent, path.resolve(wtPath));
+  if (!rel || rel === '.' || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel) || rel.includes(path.sep))
+    throw new Error('refusing to remove an unmanaged worktree');
+  try { if (fs.lstatSync(wtPath).isSymbolicLink()) throw new Error('refusing to remove a symlinked worktree'); }
+  catch (e) { if (e.code !== 'ENOENT') throw e; }
+  return path.resolve(wtPath);
+}
+
 const GIT_ID = { GIT_AUTHOR_NAME: 'tandem', GIT_AUTHOR_EMAIL: 'tandem@localhost', GIT_COMMITTER_NAME: 'tandem', GIT_COMMITTER_EMAIL: 'tandem@localhost' };
 
 function git(cwd, args, opts = {}) {
@@ -50,7 +84,7 @@ function snapshot(root, links = []) {
 
 function create(root, jobId, base, links = []) {
   const dir = path.join(mkdirp(path.join(DATA, 'worktrees', projectKey(root))), jobId);
-  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  if (fs.existsSync(dir)) throw new Error('worktree already exists; refusing to discard interrupted work: ' + dir);
   git(root, ['worktree', 'add', '--detach', '--quiet', dir, base]);
   const linked = [];
   for (const l of links) {
@@ -105,7 +139,14 @@ function mergeText(root, ours, base, theirs) {
 function plan(root, wt, changed) {
   const actions = [], conflicts = [];
   for (const c of changed) {
-    const dst = path.join(root, c.path);
+    let dst;
+    try {
+      dst = safeTarget(root, c.path);
+      if (c.status !== 'D') safeTarget(wt.path, c.path);
+    } catch (e) {
+      conflicts.push({ path: c.path, reason: 'unsafe integration path: ' + e.message });
+      continue;
+    }
     const base = baseContent(root, wt.base, c.path);
     const ours = read(dst);
     const theirs = c.status === 'D' ? null : read(path.join(wt.path, c.path));
@@ -120,14 +161,34 @@ function plan(root, wt, changed) {
   return { actions, conflicts };
 }
 
+// Atomic per-file replacement prevents truncated files on a write failure. It is not
+// a multi-file transaction: abrupt process death may still leave a partial merge.
+function atomicReplace(root, relative, content, expected) {
+  const dst = safeTarget(root, relative);
+  if (!same(read(dst), expected)) throw new Error(relative + ' changed during integration');
+  if (content === null) { fs.rmSync(dst, { force: true }); return; }
+  mkdirp(path.dirname(dst));
+  safeTarget(root, relative); // reject parents that became links while making directories
+  const tmp = dst + '.tandem-' + crypto.randomBytes(8).toString('hex') + '.tmp';
+  try {
+    fs.writeFileSync(tmp, content, { flag: 'wx' });
+    // Check again after preparing the replacement; rename replaces a leaf symlink,
+    // rather than following it. Parent-directory races remain an OS-level limitation.
+    safeTarget(root, relative);
+    if (!same(read(dst), expected)) throw new Error(relative + ' changed during integration');
+    try {
+      const st = fs.statSync(dst);
+      if (st.isFile()) fs.chmodSync(tmp, st.mode);
+    } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    fs.renameSync(tmp, dst);
+  } finally { try { fs.unlinkSync(tmp); } catch {} }
+}
+
 function apply(root, actions) {
   const done = [];
   try {
     for (const a of actions) {
-      const dst = path.join(root, a.path);
-      if (!same(read(dst), a.ours)) throw Object.assign(new Error(`${a.path} changed during integration`), { code: 'RACE' });
-      if (a.write === null) fs.rmSync(dst, { force: true });
-      else { mkdirp(path.dirname(dst)); fs.writeFileSync(dst, a.write); }
+      atomicReplace(root, a.path, a.write, a.ours);
       done.push(a);
     }
     return { applied: done.map(a => ({ path: a.path, how: a.how })) };
@@ -141,10 +202,12 @@ function apply(root, actions) {
 function revert(root, actions) {
   const restored = [];
   for (const a of [...actions].reverse()) {
-    const dst = path.join(root, a.path);
-    if (!same(read(dst), a.write)) continue;
-    if (a.ours === null) fs.rmSync(dst, { force: true }); else { mkdirp(path.dirname(dst)); fs.writeFileSync(dst, a.ours); }
-    restored.push(a.path);
+    try {
+      const dst = safeTarget(root, a.path);
+      if (!same(read(dst), a.write)) continue;
+      atomicReplace(root, a.path, a.ours, a.write);
+      restored.push(a.path);
+    } catch { /* Never overwrite unexpected changes or links during recovery. */ }
   }
   return restored;
 }
@@ -167,6 +230,7 @@ function unlinkLinks(wt) {
 }
 
 function remove(root, wt) {
+  assertManaged(root, wt.path);
   unlinkLinks(wt);
   fs.rmSync(wt.path, { recursive: true, force: true }); // Node's rm never follows links (git's removal does)
   try { git(root, ['worktree', 'prune']); } catch {}
@@ -175,4 +239,4 @@ function remove(root, wt) {
 // Has the user's working state moved since `tree` was snapshotted?
 function drifted(root, tree, links) { try { return snapshot(root, links).tree !== tree; } catch { return true; } }
 
-module.exports = { snapshot, create, changes, plan, apply, revert, integrate, remove, unlinkLinks, drifted, hasHead };
+module.exports = { snapshot, create, changes, plan, apply, revert, integrate, remove, unlinkLinks, drifted, hasHead, safeTarget, assertManaged };

@@ -3,7 +3,7 @@
 // files that define it so a job cannot "pass" by weakening its own test definition.
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { sha1, readJson } = require('./store');
 const { killTree } = require('./codex');
 
@@ -39,6 +39,29 @@ function definitionChanges(before, after) {
 
 const deletedTests = changes => changes.filter(c => c.status === 'D' && TEST_FILE.test(c.path)).map(c => c.path);
 
+// Include tracked AND untracked test files. Existing dirty tests are hashed before and
+// after execution, so modifying an already-dirty test also invalidates verification.
+function testFingerprint(dir) {
+  const fp = {};
+  let names;
+  try {
+    names = execFileSync('git', ['ls-files', '-c', '-o', '--exclude-standard', '-z'], {
+      cwd: dir, windowsHide: true, maxBuffer: 64 << 20,
+    }).toString('utf8').split('\\0');
+  } catch (e) { return { __scan_error__: String(e.message).slice(0, 200) }; }
+  for (const rel of new Set(names.filter(p => TEST_FILE.test(p.replace(/\\\\/g, '/'))))) {
+    const full = path.join(dir, rel);
+    try {
+      const st = fs.lstatSync(full);
+      fp[rel] = st.isSymbolicLink() ? 'symlink' : st.isFile() ? sha1(fs.readFileSync(full)) : 'not-a-file';
+    } catch (e) { fp[rel] = 'error:' + e.code; }
+  }
+  return fp;
+}
+const testChanges = (before, after) =>
+  [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])]
+    .filter(f => (before || {})[f] !== (after || {})[f]);
+
 function run(command, cwd, timeoutMs) {
   return new Promise(resolve => {
     const started = Date.now();
@@ -61,4 +84,4 @@ function run(command, cwd, timeoutMs) {
   });
 }
 
-module.exports = { detect, fingerprint, definitionChanges, deletedTests, run, TEST_FILE };
+module.exports = { detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, TEST_FILE };

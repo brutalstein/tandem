@@ -129,7 +129,7 @@ function formatJob(j, full = false) {
   if (rep.summary) L.push(frame(`codex report (${rep.status})`, rep.summary + (full && rep.verification ? `\nclaimed verification: ${rep.verification}` : '')));
   if (r.verification) L.push(`verification: \`${r.verification.command}\` ${r.verification.ok ? 'PASSED' : 'FAILED (exit ' + r.verification.code + ')'}` + (r.verification.tail ? '\n' + frame('test output', r.verification.tail) : ''));
   else if (j.mode === 'implement' && rep.status) L.push('verification: none run by Tandem — verify before trusting');
-  if (r.integrity) L.push(`INTEGRITY: ${r.integrity.verifyDefinitionChanged ? 'test definition changed (' + r.integrity.verifyDefinitionChanged.join(', ') + ') ' : ''}${r.integrity.deletedTests ? 'tests deleted (' + r.integrity.deletedTests.join(', ') + ')' : ''} — pass not counted as verified; review the diff`);
+  if (r.integrity) L.push(`INTEGRITY: ${r.integrity.verifyDefinitionChanged ? 'test definition changed (' + r.integrity.verifyDefinitionChanged.join(', ') + ') ' : ''}${r.integrity.deletedTests ? 'tests deleted (' + r.integrity.deletedTests.join(', ') + ') ' : ''}${r.integrity.modifiedTests ? 'test files changed (' + r.integrity.modifiedTests.join(', ') + ')' : ''} — pass not counted as verified; review the diff`);
   if (r.changed) L.push(`changed: ${r.changed.join(', ') || 'none'}`);
   if (r.outOfScope && r.outOfScope.length) L.push(`OUT OF SCOPE changes: ${r.outOfScope.join(', ')}`);
   if (r.integration) {
@@ -219,6 +219,9 @@ const handlers = {
       const kept = j && j.result && j.result.worktreeKept;
       if (!kept || !fs.existsSync(kept)) return `job ${a.discard} has no kept worktree`;
       if (ledger.ACTIVE.has(j.status)) return `job ${a.discard} is still ${j.status}`;
+      // The persisted ledger is not a filesystem authority. Deletion must stay
+      // within the managed worktree directory for this project.
+      worktree.assertManaged(root, kept);
       worktree.remove(root, { path: kept, linked: (j.worktree && j.worktree.linked) || [] });
       return `deleted worktree ${kept}`;
     }

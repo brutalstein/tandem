@@ -207,6 +207,7 @@ class Orchestrator {
     }
     const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null : job.verify === 'auto' ? verify.detect(workdir) : job.verify;
     const fpBefore = verifyCmd ? verify.fingerprint(workdir) : null;
+    const testsBefore = verifyCmd ? verify.testFingerprint(workdir) : null;
 
     // ---- attempts ----
     let idx = seq[0], threadId = null, threadModel = null, lastFail = null, report = null, verification = null;
@@ -263,16 +264,18 @@ class Orchestrator {
       threadId = res.threadId; threadModel = rung.model;
       report = parseReport(res.finalText);
       report.files_changed.forEach(f => { try { reported.add(confine(workdir, f)); } catch {} });
-      if (job.mode !== 'implement') { obs(report.status === 'done'); break; }
+      // Only successful FINAL results train the router positively (after scope, integrity
+      // and integration checks in finish). A failed intermediate attempt is still evidence.
+      if (job.mode !== 'implement') { if (report.status !== 'done') obs(false); break; }
       if (report.status === 'blocked') { obs(false); break; }
-      if (!verifyCmd) { obs(report.status === 'done'); break; }
+      if (!verifyCmd) { if (report.status !== 'done') obs(false); break; }
       this.onProgress(job.id, `verifying: ${verifyCmd}`);
       verification = await verify.run(verifyCmd, workdir, cfg.verifyTimeoutMs);
       att.verified = verification.ok; att.verifyMs = verification.ms;
       ledger.patch(projDir, job.id, { attempts });
       const ok = verification.ok && report.status === 'done';
-      obs(ok);
       if (ok) break;
+      obs(false);
       lastFail = { text: `Verification command \`${verifyCmd}\` ${verification.ok ? 'passed but you reported status ' + report.status : 'failed (exit ' + verification.code + ')'}:\n${verification.tail}`, report };
       idx = policy.next(projDir, { cls, rungs, cfg, at: idx, attemptsLeft: job.maxAttempts + extra - n });
     }
@@ -289,6 +292,8 @@ class Orchestrator {
     if (verifyCmd) {
       const changedDefs = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
       if (changedDefs.length) integrity.verifyDefinitionChanged = changedDefs;
+      const changedTests = verify.testChanges(testsBefore, verify.testFingerprint(workdir));
+      if (changedTests.length) integrity.modifiedTests = changedTests;
     }
     let wtChanges = null;
     if (wt) {
@@ -296,7 +301,7 @@ class Orchestrator {
       const del = verify.deletedTests(wtChanges);
       if (del.length) integrity.deletedTests = del;
     }
-    if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests)) status = 'unverified';
+    if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests || integrity.modifiedTests)) status = 'unverified';
     return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, reported, wtChanges, snap, verifyCmd });
   }
 
@@ -311,20 +316,35 @@ class Orchestrator {
       for (const f of gitDirty(job.root)) if (!x.dirtyBefore.has(f) && !held.some(p => ledger.overlaps(p, f))) changed.add(f);
       result.changed = [...changed].sort();
       result.outOfScope = job.paths.length ? result.changed.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
+      if (result.outOfScope.length && ['verified', 'unverified'].includes(status)) {
+        status = 'failed_verification';
+        result.error = 'Out-of-scope in-place changes detected. Review the diff; Tandem did not revert user files.';
+      }
     }
     if (wt) {
       let changes = x.wtChanges;
       if (!changes) { try { changes = worktree.changes(wt); } catch { changes = []; } }
       result.changed = changes.map(c => c.path).sort();
       result.outOfScope = job.paths.length ? result.changed.filter(f => !job.paths.some(p => ledger.overlaps(p, f))) : [];
+      if (result.outOfScope.length) {
+        status = 'conflict';
+        result.integration = { conflicts: result.outOfScope.map(p => ({ path: p, reason: 'outside assigned scope' })) };
+      }
       const integrable = ['verified', 'unverified'].includes(status) && !result.outOfScope.length;
       if (integrable && changes.length) {
         // Integrate under a short path claim; wait for any in-place writer on those paths.
         let acq, delay = 100;
+        const deadline = Date.now() + cfg.jobTimeoutMs;
         while (!(acq = ledger.tryIntegrate(projDir, job.id, result.changed)).acquired) {
           if (acq.gone) return ledger.get(projDir, job.id);
+          if (entry.cancelled || Date.now() >= deadline) {
+            status = entry.cancelled ? 'cancelled' : 'conflict';
+            result.integration = { conflicts: [{ path: '-', reason: 'integration wait cancelled or timed out' }] };
+            break;
+          }
           await new Promise(r => setTimeout(r, delay)); delay = Math.min(delay * 2, 2000);
         }
+        if (acq.acquired) {
         const drift = x.snap && worktree.drifted(job.root, x.snap.tree, cfg.worktreeLinks);
         const p = worktree.plan(job.root, wt, changes);
         if (p.conflicts.length) { status = 'conflict'; result.integration = { conflicts: p.conflicts, worktree: wt.path }; }
@@ -343,6 +363,7 @@ class Orchestrator {
             }
           }
         }
+        }
       } else if (integrable) result.integration = { applied: [] };
       // Keep the worktree whenever it holds changes that did not land (nothing is silently discarded).
       const landed = result.integration && !result.integration.conflicts && !result.integration.reverted;
@@ -356,6 +377,20 @@ class Orchestrator {
       for (const f of ((x.report && x.report.findings) || [])) ids.push(memory.write(projDir, job.root, { kind: 'fact', text: f, source: { agent: 'codex', model: last.model, job: job.id } }).id);
     } catch (e) { store.logError('memory', e); }
     result.memoryIds = ids;
+    // The final outcome (including a merge, scope check and test-integrity check) is the
+    // only source of positive routing evidence. Earlier failed attempts were already recorded.
+    if ((status === 'verified' || status === 'answered') && x.attempts && x.attempts.length) {
+      const a = x.attempts.at(-1), u = a.tokens || {};
+      if (!a.errorKind) {
+        try {
+          policy.record(projDir, job.mode + '|' + job.difficulty, {
+            r: a.model + '@' + a.effort, ok: true, cond: x.attempts.length > 1,
+            tin: u.in || 0, tc: u.cached || 0, tout: u.out || 0,
+            sec: ((a.ms || 0) + (a.verifyMs || 0)) / 1000,
+          });
+        } catch (e) { store.logError('routing evidence', e); }
+      }
+    }
     ledger.patch(projDir, job.id, { status, result });
     return ledger.get(projDir, job.id);
   }

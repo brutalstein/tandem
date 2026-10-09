@@ -22,7 +22,7 @@ const HEARTBEAT_MS = 15000;
 const KEEP_FINISHED = 60;
 const ACTIVE = new Set(['queued', 'running', 'integrating']);
 const HOLDING = new Set(['running', 'integrating']);
-const SUCCESS = new Set(['verified', 'unverified', 'answered']);
+const SUCCESS = new Set(['verified', 'answered']); // unverified changes must not satisfy dependencies
 
 const SESSION_ID = `${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 const file = projDir => path.join(projDir, 'ledger.json');
