@@ -292,7 +292,10 @@ class Orchestrator {
     if (verifyCmd) {
       const changedDefs = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
       if (changedDefs.length) integrity.verifyDefinitionChanged = changedDefs;
-      const changedTests = verify.testChanges(testsBefore, verify.testFingerprint(workdir));
+      const afterTests = verify.testFingerprint(workdir);
+      if (Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(afterTests, '__scan_error__'))
+        integrity.testScanError = 'could not inspect test files';
+      const changedTests = verify.testChanges(testsBefore, afterTests);
       if (changedTests.length) integrity.modifiedTests = changedTests;
     }
     let wtChanges = null;
@@ -301,7 +304,7 @@ class Orchestrator {
       const del = verify.deletedTests(wtChanges);
       if (del.length) integrity.deletedTests = del;
     }
-    if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests || integrity.modifiedTests)) status = 'unverified';
+    if (status === 'verified' && (integrity.verifyDefinitionChanged || integrity.deletedTests || integrity.modifiedTests || integrity.testScanError)) status = 'unverified';
     return this.finish(job, projDir, entry, wt, status, { report, verification, usage, attempts, integrity, dirtyBefore, reported, wtChanges, snap, verifyCmd });
   }
 
@@ -384,7 +387,7 @@ class Orchestrator {
       if (!a.errorKind) {
         try {
           policy.record(projDir, job.mode + '|' + job.difficulty, {
-            r: a.model + '@' + a.effort, ok: true, cond: x.attempts.length > 1,
+            r: a.model + '@' + a.effort, ok: true, verified: status === 'verified', cond: x.attempts.length > 1,
             tin: u.in || 0, tc: u.cached || 0, tout: u.out || 0,
             sec: ((a.ms || 0) + (a.verifyMs || 0)) / 1000,
           });
