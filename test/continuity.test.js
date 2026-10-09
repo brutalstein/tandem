@@ -43,7 +43,7 @@ test('A: usage limit mid-run in a worktree: suspended with partial work kept; re
   assert.equal(last.args[1], 'resume', 'same Codex conversation continued');
   assert.equal(last.args[2], j.result.resumeFrom.threadId);
   assert.match(last.prompt, /interrupted/);
-  assert.equal(path.resolve(last.cwd), path.resolve(wt), 'same worktree');
+  assert.equal(fs.realpathSync.native(last.cwd), fs.realpathSync.native(wt), 'same worktree after platform path canonicalization');
   assert.equal(r.resumed, 2);
   assert.equal(r.attempts.filter(a => a.before).length, 1, 'earlier attempt history kept, marked');
   assert.ok(!codex.unavailable()['*'], 'a completed turn clears the provider outage');
@@ -150,7 +150,7 @@ test('crash: an interrupted job (owner died) resumes from its recorded worktree 
   scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
   const r = await o.resume(j.id, dir).promise;
   assert.equal(r.status, 'verified');
-  assert.equal(path.resolve(H.calls(dir).at(-1).cwd), path.resolve(j.worktree.path), 'continued in the same worktree');
+  assert.equal(fs.realpathSync.native(H.calls(dir).at(-1).cwd), fs.realpathSync.native(j.worktree.path), 'continued in the same canonical worktree');
   assert.match(H.calls(dir).at(-1).prompt, /interrupted/);
   assert.equal(H.read(dir, 'a.txt'), 'good');
 });
