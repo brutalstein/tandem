@@ -391,13 +391,17 @@ test('owner killed mid-integration (post-verification): the next start restores 
   assert.equal(fs.readdirSync(path.join(store.projectDir(dir), 'integrations')).length, 0);
 });
 
-test('defaults: an isolated job can run a check that needs the project\'s installed dependencies', async () => {
+test('explicit dependency-link opt-in runs isolated tests without reinstalling trusted dependencies', async () => {
   clean();
   const { config } = require('../server/config');
   const d = config();
+  assert.deepEqual(d.worktreeLinks, [], 'safe default does not expose original dependencies');
+  process.env.TANDEM_WORKTREE_LINKS = 'node_modules';
+  const trusted = config();
+  delete process.env.TANDEM_WORKTREE_LINKS;
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.js': 'module.exports = require("dep")' }] }, { 'a.js': 'old', '.gitignore': 'node_modules/\n' });
   H.write(dir, { 'node_modules/dep/index.js': 'module.exports = 42' });
-  const j = await run(orch({ isolation: d.isolation, worktreeLinks: d.worktreeLinks }), { cwd: dir, task: 'use dep', mode: 'implement', difficulty: 'normal', paths: ['a.js'],
+  const j = await run(orch({ isolation: d.isolation, worktreeLinks: trusted.worktreeLinks }), { cwd: dir, task: 'use dep', mode: 'implement', difficulty: 'normal', paths: ['a.js'],
     verify: `node -e "process.exit(require('./a.js')===42?0:1)"`, isolation: 'worktree', max_attempts: 1 });
   assert.equal(j.status, 'verified', JSON.stringify(j.result.verification));
   assert.equal(H.read(dir, 'node_modules/dep/index.js'), 'module.exports = 42', 'dependencies intact after cleanup');
