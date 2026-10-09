@@ -1,10 +1,18 @@
 {
   "name": "tandem",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Runs OpenAI Codex as a background worker inside Claude Code: cost-aware model routing, verified delegation, conflict-free parallel jobs and shared project memory.",
-  "author": { "name": "cenke" },
+  "author": {
+    "name": "Tandem contributors"
+  },
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "routing", "memory"],
+  "keywords": [
+    "codex",
+    "orchestration",
+    "multi-agent",
+    "routing",
+    "memory"
+  ],
   "userConfig": {
     "codex_max_model": {
       "type": "string",
@@ -12,19 +20,37 @@
       "description": "Highest Codex model Tandem may select (generation first, then family luna<terra<sol<astra).",
       "default": "gpt-6.1-sol"
     },
+    "codex_allowed_models": {
+      "type": "string",
+      "title": "Codex model allow-list",
+      "description": "Optional comma-separated list of exact Codex model slugs Tandem may use. When set it replaces the ceiling heuristic (use it for models whose names cannot be ranked).",
+      "default": ""
+    },
     "codex_max_effort": {
       "type": "string",
       "title": "Codex effort ceiling",
       "description": "Highest Codex reasoning effort Tandem may select.",
       "default": "xhigh",
-      "options": ["low", "medium", "high", "xhigh", "max", "ultra"]
+      "options": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+        "ultra"
+      ]
     },
     "claude_max_model": {
       "type": "string",
       "title": "Claude subagent ceiling",
       "description": "Highest Claude model allowed for subagents.",
       "default": "opus",
-      "options": ["haiku", "sonnet", "opus", "fable"]
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ]
     },
     "max_parallel": {
       "type": "number",
@@ -39,6 +65,47 @@
       "title": "Lean Codex prompts",
       "description": "Trim Codex's skill/plugin catalogs from delegated runs (about 35% fewer input tokens).",
       "default": true
+    },
+    "isolation": {
+      "type": "string",
+      "title": "Write isolation",
+      "description": "auto: edit in place, or in an isolated git worktree when another writer holds the paths. worktree: always isolate. inplace: never isolate (overlapping jobs queue).",
+      "default": "auto",
+      "options": [
+        "auto",
+        "inplace",
+        "worktree"
+      ]
+    },
+    "objective": {
+      "type": "string",
+      "title": "Routing objective",
+      "description": "What routing minimizes: balanced (tokens and wall time), tokens, or time.",
+      "default": "balanced",
+      "options": [
+        "balanced",
+        "tokens",
+        "time"
+      ]
+    }
+  },
+  "mcpServers": {
+    "tandem": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/server/mcp.js"
+      ],
+      "env": {
+        "TANDEM_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}",
+        "TANDEM_CODEX_MAX_MODEL": "${user_config.codex_max_model}",
+        "TANDEM_CODEX_ALLOWED_MODELS": "${user_config.codex_allowed_models}",
+        "TANDEM_CODEX_MAX_EFFORT": "${user_config.codex_max_effort}",
+        "TANDEM_CLAUDE_MAX_MODEL": "${user_config.claude_max_model}",
+        "TANDEM_MAX_PARALLEL": "${user_config.max_parallel}",
+        "TANDEM_LEAN_CODEX": "${user_config.lean_codex}",
+        "TANDEM_ISOLATION": "${user_config.isolation}",
+        "TANDEM_OBJECTIVE": "${user_config.objective}"
+      }
     }
   }
 }

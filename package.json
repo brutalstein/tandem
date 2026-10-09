@@ -1,12 +1,14 @@
 {
   "name": "tandem",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Claude Code plugin: OpenAI Codex as a background worker with routing, verification and shared memory.",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "node --test test/tandem.test.js",
+    "test": "node --test test/unit.test.js test/ledger.test.js test/worktree.test.js test/orchestrator.test.js test/surface.test.js",
     "test:real": "node test/real-integration.js",
     "bench": "node bench/bench.js",
     "validate": "claude plugin validate --strict . && claude plugin validate --strict .claude-plugin/plugin.json"

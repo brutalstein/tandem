@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // Deterministic stand-in for the Codex CLI. Behaviour per model comes from .fake-scenario.json in the
-// working directory; every exec call is logged to .fake-log.jsonl for assertions.
+// repository (found from a linked worktree too); every exec call is logged to .fake-log.jsonl there.
 const fs = require('fs');
 const path = require('path');
 
@@ -25,12 +25,20 @@ let prompt = '';
 process.stdin.on('data', d => { prompt += d; });
 process.stdin.on('end', () => {
   const cwd = process.cwd();
-  const scenario = JSON.parse(fs.readFileSync(path.join(cwd, '.fake-scenario.json'), 'utf8'));
+  let home = cwd;
+  if (!fs.existsSync(path.join(cwd, '.fake-scenario.json'))) {
+    // linked worktree: .git is a file 'gitdir: <repo>/.git/worktrees/<name>'
+    const gitdir = /gitdir:\s*(.+)/.exec(fs.readFileSync(path.join(cwd, '.git'), 'utf8'))[1].trim();
+    home = path.resolve(gitdir, '..', '..', '..');
+  }
+  const scenario = JSON.parse(fs.readFileSync(path.join(home, '.fake-scenario.json'), 'utf8'));
   const model = args[args.indexOf('-m') + 1];
-  const logFile = path.join(cwd, '.fake-log.jsonl');
+  const logFile = path.join(home, '.fake-log.jsonl');
   const n = fs.existsSync(logFile) ? fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean).length : 0;
-  fs.appendFileSync(logFile, JSON.stringify({ args, prompt, model, t: Date.now() }) + '\n');
-  const s = { ...scenario.default, ...(scenario[model] || {}) };
+  fs.appendFileSync(logFile, JSON.stringify({ args, prompt, model, cwd, t: Date.now() }) + '\n');
+  // byPrompt: { '<marker in the task text>': { writes, delayMs, status, action } } — order-independent per-job behaviour.
+  const tagged = Object.entries(scenario.byPrompt || {}).find(([k]) => prompt.includes(k));
+  const s = { ...scenario.default, ...(scenario[model] || {}), ...(tagged ? tagged[1] : {}) };
   const thread = args[1] === 'resume' ? args[2] : `thread-${n}`;
   out({ type: 'thread.started', thread_id: thread });
   out({ type: 'turn.started' });
@@ -38,12 +46,25 @@ process.stdin.on('end', () => {
   const fail = message => { out({ type: 'error', message }); out({ type: 'turn.failed', error: { message } }); process.exit(1); };
   if (s.action === 'unsupported') fail(`{"status":400,"error":{"message":"The '${model}' model is not supported when using Codex with a ChatGPT account."}}`);
   if (s.action === 'ratelimit') fail("You've hit your usage limit. Try again in 2h 5m.");
+  if (s.action === 'transient') fail('stream disconnected before completion: 503 Service Unavailable');
+  if (s.action === 'auth') fail('401 Unauthorized: please run codex login');
+  if (s.action === 'crash') process.exit(3);
+  if (s.action === 'flaky') out({ type: 'error', message: 'Reconnecting... 1/5 (stream disconnected before completion)' });
+  if (s.action === 'garbage') {
+    process.stdout.write('not json\n{"broken": \n' + 'x'.repeat(100000) + '\n[1,2]\n');
+    process.stdout.write(Buffer.from(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'ünïcödé ✓ preface' } }) + '\n').subarray(0, 65));
+    process.stdout.write(Buffer.from(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'ünïcödé ✓ preface' } }) + '\n').subarray(65));
+  }
   if (s.action === 'hang') { setInterval(() => {}, 1000); return; }
+  if (s.action === 'orphan') { // a tool process outlives codex and keeps the stdout pipe open
+    require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 8000)'], { stdio: ['ignore', 'inherit', 'inherit'], detached: true }).unref();
+    process.exit(1);
+  }
 
-  const writes = (scenario.writes || [])[n] || {};
+  const writes = (tagged && tagged[1].writes) || (scenario.writes || [])[n] || {};
   for (const [p, content] of Object.entries(writes)) {
-    fs.mkdirSync(path.dirname(path.join(cwd, p)), { recursive: true });
-    fs.writeFileSync(path.join(cwd, p), content);
+    if (content === null) fs.rmSync(path.join(cwd, p), { force: true });
+    else { fs.mkdirSync(path.dirname(path.join(cwd, p)), { recursive: true }); fs.writeFileSync(path.join(cwd, p), content); }
     out({ type: 'item.completed', item: { id: 'f' + n, type: 'file_change', changes: [{ path: p, kind: 'update' }] } });
   }
   const delay = s.delayMs || 0;

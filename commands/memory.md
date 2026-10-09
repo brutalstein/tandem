@@ -5,4 +5,4 @@ argument-hint: [query | "audit"]
 Arguments: $ARGUMENTS
 
 - With a query: `memory_search` it and show the results.
-- With "audit" (or nothing): `memory_search` with an empty query and `limit: 30`. For each STALE or unverified entry you can check quickly, confirm it against the code and `memory_update` it (verified, resolved, or reworded). Merge contradictions with `supersedes`. Report what changed.
+- With "audit" (or nothing): `memory_search` with an empty query and `limit: 30`. For each STALE or tentative entry you can check quickly, confirm it against the code and `memory_update` it (`verified: true`, `status: resolved` or `invalidated`, or reworded `text`). Retire contradicted decisions with `supersedes`. Report what changed.

@@ -2,7 +2,7 @@
   "name": "tandem-local",
   "description": "Local marketplace for the Tandem Claude Code + Codex orchestration plugin.",
   "owner": {
-    "name": "cenke"
+    "name": "Tandem contributors"
   },
   "plugins": [
     {

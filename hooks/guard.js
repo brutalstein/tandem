@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // PreToolUse guard:
-//  - file edits: deny when the file is owned by a running Codex write job (prevents conflicting edits)
+//  - file edits: deny when the file is owned by a running in-place Codex writer or an integration
 //  - Agent: deny a subagent model above the configured Claude ceiling
 const path = require('path');
 
@@ -27,15 +27,16 @@ function main(input) {
   const store = require('../server/store');
   const abs = path.resolve(input.cwd || process.cwd(), file);
   const root = store.projectRoot(path.dirname(abs));
-  const { activeClaims, overlaps, rel } = require('../server/jobs');
-  const target = rel(root, abs);
-  const hit = activeClaims(store.projectDir(root)).find(c => c.status === 'running' && c.paths.some(p => overlaps(p, target)));
-  if (hit) deny(`Tandem: ${target} is owned by running Codex job ${hit.id} (paths: ${hit.paths.join(', ')}). Wait for it (codex_wait) or cancel it (codex_jobs cancel) before editing.`);
+  const target = path.relative(root, abs).split(path.sep).join('/');
+  if (target.startsWith('..')) return;
+  const ledger = require('../server/ledger');
+  const hit = ledger.heldClaims(store.projectDir(root)).find(c => c.paths.some(p => ledger.overlaps(p, target)));
+  if (hit) deny(`Tandem: ${target} is owned by ${hit.status} Codex job ${hit.id} (paths: ${hit.paths.join(', ')}). Wait for it (codex_wait) or cancel it (codex_jobs cancel) before editing.`);
 }
 
 let raw = '';
 process.stdin.on('data', d => { raw += d; });
 process.stdin.on('end', () => {
-  // Never block the user's work because of a guard bug: fail open.
-  try { main(JSON.parse(raw || '{}')); } catch {}
+  // Never block the user's work because of a guard bug: fail open, but leave a trace.
+  try { main(JSON.parse(raw || '{}')); } catch (e) { try { require('../server/store').logError('guard hook', e); } catch {} }
 });
