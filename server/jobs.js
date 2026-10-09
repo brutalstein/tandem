@@ -373,7 +373,12 @@ class Orchestrator {
       // to prevent malicious package scripts or test fixtures from executing.
       const preDefinitions = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
       const preTestsNow = verify.testFingerprint(workdir);
-      const preTests = verify.testChanges(testsBefore, preTestsNow);
+      // Other Tandem jobs may legitimately update separate test files while this
+      // in-place job runs. Such files are excluded by the same ledger attribution
+      // rule used by the final integrity audit.
+      const foreignTests = wt ? [] : ledger.concurrentWrites(projDir, job.id);
+      const preTests = verify.testChanges(testsBefore, preTestsNow)
+        .filter(f => !foreignTests.some(p => ledger.overlaps(p, f)));
       const scanFailed = Object.hasOwn(testsBefore, '__scan_error__') || Object.hasOwn(preTestsNow, '__scan_error__');
       if (preDefinitions.length || preTests.length || scanFailed) {
         verification = {
