@@ -47,9 +47,9 @@ function testFingerprint(dir) {
   try {
     names = execFileSync('git', ['ls-files', '-c', '-o', '--exclude-standard', '-z'], {
       cwd: dir, windowsHide: true, maxBuffer: 64 << 20,
-    }).toString('utf8').split('\\0');
+    }).toString('utf8').split(String.fromCharCode(0));
   } catch (e) { return { __scan_error__: String(e.message).slice(0, 200) }; }
-  for (const rel of new Set(names.filter(p => TEST_FILE.test(p.replace(/\\\\/g, '/'))))) {
+  for (const rel of new Set(names.filter(p => TEST_FILE.test(p.replaceAll(String.fromCharCode(92), '/'))))) {
     const full = path.join(dir, rel);
     try {
       const st = fs.lstatSync(full);
