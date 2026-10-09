@@ -45,10 +45,9 @@ function config() {
     isolation: pick('isolation', ['auto', 'inplace', 'worktree'], 'auto'), // same default as plugin.json
     objective: pick('objective', ['balanced', 'tokens', 'time'], 'balanced'),
     exploration: opt('exploration') !== 'false',
-    // Without its dependencies a check cannot run in a worktree (the job fails, or the model reinstalls
-    // them). Writes through a link reach the real folder, as an in-place job's would; removal never
-    // follows links (worktree.remove). 'none' disables linking.
-    worktreeLinks: list('worktree_links').includes('none') ? [] : list('worktree_links').length ? list('worktree_links') : ['node_modules', '.venv', 'venv'],
+    // Dependency links are writable junctions/symlinks into the original project.
+    // Keep isolation meaningful by default: users may explicitly opt in for trusted jobs.
+    worktreeLinks: list('worktree_links').includes('none') ? [] : list('worktree_links'),
     jobTimeoutMs: num('job_timeout_min', 30, 1, 240) * 60000,
     verifyTimeoutMs: num('verify_timeout_min', 10, 1, 120) * 60000,
     problems,
