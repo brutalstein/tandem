@@ -263,6 +263,7 @@ function bootstrap(rowsByCluster, stat, B = 4000, seed = 'boot') {
     const v = stat(sample);
     if (Number.isFinite(v)) vals.push(v);
   }
+  if (!vals.length) return [NaN, NaN];
   vals.sort((a, b) => a - b);
   return [vals[Math.floor(0.025 * vals.length)], vals[Math.floor(0.975 * vals.length)]];
 }
@@ -308,7 +309,8 @@ function analyze(dir) {
     for (const r of valid.filter(x => x.arm === arm)) { const tr = valid.find(x => x.arm === 'tandem' && x.task === r.task && x.rep === r.rep); if (tr) pairs.push({ task: r.task, a: r, t: tr }); }
     if (!pairs.length) continue;
     const byTask = {}; for (const p of pairs) (byTask[p.task] = byTask[p.task] || []).push(p);
-    const ratio = s => mean(s.map(p => allTokens(p.t.usage))) / mean(s.map(p => allTokens(p.a.usage)));
+    // Effective tokens of both providers (Claude and Codex weighted equally): Claude arms have no Codex usage.
+    const ratio = s => mean(s.map(p => effective(p.t))) / mean(s.map(p => effective(p.a)));
     const timeRatio = s => mean(s.map(p => secs(p.t))) / mean(s.map(p => secs(p.a)));
     const dSucc = s => mean(s.map(p => (p.t.outcome === 'success') - (p.a.outcome === 'success')));
     summary.paired[arm] = { pairs: pairs.length, tandemTokensRatio: +ratio(pairs).toFixed(3), ratioCI: bootstrap(byTask, ratio).map(x => +x.toFixed(3)), tandemTimeRatio: +timeRatio(pairs).toFixed(3), timeRatioCI: bootstrap(byTask, timeRatio).map(x => +x.toFixed(3)), successDiff: +dSucc(pairs).toFixed(3), successDiffCI: bootstrap(byTask, dSucc).map(x => +x.toFixed(3)) };

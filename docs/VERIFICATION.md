@@ -88,6 +88,16 @@ What the simulated failover tests prove (`continuity.test.js`, `surface.test.js`
 
 What they do **not** prove: real quota exhaustion followed by a real reset (the provider's limit was not reached in this session), the real auth-loss path, and continuity of a real Claude Code session (Claude's own quota is not observable to Tandem). The real resume check covers the session-end path only.
 
+## Windows ACL repair on the development machine (2026-10-10)
+
+The user ran the prepared `repair.ps1` (backup and `rollback.ps1` in `C:ProgramData	andem-acl-backup-20261010`).
+
+Results, measured afterwards:
+- The home folder holds 0 Codex sandbox deny entries; before the repair it held 2.
+- Its ACL equals the backup minus exactly those two entries.
+- `node --test test/sandbox.test.js`: 5 pass, 0 fail. It now runs under the full sandbox. The ACL diagnostic passes; the fail-safe test skips because the full sandbox is available.
+- Inside the sandbox, `.ssh`, `.docker/config.json`, `.codex/auth.json`, `.claude/.credentials.json` and `.npmrc` all fail with `EPERM`.
+
 ## Independent review of p1-strategy (2026-10-10)
 
 The review was done by a fresh-context agent of the same model family; it is not a cross-provider review. It read `git diff origin/main..HEAD -- server/` and reproduced each finding with small scripts.

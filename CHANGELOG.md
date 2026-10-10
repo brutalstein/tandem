@@ -34,6 +34,10 @@
 - `bench/bench.js` refused nothing: any unknown flag, `--help` included, started the default real-provider run with no ceiling. This happened once during development and spent 0.58M Codex input tokens (0.46M cached) over 4 runs. It now exits on any unknown flag, and a real run needs both `--max-codex-input` and `--max-claude-input`.
 - Compatibility: a job suspended by an earlier version keeps its root-only check on resume. If the repository has one of the newly fingerprinted files, that resume reports a definition change and stays unverified.
 
+### Measured
+- Approved real pilot: 5 tasks × (Tandem, Claude-only), 10/10 independently verified. Tandem used ×0.63 the effective tokens (CI 0.46–0.87) and ×1.20 the time (docs/BENCHMARKS.md).
+- `bench --analyze` compared Codex-only tokens and crashed on Claude arms. It now compares effective tokens of both providers.
+
 ### Measured, unchanged
 - Start-up, hook latency, idle memory and per-job safety work match `main` within noise. `tools/list` grew by 50 bytes.
 

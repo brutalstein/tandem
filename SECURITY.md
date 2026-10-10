@@ -84,6 +84,6 @@ Full enforcement, every probe in the table above denied (including the read of t
 | Linux (Ubuntu) | CI | unprivileged user namespaces allowed (`kernel.apparmor_restrict_unprivileged_userns=0`); without it bubblewrap fails (`bwrap: loopback: Failed RTM_NEWADDR`), the sandbox does not start, and checks are not run | killed with the process group |
 | Linux (WSL2, Ubuntu) | development machine | none | killed with the process group |
 | Windows | CI | Codex's elevated sandbox (`[windows] sandbox = "elevated"`); without it the sandbox does not start and checks are not run | outlived the check, confined |
-| Windows | development machine | as above | outlived the check, confined; denied canary readable (Known limits), so the default setting refuses |
+| Windows | development machine | as above | before the ACL repair: a denied canary was readable (Known limits), so the default setting refused. After the targeted repair (VERIFICATION.md), the full sandbox runs: all adversarial checks pass, and `.ssh`, `.docker/config.json`, `.codex/auth.json`, `.claude/.credentials.json` and `.npmrc` are unreadable (`EPERM`) |
 
 A defect found by the Linux runs: Node gives a child process socket pairs as pipes, Codex's Linux sandbox filters socket calls, and Node inside it then wrote nothing to its output. Tandem's own probe is a Node script, so on Linux every check was refused even where the sandbox worked. Sandboxed output now goes through a file on Linux and macOS.

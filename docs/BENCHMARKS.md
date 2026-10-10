@@ -189,7 +189,26 @@ Small but realistic. Each has an independent grader.
   - Comparisons: paired by task and repetition.
 - **Quota.** A provider usage limit stops the run. The cell is recorded as `unavailable`, never as a failure, and re-running the same command resumes.
 
-### Results so far: pilot only, not statistically meaningful
+### P1 pilot (2026-10-10, approved budget: 2M Codex / 3M Claude raw input tokens)
+
+The user approved the budget first. The run: 5 tasks × 2 arms × 1 repetition, in randomized order, with the ceilings checked before every run. Raw data: `bench/data/real-p1-pilot/`. Setup: Codex CLI 0.154.0 and Claude Code with Sonnet, on Windows 11 with the full verification sandbox.
+
+| Arm | Independently verified successes | Effective tokens per success | Raw input, total | Wall time per run |
+|---|---|---|---|---|
+| tandem (Codex through Tandem) | 5/5 (Wilson 95%: 0.57–1) | 26.4k | 0.38M Codex | 27.9 s |
+| claude-only (Claude Code alone) | 5/5 (0.57–1) | 41.7k | 1.21M Claude, $0.65 reported | 23.2 s |
+
+The paired comparison over 5 pairs: Tandem used ×0.63 the effective tokens (95% CI 0.46–0.87), took ×1.20 the time (1.14–1.32), with no difference in success.
+
+How to read this:
+- Effective tokens weight Claude and Codex equally (`claude_cost_weight = 1`), and cached input counts at 0.1.
+- The tandem arm calls Tandem directly. It does not include the Claude turns that would hand the task over.
+- Five tasks are not a performance claim. The intervals are wide, and both arms solved every task, so this shows cost and time differences on easy-to-medium tasks only.
+- The claude-adaptive arm (Claude with Tandem's advice) was not run.
+
+Before the approved pilot, an accidental run spent 0.58M Codex input tokens over 4 runs (CHANGELOG). It is not part of these results.
+
+### Earlier results: pilot only, not statistically meaningful
 
 The first run stopped after 8 cells, when the Codex account reached its usage limit:
 

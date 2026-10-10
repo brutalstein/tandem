@@ -1,0 +1,163 @@
+{
+  "generated": "2026-10-10T19:35:51.763Z",
+  "n": 10,
+  "unavailable": 0,
+  "arms": {
+    "claude-only": {
+      "n": 5,
+      "success": 5,
+      "successRate": 1,
+      "successCI": [
+        0.566,
+        1
+      ],
+      "codexTokens": 0,
+      "codexTokensCI": [
+        0,
+        0
+      ],
+      "codexFreshTokens": 0,
+      "codexFreshTokensCI": [
+        0,
+        0
+      ],
+      "wallSec": 23.2,
+      "wallSecCI": [
+        17.5,
+        28.4
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 0,
+      "effectivePerSuccess": 41725,
+      "models": {},
+      "claude": {
+        "input": 241448,
+        "output": 1191,
+        "costUsdReported": 0.129
+      }
+    },
+    "tandem": {
+      "n": 5,
+      "success": 5,
+      "successRate": 1,
+      "successCI": [
+        0.566,
+        1
+      ],
+      "codexTokens": 77514,
+      "codexTokensCI": [
+        69202,
+        87648
+      ],
+      "codexFreshTokens": 20759,
+      "codexFreshTokensCI": [
+        19062,
+        22122
+      ],
+      "wallSec": 27.9,
+      "wallSecCI": [
+        23,
+        32.8
+      ],
+      "attempts": 1,
+      "tokensPerSuccess": 77514,
+      "effectivePerSuccess": 26434,
+      "models": {
+        "gpt-6-astra@low": 4,
+        "gpt-5.6-sol@low": 1
+      }
+    }
+  },
+  "perTask": {
+    "security-path-traversal": {
+      "claude-only": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 0,
+        "wallSec": 27.7
+      },
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 80050,
+        "wallSec": 32.6
+      }
+    },
+    "multi-file-invoice": {
+      "claude-only": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 0,
+        "wallSec": 26.6
+      },
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 75978,
+        "wallSec": 31.6
+      }
+    },
+    "review-async": {
+      "claude-only": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 0,
+        "wallSec": 18
+      },
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 71190,
+        "wallSec": 20.9
+      }
+    },
+    "trivial-constant": {
+      "claude-only": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 0,
+        "wallSec": 13.9
+      },
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 64685,
+        "wallSec": 20.8
+      }
+    },
+    "debug-duration": {
+      "claude-only": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 0,
+        "wallSec": 30
+      },
+      "tandem": {
+        "n": 1,
+        "success": 1,
+        "codexTokens": 95666,
+        "wallSec": 33.5
+      }
+    }
+  },
+  "paired": {
+    "claude-only": {
+      "pairs": 5,
+      "tandemTokensRatio": 0.634,
+      "ratioCI": [
+        0.46,
+        0.867
+      ],
+      "tandemTimeRatio": 1.2,
+      "timeRatioCI": [
+        1.14,
+        1.322
+      ],
+      "successDiff": 0,
+      "successDiffCI": [
+        0,
+        0
+      ]
+    }
+  }
+}
