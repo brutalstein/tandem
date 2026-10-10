@@ -219,3 +219,7 @@ Measured anchor for the fixed cost of delegating: in the real pilot (`bench/data
 | Codex dearer than estimated (×3) | 2.53 | 1.14 | 1.15 | **1.05** |
 
 No policy wins every scenario. Tandem has the lowest worst case (1.41 against 1.49, 1.66 and 3.99) and never doing the work yourself is the worst policy throughout. It loses to "always delegate" when Claude work is much dearer than assumed, and to the fixed threshold when the assumptions hold at equal weight (its tie rule favours the simpler strategy). These numbers come from the simulation's own cost model and say nothing about real savings. Calibrating the Claude-side ranges needs the real benchmark with Claude arms, which spends quota and has not been run.
+
+### Decisions on the benchmark corpus
+
+The same script prints what the layer decides for each of the 20 corpus tasks (Codex cost anchored on the real pilot, no project observations, so the widest band). With equal weights it keeps 19 tasks with you and sends the 300-module header lookup to a search tool. With Claude weighted ×3 it additionally delegates the trivial checked edit, where the Codex prior is cheapest. Every Claude-or-Codex choice is marked uncertain: the fixtures are small, and without observations the Codex band is ×0.5–2. Whether these choices are right is what the real benchmark's `claude-adaptive` arm measures; it has not been run.

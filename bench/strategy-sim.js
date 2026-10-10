@@ -62,3 +62,23 @@ fs.rmSync(root, { recursive: true, force: true });
 console.log('Total cost relative to the per-task oracle (1.000 = always the cheaper option; lower is better). SYNTHETIC.');
 console.table(results);
 if (OUT) { fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, JSON.stringify({ synthetic: true, tasks: N, seed: SEED, results }, null, 2)); }
+
+// Decisions on the real corpus (bench/corpus.js + tasks.js), no provider calls. Codex cost per difficulty is
+// anchored on the real pilot (cheapest trivial run 9.4k, normal/hard implement 35–48k effective tokens) with no
+// project observations, i.e. the widest band. Read-only tasks are scoped to the whole repository.
+{
+  const { TASKS } = require('./tasks');
+  const PRIOR = { trivial: 12000, normal: 30000, hard: 45000, critical: 60000 };
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'tandem-scorpus-'));
+  const rows = {};
+  for (const w of [1, 3]) for (const [name, t] of Object.entries(TASKS)) {
+    const dir = path.join(base, name); // files only: the decision measures sizes, git is not needed
+    for (const [p, c] of Object.entries(t.files)) { fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true }); fs.writeFileSync(path.join(dir, p), c); }
+    const s = S.decide({ mode: t.mode, difficulty: t.difficulty, prompt: t.task, paths: t.paths || ['.'], verify: t.verify || null }, dir, { tokens: PRIOR[t.difficulty], nObs: 0 }, { claudeCostWeight: w });
+    (rows[name] = rows[name] || { category: t.category })[`Claude ×${w}`] = s.strategy + (s.uncertain ? '?' : '');
+  }
+  fs.rmSync(base, { recursive: true, force: true });
+  console.log('\nDecision per corpus task (? = estimates overlap). Pilot-anchored Codex prior, no project observations.');
+  console.table(rows);
+  if (OUT) { const o = JSON.parse(fs.readFileSync(OUT, 'utf8')); o.corpusDecisions = rows; fs.writeFileSync(OUT, JSON.stringify(o, null, 2)); }
+}
