@@ -111,6 +111,19 @@ test('a hung check is killed at its timeout', { skip: !bin && 'Codex CLI not ins
   assert.ok(Date.now() - started < 15000, `took ${Date.now() - started} ms`);
 });
 
+test('a monorepo check (`cd <project> && ...` from verify.detect) runs in that project inside the sandbox', { skip: !bin && 'Codex CLI not installed' }, async t => {
+  if (!mode) return t.skip('sandbox does not start: ' + why);
+  fs.mkdirSync(path.join(WS, 'svc', 'api'), { recursive: true });
+  fs.writeFileSync(path.join(WS, 'svc', 'api', 'go.mod'), 'module api\n');
+  fs.writeFileSync(path.join(WS, 'svc', 'api', 'm.txt'), 'good');
+  const cd = verify.detect(WS, ['svc/api/m.txt']).split('&&')[0]; // the real prefix, separators as on this platform
+  assert.match(cd, /^cd svc[\\/]api $/);
+  const ok = await verify.run(`${cd}&& node -e "process.exit(require('fs').readFileSync('m.txt','utf8')==='good'?0:7)"`, WS, 120000, using());
+  assert.equal(ok.ok, true, ok.tail);
+  const bad = await verify.run(`${cd}&& node -e "process.exit(7)"`, WS, 120000, using());
+  assert.equal(bad.ok, false, 'the command after cd decides the result');
+});
+
 // Regression guard for a damaged development machine: an interrupted Codex permission refresh once left
 // "deny read" entries for the Codex sandbox users on the home folder that Codex no longer tracked, making most of
 // the home folder unreadable to every later sandboxed command. Reads ACL metadata only.

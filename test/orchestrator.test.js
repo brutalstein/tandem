@@ -170,6 +170,23 @@ test('in-place scope audit detects edits to already-dirty tracked files', async 
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
 });
 
+test('monorepo: auto verification runs the scoped service\'s own check; weakening that check is caught', async () => {
+  clean();
+  const svcCheck = JSON.stringify({ scripts: { test: H.CHECK('a.txt') } });
+  const files = { 'services/api/package.json': svcCheck, 'services/api/a.txt': 'old', 'services/web/index.js': '' };
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'services/api/a.txt': 'good' }] }, files);
+  const j = await run(orch(), { cwd: dir, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(j.status, 'verified', 'no root manifest: before, nothing was detected and the job stayed unverified');
+  assert.match(H.calls(dir)[0].prompt, /CHECK: .*cd services.api && npm test --silent/);
+
+  clean();
+  const weak = JSON.stringify({ scripts: { test: 'node -e 0' } });
+  const d2 = H.repo({ default: { action: 'ok' }, writes: [{ 'services/api/a.txt': 'bad', 'services/api/package.json': weak }] }, files);
+  const k = await run(orch(), { cwd: d2, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(k.status, 'unverified');
+  assert.deepEqual(k.result.integrity.verifyDefinitionChanged, ['services/api/package.json']);
+});
+
 test('test content tampering blocks verification before executing the check', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },

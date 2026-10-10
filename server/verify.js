@@ -11,8 +11,9 @@ const { killTree, codexCommand } = require('./codex');
 const DEFINITION_FILES = ['package.json', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js'];
 const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|(^|\/)test_[^/]+\.py$/i;
 const CONFTEST = /(^|\/)conftest\.py$/i;
+const IS_WIN = process.platform === 'win32';
 
-function detect(dir) {
+function checkAt(dir) {
   const has = f => fs.existsSync(path.join(dir, f));
   if (has('package.json')) {
     const t = ((readJson(path.join(dir, 'package.json'), {}) || {}).scripts || {}).test;
@@ -24,13 +25,39 @@ function detect(dir) {
   return null;
 }
 
+// The project that owns the scoped paths: the deepest directory holding all of them that has a check of its own
+// (a service in a monorepo), else the root. Relative, '/'-separated; '' is the root. Only plain names below the
+// root qualify, because the result becomes part of a shell command.
+function project(dir, paths = []) {
+  const parts = paths.map(p => String(p).replace(/\\/g, '/').split('/').filter(s => s && s !== '.'));
+  if (!parts.length || parts.some(p => p.some(s => s === '..' || !/^[A-Za-z0-9_.-]+$/.test(s)))) return '';
+  let common = parts[0];
+  for (const p of parts.slice(1)) { let i = 0; while (i < common.length && common[i] === p[i]) i++; common = common.slice(0, i); }
+  let root; try { root = fs.realpathSync(dir); } catch { return ''; }
+  for (let n = common.length; n > 0; n--) {
+    const full = path.join(dir, ...common.slice(0, n));
+    let real; try { real = fs.realpathSync(full); } catch { continue; }
+    if (real.startsWith(root + path.sep) && fs.statSync(real).isDirectory() && checkAt(full)) return common.slice(0, n).join('/');
+  }
+  return '';
+}
+
+function detect(dir, paths = []) {
+  const sub = project(dir, paths);
+  const cmd = checkAt(path.join(dir, sub));
+  return cmd && sub ? `cd ${IS_WIN ? sub.replace(/\//g, '\\') : sub} && ${cmd}` : cmd;
+}
+
 // package.json contributes only its `scripts` (dependency bumps are not a verification change).
-function fingerprint(dir) {
+// `sub` adds the definition files of the scoped project (see project()), so its check cannot be weakened either.
+function fingerprint(dir, sub = '') {
   const fp = {};
-  for (const f of DEFINITION_FILES) {
-    const p = path.join(dir, f);
-    if (!fs.existsSync(p)) continue;
-    fp[f] = f === 'package.json' ? sha1(JSON.stringify((readJson(p, {}) || {}).scripts || {})) : sha1(fs.readFileSync(p));
+  for (const d of sub ? ['', sub] : ['']) {
+    for (const f of DEFINITION_FILES) {
+      const p = path.join(dir, d, f);
+      if (!fs.existsSync(p)) continue;
+      fp[d ? `${d}/${f}` : f] = f === 'package.json' ? sha1(JSON.stringify((readJson(p, {}) || {}).scripts || {})) : sha1(fs.readFileSync(p));
+    }
   }
   return fp;
 }
@@ -106,7 +133,6 @@ function environmentFailure(v) {
 // on Windows): writes confined to the workspace and temp, no network, environment reduced to the core variables,
 // and these credential stores neither readable nor writable. Where a secret lives in one file, the file is denied:
 // on Windows every denied folder is re-ACLed recursively on each run.
-const IS_WIN = process.platform === 'win32';
 const SECRET_PATHS = ['.codex/auth.json', '.claude/.credentials.json', '.ssh', '.gnupg', '.aws', '.azure', '.kube/config',
   '.docker/config.json', '.config/gh/hosts.yml', '.config/gcloud', '.git-credentials', '.netrc', '.npmrc', '.pypirc',
   '.cargo/credentials', '.cargo/credentials.toml', 'AppData/Roaming/GitHub CLI/hosts.yml'];
@@ -212,4 +238,4 @@ function tailOf(file, n) {
 }
 
 const resetSandboxProbe = () => { probe = null; }; // tests switch between a working and a failing sandbox
-module.exports = { environmentFailure, detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };
+module.exports = { environmentFailure, detect, project, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };

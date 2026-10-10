@@ -4,8 +4,8 @@
 // pre-execution and final integrity decision. It deliberately does not run code.
 const verify = require('./verify');
 
-function inspect(workdir, fpBefore, testsBefore, foreign = [], overlaps = () => false) {
-  const changedDefs = verify.definitionChanges(fpBefore, verify.fingerprint(workdir));
+function inspect(workdir, fpBefore, testsBefore, foreign = [], overlaps = () => false, checkDir = '') {
+  const changedDefs = verify.definitionChanges(fpBefore, verify.fingerprint(workdir, checkDir));
   const afterTests = verify.testFingerprint(workdir);
   const changedTests = verify.testChanges(testsBefore, afterTests)
     .filter(f => !foreign.some(p => overlaps(p, f)));

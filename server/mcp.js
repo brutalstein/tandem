@@ -155,7 +155,7 @@ async function plan(a) {
   const { root, projDir } = orch.ctx(a.cwd);
   const env = await codex.discover();
   const rungs = catalog.rungs(env.models, cfg, codex.unavailable());
-  const check = a.mode !== 'implement' || a.verify === 'none' ? null : !a.verify || a.verify === 'auto' ? verify.detect(root) : a.verify;
+  const check = a.mode !== 'implement' || a.verify === 'none' ? null : !a.verify || a.verify === 'auto' ? verify.detect(root, a.paths || []) : a.verify;
   const task = { mode: a.mode, difficulty: a.difficulty, prompt: a.task, context: a.context, paths: a.paths, verify: check };
   if (!rungs.length) return 'no permitted and available Codex model; see tandem_status\n' + formatStrategy(strategy.decide(task, root, null, cfg));
   const cls = `${a.mode}|${a.difficulty}`;

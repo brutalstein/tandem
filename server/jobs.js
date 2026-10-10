@@ -289,11 +289,13 @@ class Orchestrator {
         ledger.patch(projDir, job.id, { worktree: { path: wt.path, base: snap.commit, tree: snap.tree, linked: wt.linked } });
       } catch (e) { return end('failed', { error: `could not create isolated worktree: ${String(e.message).slice(0, 300)}` }); }
     }
-    const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null : job.verify === 'auto' ? verify.detect(workdir) : job.verify;
-    const fpBefore = verifyCmd ? ((rf && rf.fpBefore) || verify.fingerprint(workdir)) : null;
+    const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null : job.verify === 'auto' ? verify.detect(workdir, job.paths) : job.verify;
+    // The scoped project's definition files are fingerprinted with the root's; fixed at the first run.
+    const checkDir = rf && typeof rf.checkDir === 'string' ? rf.checkDir : verify.project(workdir, job.paths);
+    const fpBefore = verifyCmd ? ((rf && rf.fpBefore) || verify.fingerprint(workdir, checkDir)) : null;
     const testsBefore = verifyCmd ? ((rf && rf.testsBefore) || verify.testFingerprint(workdir)) : null;
     // Persist the pre-job baselines now, so even a crashed run can be resumed with its edits still attributed.
-    const baselines = { inplaceBase, dirtyBefore: inplace ? [...dirtyBefore] : null, fpBefore, testsBefore };
+    const baselines = { inplaceBase, dirtyBefore: inplace ? [...dirtyBefore] : null, fpBefore, testsBefore, checkDir };
     if (job.mode === 'implement') store.writeJson(rfile, baselines);
 
     // ---- attempts ----
@@ -383,7 +385,7 @@ class Orchestrator {
       // Both the preflight and final decision use one independently testable
       // integrity policy. Foreign in-place edits are attributed by the ledger.
       const preflight = testIntegrity.inspect(workdir, fpBefore, testsBefore,
-        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps, checkDir);
       if (testIntegrity.blocked(preflight)) {
         verification = {
           command: verifyCmd, ok: false, code: null, ms: 0,
@@ -421,7 +423,7 @@ class Orchestrator {
     const integrity = {};
     if (verifyCmd) {
       const inspected = testIntegrity.inspect(workdir, fpBefore, testsBefore,
-        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps, checkDir);
       if (inspected.changedDefs.length) integrity.verifyDefinitionChanged = inspected.changedDefs;
       if (inspected.scanFailed) integrity.testScanError = 'could not inspect test files';
       if (inspected.changedTests.length) integrity.modifiedTests = inspected.changedTests;
@@ -588,7 +590,7 @@ class Orchestrator {
     if (job.mode === 'implement') {
       L.push('', job.paths.length ? `SCOPE: modify only these paths: ${job.paths.join(', ')}` : 'SCOPE: modify only what the task needs; keep the change minimal.');
       // The acceptance check the worker is judged by, so it can run the same command instead of guessing one.
-      const check = job.verify === 'none' ? null : job.verify === 'auto' || !job.verify ? verify.detect(job.root) : job.verify;
+      const check = job.verify === 'none' ? null : job.verify === 'auto' || !job.verify ? verify.detect(job.root, job.paths) : job.verify;
       if (check) L.push(`CHECK: afterwards Tandem runs \`${check}\` (sandboxed); the job succeeds only if it passes with existing tests unchanged.`);
       // Tell the worker what concurrent writers (in place or isolated) are working on, so two agents do
       // not implement the same thing. Paths that contain this job's own scope are omitted.

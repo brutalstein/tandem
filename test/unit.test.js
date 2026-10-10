@@ -409,6 +409,29 @@ test('verify: detection, fingerprint of scripts only, deleted tests, timeout', a
   assert.ok(bg.ms < 6000, `took ${bg.ms} ms`);
 });
 
+test('verify: in a monorepo the check comes from the project that owns the scope, and its definitions are fingerprinted', () => {
+  const dir = H.repo(null, {
+    'package.json': JSON.stringify({ scripts: { test: 'node lint.js' } }),
+    'services/api/package.json': JSON.stringify({ scripts: { test: 'node --test' } }), 'services/api/src/a.js': '',
+    'services/billing/pyproject.toml': '[tool.pytest.ini_options]\n', 'services/billing/billing/b.py': '',
+    'services/gateway/go.mod': 'module g\n', 'services/gateway/internal/g.go': '', 'docs/x.md': '',
+  });
+  const cd = p => `cd ${process.platform === 'win32' ? p.replace(/\//g, '\\') : p} && `;
+  assert.equal(verify.detect(dir, ['services/billing/billing/b.py']), cd('services/billing') + 'python -m pytest -q');
+  assert.equal(verify.detect(dir, ['services/api/src', 'services/api/package.json']), cd('services/api') + 'npm test --silent');
+  assert.equal(verify.detect(dir, ['services\\gateway\\internal\\g.go']), cd('services/gateway') + 'go test ./...');
+  assert.equal(verify.detect(dir, ['services/api/src/a.js', 'services/billing/billing/b.py']), 'npm test --silent', 'spanning two projects: the root check');
+  assert.equal(verify.detect(dir, ['docs/x.md']), 'npm test --silent', 'no project of its own: the root check');
+  assert.equal(verify.detect(dir), 'npm test --silent');
+  assert.equal(verify.detect(dir, ['../outside/services/api/src']), 'npm test --silent', 'never leaves the root');
+  assert.equal(verify.detect(dir, ['services/api/src/a b.js', 'services/api/src/a.js']), 'npm test --silent', 'a name unsafe in a shell command falls back');
+  const sub = verify.project(dir, ['services/billing/billing/b.py']);
+  const before = verify.fingerprint(dir, sub);
+  assert.ok(before['services/billing/pyproject.toml'] && before['package.json']);
+  H.write(dir, { 'services/billing/pyproject.toml': '[tool.pytest.ini_options]\naddopts = "-k nothing"\n' });
+  assert.deepEqual(verify.definitionChanges(before, verify.fingerprint(dir, sub)), ['services/billing/pyproject.toml'], 'weakening the sub-project check is a definition change');
+});
+
 test('verify sandbox arguments: profile, scrubbed environment, credential denies, exact command transport', () => {
   const dir = H.repo(null, { 'x.txt': 'x' });
   const secret = path.join(H.TMP, `secret-${process.pid}`);

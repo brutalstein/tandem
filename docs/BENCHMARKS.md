@@ -51,6 +51,40 @@ Per job: skill matching scans Codex skill folders (about 17 ms with 51 skills on
 
 Real resume cost (`bench/results/real-resume-2026-10-09.txt`): the resumed turn replays the conversation: 120 k input tokens, of which 101 k cached, 343 output. The stopped turn's own usage is not reported by Codex when it is killed, so it is missing from the totals.
 
+## 1d. Large repositories: Tandem's own per-job cost (deterministic)
+
+`node bench/large-repo.js 3`. Setup: generated repositories, Windows 11, Node 24.11.0, simulated Codex. Each job edits one file with a trivial check. Values are medians of 3 jobs, measured from submit to done. Raw data: `bench/data/large-repo.json`.
+
+| Layout | Files (tests) | Job in place | Job in a worktree | Test fingerprint | Check detected |
+|---|---|---|---|---|---|
+| Small library | 60 (12) | 1.1 s | 0.9 s | 60 ms | yes |
+| Medium app | 2,000 (400) | 1.2 s | 4.3 s | 105 ms | yes |
+| Large multi-module | 20,000 (4,000) | 2.5 s | 29–35 s | 510 ms | yes |
+| Polyglot services, no root manifest | 3,000 (600) | 1.1 s | 4.7 s | 86 ms | yes, after the fix below; before: none |
+
+In-place jobs stay near 1–2.5 s up to 20,000 files.
+
+Worktree jobs grow with repository size. The breakdown at 20,000 files, profiled:
+- `git worktree add`: 8.8 s;
+- removing the worktree: 2.6 s;
+- the first read of the 4,000 freshly checked-out test files, while they are fingerprinted: about 19 s.
+
+The 19 s is not Tandem's code. A plain `readFileSync` of the same files takes 20 s the first time and 0.2 s the second, with Windows Defender real-time protection on. Any process that reads the new files pays it once, including the test run itself, so moving the fingerprint would only move the cost.
+
+`isolation: auto` already runs in place unless another writer holds the same paths. On large Windows repositories, a worktree is worth it only when that isolation is needed.
+
+**Fixed: check detection in monorepos.** Before, the check was detected at the repository root only:
+- A polyglot repository with no root manifest ran every job unverified.
+- A root `package.json` could supply an unrelated check for a Python service.
+
+Now the check comes from the deepest project directory that contains all the scoped paths and has its own manifest, for example `cd services/billing && python -m pytest -q`. If no such directory exists, the root check is used.
+
+That project's definition files are fingerprinted with the root's, so a job cannot weaken the service's own check. Tests: `unit.test.js` and `orchestrator.test.js` ("monorepo"); both fail on the previous code.
+
+Not built:
+- an index, a symbol graph or embeddings: nothing measured here needed them. Scope sizing (`contextSize`) takes under 1 ms at every size.
+- any measure of how much Codex or Claude spend exploring a large repository. That is provider usage and needs real runs; the corpus task `nav-large` (300 modules) is ready for them.
+
 ## 1b. Safety overhead per job: main vs the hardening branch (deterministic)
 
 `node bench/safety-overhead.js --server <server dir> --files <n>`. Medians in ms over 5 repetitions, Windows 11, Node 24.11.0, on a generated repository (10 % test files, 2 KB each, one dirty file, an ignored `node_modules`). No provider is called. Data: `bench/data/safety-overhead/`.
