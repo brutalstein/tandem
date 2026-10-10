@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — strategy, measurement and sandbox evidence (branch p1-strategy)
+Version 2.0.0 was released on 2026-10-10. It contains every section below (all changes since v1.0.0), newest first.
+
+## 2.0.0 — strategy, measurement and sandbox evidence (PR #7)
 
 ### Added
 - **Whole-strategy advice** (`codex_delegate` `dry_run`): one of a search tool, Claude itself, a Claude subagent or Codex. The choice is explained by a cost record: options as intervals, the assumptions, and what was not measured. New option `claude_cost_weight`.
@@ -41,7 +43,7 @@
 ### Measured, unchanged
 - Start-up, hook latency, idle memory and per-job safety work match `main` within noise. `tools/list` grew by 50 bytes.
 
-## Unreleased — hardening (branch hardening-v4)
+## 2.0.0 — hardening (PR #6)
 
 ### Security
 - **Verification runs in the Codex OS sandbox.** Checks execute code the job wrote; they now run under `codex sandbox` with a Tandem profile: workspace-and-temp writes only, no network, core environment only, credential stores denied (plus `verify_deny_paths`). A probe inside the sandbox confirms each deny before checks run. If the sandbox cannot start or a deny is not enforced, the check is not run and the job stays `unverified` (no escalation, no routing evidence). New option `verify_isolation`: `sandbox` (default), `contain` (accept readable credential stores), `off` (previous behaviour). Results record the isolation level. Measured on Windows: Codex 0.154.0 did not reliably enforce deny rules there, so the default refuses on that machine (SECURITY.md).
@@ -58,7 +60,7 @@
 ### Changed
 - State files are flushed to disk before they replace the old copy (power-loss safety of Tandem's own state; about 5 ms per write). Not tested by cutting power.
 
-## Unreleased — continuity and capabilities (branch feat/continuity-v3)
+## 2.0.0 — continuity and capabilities
 
 ### Changed
 
@@ -90,7 +92,7 @@
 - `dry_run` reports this project's measured history for the task class.
 - Tests: `continuity.test.js` (failover scenarios), `capabilities.test.js`, an MCP-to-CLI end-to-end test, `test/real-resume.js` (real provider, manual).
 
-## 2.0.0 — unreleased
+## 2.0.0 — production hardening of v1
 
 Production hardening of v1. See [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md) for the audit that motivated each change.
 
