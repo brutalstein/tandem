@@ -20,6 +20,7 @@ const verify = require('./verify');
 const testIntegrity = require('./test-integrity');
 const memory = require('./memory');
 const capabilities = require('./capabilities');
+const locate = require('./locate');
 const { sanitize, redactSecrets, confine } = require('./security');
 const { EFFORTS } = require('./config');
 
@@ -580,6 +581,16 @@ class Orchestrator {
   prompt(job, projDir, lastFail, check = null) {
     const L = ['You are a Codex worker delegated by Claude Code (the lead engineer) via the Tandem orchestrator.', '', `TASK (${job.mode}):`, job.task];
     if (job.context) L.push('', 'CONTEXT FROM LEAD:', job.context);
+    // Where to start reading, so the worker explores less (server/locate.js; accuracy in docs/BENCHMARKS.md).
+    // Limited to the job's scope; files the scope already names are not repeated.
+    if (this.cfg.locateHints) {
+      const inScope = p => !job.paths.length || job.paths.some(s => s === '.' || p.startsWith(s.replace(/\/+$/, '') + '/'));
+      const hits = locate.locate(`${job.task}\n${job.context || ''}`, { cwd: job.root }, 20).filter(h => inScope(h.path)).slice(0, 5);
+      if (hits.length) {
+        L.push('', 'LIKELY RELEVANT FILES (ranked by Tandem from the task text; a starting point, may be wrong):', ...hits.map(h => `- ${h.path}${h.why.length ? ` (${h.why.slice(0, 2).join(', ')})` : ''}`));
+        ledger.patch(projDir, job.id, { located: hits.map(h => h.path) });
+      }
+    }
     // Lean mode hides Codex's own skill list: point at the few installed skills that match this task.
     if (this.cfg.leanCodex) {
       let sk = [];

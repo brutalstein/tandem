@@ -42,6 +42,7 @@ function config() {
     // Codex jobs are I/O- and provider-bound; the cap protects quota and the machine, not the CPU alone.
     maxParallel: parallel > 0 ? parallel : Math.min(3, Math.max(1, Math.floor(cpus / 4))),
     leanCodex: opt('lean_codex') !== 'false',
+    locateHints: opt('locate_hints') !== 'false', // likely-relevant files in worker prompts and dry_run (server/locate.js)
     isolation: pick('isolation', ['auto', 'inplace', 'worktree'], 'auto'), // same default as plugin.json
     objective: pick('objective', ['balanced', 'tokens', 'time'], 'balanced'),
     claudeCostWeight: num('claude_cost_weight', 1, 0.1, 20), // Claude token value relative to a Codex token (strategy advice)

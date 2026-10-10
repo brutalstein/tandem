@@ -1,0 +1,7166 @@
+{
+ "instances": 300,
+ "all": {
+  "bm25": {
+   "n": 300,
+   "recall@1": 0.263,
+   "recall@3": 0.387,
+   "recall@5": 0.453,
+   "recall@10": 0.57,
+   "mrr": 0.355
+  },
+  "+path tokens": {
+   "n": 300,
+   "recall@1": 0.267,
+   "recall@3": 0.393,
+   "recall@5": 0.467,
+   "recall@10": 0.577,
+   "mrr": 0.36
+  },
+  "+source/test/vendor prior": {
+   "n": 300,
+   "recall@1": 0.407,
+   "recall@3": 0.537,
+   "recall@5": 0.613,
+   "recall@10": 0.727,
+   "mrr": 0.502
+  },
+  "+named paths": {
+   "n": 300,
+   "recall@1": 0.427,
+   "recall@3": 0.583,
+   "recall@5": 0.643,
+   "recall@10": 0.733,
+   "mrr": 0.527
+  },
+  "+module names": {
+   "n": 300,
+   "recall@1": 0.42,
+   "recall@3": 0.593,
+   "recall@5": 0.637,
+   "recall@10": 0.737,
+   "mrr": 0.528
+  },
+  "full (+definitions)": {
+   "n": 300,
+   "recall@1": 0.477,
+   "recall@3": 0.677,
+   "recall@5": 0.72,
+   "recall@10": 0.773,
+   "mrr": 0.589
+  }
+ },
+ "tuning": {
+  "bm25": {
+   "n": 153,
+   "recall@1": 0.34,
+   "recall@3": 0.477,
+   "recall@5": 0.529,
+   "recall@10": 0.634,
+   "mrr": 0.431
+  },
+  "+path tokens": {
+   "n": 153,
+   "recall@1": 0.34,
+   "recall@3": 0.484,
+   "recall@5": 0.536,
+   "recall@10": 0.641,
+   "mrr": 0.432
+  },
+  "+source/test/vendor prior": {
+   "n": 153,
+   "recall@1": 0.484,
+   "recall@3": 0.614,
+   "recall@5": 0.693,
+   "recall@10": 0.778,
+   "mrr": 0.572
+  },
+  "+named paths": {
+   "n": 153,
+   "recall@1": 0.484,
+   "recall@3": 0.654,
+   "recall@5": 0.725,
+   "recall@10": 0.791,
+   "mrr": 0.588
+  },
+  "+module names": {
+   "n": 153,
+   "recall@1": 0.464,
+   "recall@3": 0.654,
+   "recall@5": 0.706,
+   "recall@10": 0.797,
+   "mrr": 0.58
+  },
+  "full (+definitions)": {
+   "n": 153,
+   "recall@1": 0.542,
+   "recall@3": 0.739,
+   "recall@5": 0.791,
+   "recall@10": 0.85,
+   "mrr": 0.655
+  }
+ },
+ "heldOut": {
+  "bm25": {
+   "n": 147,
+   "recall@1": 0.184,
+   "recall@3": 0.293,
+   "recall@5": 0.374,
+   "recall@10": 0.503,
+   "mrr": 0.277
+  },
+  "+path tokens": {
+   "n": 147,
+   "recall@1": 0.19,
+   "recall@3": 0.299,
+   "recall@5": 0.395,
+   "recall@10": 0.51,
+   "mrr": 0.285
+  },
+  "+source/test/vendor prior": {
+   "n": 147,
+   "recall@1": 0.327,
+   "recall@3": 0.456,
+   "recall@5": 0.531,
+   "recall@10": 0.673,
+   "mrr": 0.428
+  },
+  "+named paths": {
+   "n": 147,
+   "recall@1": 0.367,
+   "recall@3": 0.51,
+   "recall@5": 0.558,
+   "recall@10": 0.673,
+   "mrr": 0.464
+  },
+  "+module names": {
+   "n": 147,
+   "recall@1": 0.374,
+   "recall@3": 0.531,
+   "recall@5": 0.565,
+   "recall@10": 0.673,
+   "mrr": 0.473
+  },
+  "full (+definitions)": {
+   "n": 147,
+   "recall@1": 0.408,
+   "recall@3": 0.612,
+   "recall@5": 0.646,
+   "recall@10": 0.694,
+   "mrr": 0.52
+  }
+ },
+ "perRepo": {
+  "astropy/astropy": {
+   "n": 6,
+   "recall@1": 0.833,
+   "recall@3": 0.833,
+   "recall@5": 0.833,
+   "recall@10": 0.833,
+   "mrr": 0.837
+  },
+  "django/django": {
+   "n": 114,
+   "recall@1": 0.474,
+   "recall@3": 0.693,
+   "recall@5": 0.702,
+   "recall@10": 0.746,
+   "mrr": 0.588
+  },
+  "matplotlib/matplotlib": {
+   "n": 23,
+   "recall@1": 0.304,
+   "recall@3": 0.652,
+   "recall@5": 0.696,
+   "recall@10": 0.826,
+   "mrr": 0.493
+  },
+  "mwaskom/seaborn": {
+   "n": 4,
+   "recall@1": 0.5,
+   "recall@3": 0.75,
+   "recall@5": 1,
+   "recall@10": 1,
+   "mrr": 0.633
+  },
+  "pallets/flask": {
+   "n": 3,
+   "recall@1": 0.333,
+   "recall@3": 0.333,
+   "recall@5": 1,
+   "recall@10": 1,
+   "mrr": 0.5
+  },
+  "psf/requests": {
+   "n": 6,
+   "recall@1": 0.667,
+   "recall@3": 0.833,
+   "recall@5": 0.833,
+   "recall@10": 1,
+   "mrr": 0.746
+  },
+  "pydata/xarray": {
+   "n": 5,
+   "recall@1": 0,
+   "recall@3": 0.6,
+   "recall@5": 1,
+   "recall@10": 1,
+   "mrr": 0.39
+  },
+  "pylint-dev/pylint": {
+   "n": 6,
+   "recall@1": 0.333,
+   "recall@3": 0.5,
+   "recall@5": 0.5,
+   "recall@10": 0.5,
+   "mrr": 0.425
+  },
+  "pytest-dev/pytest": {
+   "n": 17,
+   "recall@1": 0.294,
+   "recall@3": 0.529,
+   "recall@5": 0.529,
+   "recall@10": 0.647,
+   "mrr": 0.44
+  },
+  "scikit-learn/scikit-learn": {
+   "n": 23,
+   "recall@1": 0.696,
+   "recall@3": 0.783,
+   "recall@5": 0.826,
+   "recall@10": 0.957,
+   "mrr": 0.768
+  },
+  "sphinx-doc/sphinx": {
+   "n": 16,
+   "recall@1": 0.375,
+   "recall@3": 0.563,
+   "recall@5": 0.625,
+   "recall@10": 0.625,
+   "mrr": 0.476
+  },
+  "sympy/sympy": {
+   "n": 77,
+   "recall@1": 0.532,
+   "recall@3": 0.688,
+   "recall@5": 0.74,
+   "recall@10": 0.766,
+   "mrr": 0.618
+  }
+ },
+ "files": {
+  "p50": 1960,
+  "max": 6712
+ },
+ "collectMs": {
+  "p50": 286,
+  "p95": 504
+ },
+ "scoreMs": {
+  "p50": 20.7,
+  "p95": 112.4
+ },
+ "platform": "win32 node v24.11.0",
+ "rows": [
+  {
+   "id": "astropy__astropy-12907",
+   "repo": "astropy/astropy",
+   "files": 1876,
+   "half": "held-out",
+   "collectMs": 385.6718,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "astropy/modeling/separable.py",
+    "astropy/modeling/functional_models.py",
+    "astropy/modeling/core.py",
+    "astropy/convolution/core.py",
+    "astropy/modeling/__init__.py"
+   ],
+   "scoreMs": 20.509
+  },
+  {
+   "id": "astropy__astropy-14182",
+   "repo": "astropy/astropy",
+   "files": 1877,
+   "half": "tuning",
+   "collectMs": 370.8727,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 38,
+    "+named paths": 39,
+    "+module names": 41,
+    "full (+definitions)": 46
+   },
+   "top": [
+    "astropy/io/ascii/core.py",
+    "astropy/io/ascii/connect.py",
+    "astropy/io/ascii/ui.py",
+    "astropy/io/registry/core.py",
+    "astropy/table/connect.py"
+   ],
+   "scoreMs": 38.0454
+  },
+  {
+   "id": "astropy__astropy-14365",
+   "repo": "astropy/astropy",
+   "files": 1870,
+   "half": "tuning",
+   "collectMs": 277.4532,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "astropy/io/ascii/qdp.py",
+    "astropy/io/fits/column.py",
+    "astropy/table/__init__.py",
+    "astropy/extern/configobj/configobj.py",
+    "astropy/io/votable/tree.py"
+   ],
+   "scoreMs": 20.3905
+  },
+  {
+   "id": "astropy__astropy-14995",
+   "repo": "astropy/astropy",
+   "files": 1777,
+   "half": "tuning",
+   "collectMs": 286.4502,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "astropy/nddata/mixins/ndarithmetic.py",
+    "astropy/nddata/nddata_withmixins.py",
+    "astropy/nddata/__init__.py",
+    "astropy/units/quantity_helper/helpers.py",
+    "astropy/nddata/compat.py"
+   ],
+   "scoreMs": 21.9172
+  },
+  {
+   "id": "astropy__astropy-6938",
+   "repo": "astropy/astropy",
+   "files": 1793,
+   "half": "tuning",
+   "collectMs": 284.4615,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "astropy/io/fits/fitsrec.py",
+    "astropy/io/fits/util.py",
+    "astropy/coordinates/earth.py",
+    "astropy/table/index.py",
+    "astropy/io/fits/header.py"
+   ],
+   "scoreMs": 11.262
+  },
+  {
+   "id": "astropy__astropy-7746",
+   "repo": "astropy/astropy",
+   "files": 1840,
+   "half": "tuning",
+   "collectMs": 310.871,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "astropy/wcs/wcs.py",
+    "cextern/wcslib/C/wcs.c",
+    "astropy/coordinates/earth.py",
+    "astropy/wcs/__init__.py",
+    "astropy/coordinates/baseframe.py"
+   ],
+   "scoreMs": 18.5838
+  },
+  {
+   "id": "django__django-10914",
+   "repo": "django/django",
+   "files": 6054,
+   "half": "held-out",
+   "collectMs": 413.9422,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/core/files/uploadedfile.py",
+    "django/core/files/storage.py",
+    "django/conf/global_settings.py",
+    "js_tests/qunit/qunit.js",
+    "django/core/files/uploadhandler.py"
+   ],
+   "scoreMs": 35.315
+  },
+  {
+   "id": "django__django-10924",
+   "repo": "django/django",
+   "files": 6073,
+   "half": "tuning",
+   "collectMs": 408.4787,
+   "ranks": {
+    "bm25": 34,
+    "+path tokens": 34,
+    "+source/test/vendor prior": 5,
+    "+named paths": 6,
+    "+module names": 7,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/forms/fields.py",
+    "django/db/models/fields/__init__.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/conf/__init__.py",
+    "django/template/defaultfilters.py"
+   ],
+   "scoreMs": 62.2208
+  },
+  {
+   "id": "django__django-11001",
+   "repo": "django/django",
+   "files": 6074,
+   "half": "tuning",
+   "collectMs": 387.2486,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/models/expressions.py",
+    "django/db/models/sql/compiler.py",
+    "django/db/models/query.py",
+    "js_tests/qunit/qunit.js",
+    "django/db/models/sql/query.py"
+   ],
+   "scoreMs": 63.6245
+  },
+  {
+   "id": "django__django-11019",
+   "repo": "django/django",
+   "files": 6061,
+   "half": "tuning",
+   "collectMs": 407.8582,
+   "ranks": {
+    "bm25": 49,
+    "+path tokens": 49,
+    "+source/test/vendor prior": 4,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/forms/widgets.py",
+    "django/db/models/fields/files.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "django/forms/forms.py"
+   ],
+   "scoreMs": 50.6139
+  },
+  {
+   "id": "django__django-11039",
+   "repo": "django/django",
+   "files": 6061,
+   "half": "tuning",
+   "collectMs": 334.1584,
+   "ranks": {
+    "bm25": 11,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "tests/migrations/test_commands.py",
+    "django/db/transaction.py",
+    "django/core/management/commands/sqlmigrate.py",
+    "django/core/management/base.py",
+    "django/db/backends/base/schema.py"
+   ],
+   "scoreMs": 43.5074
+  },
+  {
+   "id": "django__django-11049",
+   "repo": "django/django",
+   "files": 6061,
+   "half": "tuning",
+   "collectMs": 361.89,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "django/contrib/auth/password_validation.py",
+    "django/contrib/auth/forms.py",
+    "django/db/models/expressions.py"
+   ],
+   "scoreMs": 48.9083
+  },
+  {
+   "id": "django__django-11099",
+   "repo": "django/django",
+   "files": 6072,
+   "half": "held-out",
+   "collectMs": 336.4194,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/auth/validators.py",
+    "django/db/models/fields/__init__.py",
+    "django/contrib/auth/context_processors.py",
+    "django/core/validators.py",
+    "django/contrib/auth/migrations/0004_alter_user_username_opts.py"
+   ],
+   "scoreMs": 76.4009
+  },
+  {
+   "id": "django__django-11133",
+   "repo": "django/django",
+   "files": 6067,
+   "half": "held-out",
+   "collectMs": 578.583,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/http/response.py",
+    "django/db/models/fields/__init__.py",
+    "django/template/response.py",
+    "django/http/__init__.py",
+    "django/contrib/gis/geos/geometry.py"
+   ],
+   "scoreMs": 93.6343
+  },
+  {
+   "id": "django__django-11179",
+   "repo": "django/django",
+   "files": 6071,
+   "half": "held-out",
+   "collectMs": 522.6378,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/deletion.py",
+    "django/contrib/admin/options.py",
+    "django/db/models/query.py",
+    "js_tests/qunit/qunit.js",
+    "django/contrib/admin/widgets.py"
+   ],
+   "scoreMs": 82.0192
+  },
+  {
+   "id": "django__django-11283",
+   "repo": "django/django",
+   "files": 6073,
+   "half": "held-out",
+   "collectMs": 528.2188,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 46,
+    "+named paths": 47,
+    "+module names": 47,
+    "full (+definitions)": 48
+   },
+   "top": [
+    "django/db/utils.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/db/models/query.py",
+    "django/contrib/admin/views/main.py",
+    "django/db/migrations/state.py"
+   ],
+   "scoreMs": 68.3405
+  },
+  {
+   "id": "django__django-11422",
+   "repo": "django/django",
+   "files": 6075,
+   "half": "tuning",
+   "collectMs": 511.021,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/autoreload.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/core/management/commands/runserver.py",
+    "django/core/management/__init__.py",
+    "django/http/request.py"
+   ],
+   "scoreMs": 102.0663
+  },
+  {
+   "id": "django__django-11564",
+   "repo": "django/django",
+   "files": 6141,
+   "half": "tuning",
+   "collectMs": 625.6834,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/contrib/staticfiles/storage.py",
+    "django/core/files/storage.py",
+    "django/templatetags/static.py",
+    "django/conf/global_settings.py",
+    "django/contrib/staticfiles/utils.py"
+   ],
+   "scoreMs": 89.808
+  },
+  {
+   "id": "django__django-11583",
+   "repo": "django/django",
+   "files": 6122,
+   "half": "held-out",
+   "collectMs": 463.5122,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/autoreload.py",
+    "django/core/management/__init__.py",
+    "django/core/management/commands/runserver.py",
+    "django/core/management/base.py",
+    "js_tests/qunit/qunit.js"
+   ],
+   "scoreMs": 157.5538
+  },
+  {
+   "id": "django__django-11620",
+   "repo": "django/django",
+   "files": 6131,
+   "half": "tuning",
+   "collectMs": 472.2804,
+   "ranks": {
+    "bm25": 8,
+    "+path tokens": 8,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/shortcuts.py",
+    "django/urls/resolvers.py",
+    "django/views/debug.py",
+    "django/db/models/fields/__init__.py",
+    "django/core/paginator.py"
+   ],
+   "scoreMs": 56.1441
+  },
+  {
+   "id": "django__django-11630",
+   "repo": "django/django",
+   "files": 6131,
+   "half": "tuning",
+   "collectMs": 515.6775,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 29,
+    "+named paths": 29,
+    "+module names": 29,
+    "full (+definitions)": 29
+   },
+   "top": [
+    "django/db/backends/base/introspection.py",
+    "django/db/backends/sqlite3/schema.py",
+    "django/db/backends/oracle/schema.py",
+    "django/core/management/commands/inspectdb.py",
+    "django/contrib/gis/db/backends/spatialite/schema.py"
+   ],
+   "scoreMs": 82.9837
+  },
+  {
+   "id": "django__django-11742",
+   "repo": "django/django",
+   "files": 6139,
+   "half": "held-out",
+   "collectMs": 405.2908,
+   "ranks": {
+    "bm25": 36,
+    "+path tokens": 36,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/forms/fields.py",
+    "django/db/models/fields/__init__.py",
+    "django/contrib/messages/storage/cookie.py",
+    "docs/conf.py",
+    "django/contrib/admin/filters.py"
+   ],
+   "scoreMs": 40.8087
+  },
+  {
+   "id": "django__django-11797",
+   "repo": "django/django",
+   "files": 6140,
+   "half": "held-out",
+   "collectMs": 503.9563,
+   "ranks": {
+    "bm25": 41,
+    "+path tokens": 41,
+    "+source/test/vendor prior": 6,
+    "+named paths": 6,
+    "+module names": 7,
+    "full (+definitions)": 11
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/aggregates.py",
+    "django/contrib/auth/context_processors.py",
+    "django/contrib/auth/__init__.py",
+    "js_tests/qunit/qunit.js"
+   ],
+   "scoreMs": 84.999
+  },
+  {
+   "id": "django__django-11815",
+   "repo": "django/django",
+   "files": 6141,
+   "half": "held-out",
+   "collectMs": 593.8955,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 34,
+    "+named paths": 34,
+    "+module names": 35,
+    "full (+definitions)": 37
+   },
+   "top": [
+    "django/utils/translation/trans_real.py",
+    "django/utils/translation/__init__.py",
+    "django/forms/fields.py",
+    "django/db/models/fields/__init__.py",
+    "django/utils/text.py"
+   ],
+   "scoreMs": 72.358
+  },
+  {
+   "id": "django__django-11848",
+   "repo": "django/django",
+   "files": 6141,
+   "half": "held-out",
+   "collectMs": 456.5489,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/http.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/utils/cache.py",
+    "django/utils/encoding.py",
+    "django/db/backends/mysql/introspection.py"
+   ],
+   "scoreMs": 67.7167
+  },
+  {
+   "id": "django__django-11905",
+   "repo": "django/django",
+   "files": 6148,
+   "half": "held-out",
+   "collectMs": 399.4848,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/db/models/sql/query.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "js_tests/qunit/qunit.js",
+    "django/contrib/admin/utils.py",
+    "django/contrib/admin/options.py"
+   ],
+   "scoreMs": 48.118
+  },
+  {
+   "id": "django__django-11910",
+   "repo": "django/django",
+   "files": 6146,
+   "half": "tuning",
+   "collectMs": 556.2782,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 8
+   },
+   "top": [
+    "django/db/migrations/operations/fields.py",
+    "django/db/models/deletion.py",
+    "django/db/models/fields/related.py",
+    "tests/queries/models.py",
+    "django/db/models/fields/__init__.py"
+   ],
+   "scoreMs": 84.3162
+  },
+  {
+   "id": "django__django-11964",
+   "repo": "django/django",
+   "files": 6148,
+   "half": "tuning",
+   "collectMs": 472.4962,
+   "ranks": {
+    "bm25": 42,
+    "+path tokens": 42,
+    "+source/test/vendor prior": 4,
+    "+named paths": 5,
+    "+module names": 6,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/enums.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/utils/translation/trans_real.py"
+   ],
+   "scoreMs": 133.6163
+  },
+  {
+   "id": "django__django-11999",
+   "repo": "django/django",
+   "files": 6148,
+   "half": "tuning",
+   "collectMs": 481.5367,
+   "ranks": {
+    "bm25": 38,
+    "+path tokens": 37,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "django/template/defaultfilters.py",
+    "django/template/defaulttags.py",
+    "django/template/smartif.py"
+   ],
+   "scoreMs": 77.7866
+  },
+  {
+   "id": "django__django-12113",
+   "repo": "django/django",
+   "files": 6158,
+   "half": "held-out",
+   "collectMs": 454.5495,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/db/models/base.py",
+    "django/db/backends/utils.py",
+    "django/db/utils.py",
+    "django/db/models/sql/compiler.py",
+    "django/db/models/manager.py"
+   ],
+   "scoreMs": 151.4466
+  },
+  {
+   "id": "django__django-12125",
+   "repo": "django/django",
+   "files": 6159,
+   "half": "held-out",
+   "collectMs": 576.3806,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/forms/fields.py",
+    "django/db/models/__init__.py",
+    "django/db/migrations/operations/models.py"
+   ],
+   "scoreMs": 166.0989
+  },
+  {
+   "id": "django__django-12184",
+   "repo": "django/django",
+   "files": 6169,
+   "half": "held-out",
+   "collectMs": 439.4478,
+   "ranks": {
+    "bm25": 45,
+    "+path tokens": 44,
+    "+source/test/vendor prior": 8,
+    "+named paths": 9,
+    "+module names": 9,
+    "full (+definitions)": 11
+   },
+   "top": [
+    "django/core/handlers/base.py",
+    "django/core/handlers/exception.py",
+    "django/views/decorators/csrf.py",
+    "django/utils/decorators.py",
+    "docs/howto/deployment/wsgi/apache-auth.txt"
+   ],
+   "scoreMs": 40.8836
+  },
+  {
+   "id": "django__django-12284",
+   "repo": "django/django",
+   "files": 6178,
+   "half": "held-out",
+   "collectMs": 439.965,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/template/defaulttags.py",
+    "django/template/defaultfilters.py"
+   ],
+   "scoreMs": 46.9996
+  },
+  {
+   "id": "django__django-12286",
+   "repo": "django/django",
+   "files": 6177,
+   "half": "held-out",
+   "collectMs": 529.6101,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/core/management/base.py",
+    "django/core/checks/translation.py",
+    "django/utils/translation/trans_real.py",
+    "django/conf/global_settings.py",
+    "django/urls/resolvers.py"
+   ],
+   "scoreMs": 55.4299
+  },
+  {
+   "id": "django__django-12308",
+   "repo": "django/django",
+   "files": 6218,
+   "half": "tuning",
+   "collectMs": 449.179,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 24,
+    "+named paths": 24,
+    "+module names": 4,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/forms/fields.py",
+    "django/contrib/admin/utils.py",
+    "django/db/models/fields/json.py",
+    "django/contrib/postgres/forms/hstore.py",
+    "django/core/signing.py"
+   ],
+   "scoreMs": 66.3891
+  },
+  {
+   "id": "django__django-12453",
+   "repo": "django/django",
+   "files": 6191,
+   "half": "held-out",
+   "collectMs": 460.354,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/backends/base/creation.py",
+    "django/core/serializers/__init__.py",
+    "django/core/management/commands/loaddata.py",
+    "django/db/transaction.py",
+    "django/test/testcases.py"
+   ],
+   "scoreMs": 132.1648
+  },
+  {
+   "id": "django__django-12470",
+   "repo": "django/django",
+   "files": 6197,
+   "half": "tuning",
+   "collectMs": 470.7063,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 7,
+    "+named paths": 7,
+    "+module names": 7,
+    "full (+definitions)": 8
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/base.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/db/models/sql/query.py",
+    "django/contrib/contenttypes/fields.py"
+   ],
+   "scoreMs": 91.7921
+  },
+  {
+   "id": "django__django-12497",
+   "repo": "django/django",
+   "files": 6193,
+   "half": "tuning",
+   "collectMs": 403.6846,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/db/models/fields/reverse_related.py",
+    "django/db/migrations/state.py",
+    "django/db/models/fields/related_descriptors.py"
+   ],
+   "scoreMs": 34.5815
+  },
+  {
+   "id": "django__django-12589",
+   "repo": "django/django",
+   "files": 6196,
+   "half": "held-out",
+   "collectMs": 488.7174,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 22,
+    "+named paths": 22,
+    "+module names": 24,
+    "full (+definitions)": 29
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "django/db/models/deletion.py",
+    "django/db/models/expressions.py",
+    "django/db/models/query.py",
+    "django/db/utils.py"
+   ],
+   "scoreMs": 118.7977
+  },
+  {
+   "id": "django__django-12700",
+   "repo": "django/django",
+   "files": 6208,
+   "half": "tuning",
+   "collectMs": 419.2814,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/views/debug.py",
+    "django/template/defaultfilters.py",
+    "django/template/defaulttags.py",
+    "django/conf/global_settings.py",
+    "django/template/context_processors.py"
+   ],
+   "scoreMs": 74.3841
+  },
+  {
+   "id": "django__django-12708",
+   "repo": "django/django",
+   "files": 6211,
+   "half": "held-out",
+   "collectMs": 383.8274,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 5,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/backends/base/schema.py",
+    "django/db/backends/mysql/schema.py",
+    "django/contrib/gis/gdal/geomtype.py",
+    "django/db/models/options.py",
+    "django/db/models/base.py"
+   ],
+   "scoreMs": 38.3314
+  },
+  {
+   "id": "django__django-12747",
+   "repo": "django/django",
+   "files": 6211,
+   "half": "tuning",
+   "collectMs": 412.6201,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 8,
+    "full (+definitions)": 10
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/options.py",
+    "django/contrib/admin/options.py",
+    "django/template/defaulttags.py",
+    "django/contrib/admin/utils.py"
+   ],
+   "scoreMs": 61.418
+  },
+  {
+   "id": "django__django-12856",
+   "repo": "django/django",
+   "files": 6221,
+   "half": "held-out",
+   "collectMs": 374.4317,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 8,
+    "full (+definitions)": 9
+   },
+   "top": [
+    "django/db/models/constraints.py",
+    "django/db/backends/sqlite3/schema.py",
+    "django/core/management/commands/inspectdb.py",
+    "django/db/backends/sqlite3/introspection.py",
+    "django/db/backends/base/schema.py"
+   ],
+   "scoreMs": 41.8557
+  },
+  {
+   "id": "django__django-12908",
+   "repo": "django/django",
+   "files": 6223,
+   "half": "held-out",
+   "collectMs": 568.6931,
+   "ranks": {
+    "bm25": 38,
+    "+path tokens": 38,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/contrib/gis/gdal/geometries.py",
+    "django/db/models/fields/__init__.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/contrib/gis/geos/geometry.py"
+   ],
+   "scoreMs": 81.8842
+  },
+  {
+   "id": "django__django-12915",
+   "repo": "django/django",
+   "files": 6260,
+   "half": "held-out",
+   "collectMs": 406.6053,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/staticfiles/handlers.py",
+    "django/core/handlers/base.py",
+    "django/core/handlers/asgi.py",
+    "django/template/loader_tags.py",
+    "django/conf/global_settings.py"
+   ],
+   "scoreMs": 54.0958
+  },
+  {
+   "id": "django__django-12983",
+   "repo": "django/django",
+   "files": 6225,
+   "half": "held-out",
+   "collectMs": 388.1708,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 10,
+    "+named paths": 10,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/template/defaultfilters.py",
+    "django/utils/text.py",
+    "django/db/backends/sqlite3/introspection.py",
+    "django/db/models/fields/__init__.py",
+    "django/contrib/syndication/views.py"
+   ],
+   "scoreMs": 57.2751
+  },
+  {
+   "id": "django__django-13028",
+   "repo": "django/django",
+   "files": 6260,
+   "half": "tuning",
+   "collectMs": 373.1391,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/sql/query.py",
+    "django/db/models/query.py",
+    "django/db/models/manager.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py"
+   ],
+   "scoreMs": 118.9555
+  },
+  {
+   "id": "django__django-13033",
+   "repo": "django/django",
+   "files": 6262,
+   "half": "held-out",
+   "collectMs": 444.3594,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 16,
+    "+named paths": 16,
+    "+module names": 16,
+    "full (+definitions)": 21
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/deletion.py",
+    "django/db/models/fields/related.py",
+    "django/db/backends/base/features.py"
+   ],
+   "scoreMs": 69.445
+  },
+  {
+   "id": "django__django-13158",
+   "repo": "django/django",
+   "files": 6268,
+   "half": "tuning",
+   "collectMs": 486.5804,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 10,
+    "+named paths": 10,
+    "+module names": 10,
+    "full (+definitions)": 18
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/forms/models.py",
+    "django/db/models/fields/related.py",
+    "django/contrib/gis/gdal/geometries.py",
+    "django/contrib/admin/options.py"
+   ],
+   "scoreMs": 71.0474
+  },
+  {
+   "id": "django__django-13220",
+   "repo": "django/django",
+   "files": 6290,
+   "half": "held-out",
+   "collectMs": 447.8647,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/core/exceptions.py",
+    "django/forms/forms.py",
+    "django/contrib/admin/helpers.py",
+    "django/contrib/auth/forms.py",
+    "docs/ref/contrib/gis/gdal.txt"
+   ],
+   "scoreMs": 69.0539
+  },
+  {
+   "id": "django__django-13230",
+   "repo": "django/django",
+   "files": 6290,
+   "half": "tuning",
+   "collectMs": 353.5973,
+   "ranks": {
+    "bm25": 26,
+    "+path tokens": 21,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/syndication/views.py",
+    "django/utils/feedgenerator.py",
+    "django/contrib/gis/feeds.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/db/models/query.py"
+   ],
+   "scoreMs": 35.6435
+  },
+  {
+   "id": "django__django-13265",
+   "repo": "django/django",
+   "files": 6393,
+   "half": "held-out",
+   "collectMs": 371.5177,
+   "ranks": {
+    "bm25": 37,
+    "+path tokens": 38,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 9,
+    "full (+definitions)": 12
+   },
+   "top": [
+    "django/db/migrations/operations/models.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "django/db/models/deletion.py",
+    "django/db/models/fields/related.py"
+   ],
+   "scoreMs": 69.6265
+  },
+  {
+   "id": "django__django-13315",
+   "repo": "django/django",
+   "files": 6412,
+   "half": "held-out",
+   "collectMs": 395.0079,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "django/contrib/admin/widgets.py",
+    "django/forms/models.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/fields/reverse_related.py"
+   ],
+   "scoreMs": 31.9642
+  },
+  {
+   "id": "django__django-13321",
+   "repo": "django/django",
+   "files": 6399,
+   "half": "tuning",
+   "collectMs": 346.1093,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/core/signing.py",
+    "django/contrib/auth/__init__.py",
+    "django/contrib/sessions/backends/base.py",
+    "django/utils/functional.py",
+    "django/core/handlers/base.py"
+   ],
+   "scoreMs": 153.1202
+  },
+  {
+   "id": "django__django-13401",
+   "repo": "django/django",
+   "files": 6401,
+   "half": "tuning",
+   "collectMs": 388.7142,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/db/models/options.py",
+    "django/db/models/manager.py",
+    "django/forms/fields.py",
+    "django/db/models/fields/related_lookups.py"
+   ],
+   "scoreMs": 54.5687
+  },
+  {
+   "id": "django__django-13447",
+   "repo": "django/django",
+   "files": 6459,
+   "half": "tuning",
+   "collectMs": 408.419,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/admin/sites.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "docs/conf.py",
+    "docs/_ext/djangodocs.py",
+    "django/db/models/fields/__init__.py"
+   ],
+   "scoreMs": 37.4825
+  },
+  {
+   "id": "django__django-13448",
+   "repo": "django/django",
+   "files": 6400,
+   "half": "held-out",
+   "collectMs": 371.7393,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 4,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/backends/base/creation.py",
+    "django/core/management/__init__.py",
+    "django/db/backends/utils.py",
+    "django/db/models/query.py",
+    "django/db/utils.py"
+   ],
+   "scoreMs": 154.2045
+  },
+  {
+   "id": "django__django-13551",
+   "repo": "django/django",
+   "files": 6411,
+   "half": "tuning",
+   "collectMs": 395.56,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/auth/tokens.py",
+    "django/contrib/auth/base_user.py",
+    "django/contrib/auth/views.py",
+    "django/conf/global_settings.py",
+    "django/contrib/auth/__init__.py"
+   ],
+   "scoreMs": 37.8057
+  },
+  {
+   "id": "django__django-13590",
+   "repo": "django/django",
+   "files": 6412,
+   "half": "tuning",
+   "collectMs": 380.2804,
+   "ranks": {
+    "bm25": 18,
+    "+path tokens": 17,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/sql/query.py",
+    "django/db/models/query.py",
+    "django/template/base.py",
+    "django/db/models/options.py",
+    "django/db/models/fields/related.py"
+   ],
+   "scoreMs": 41.5142
+  },
+  {
+   "id": "django__django-13658",
+   "repo": "django/django",
+   "files": 6418,
+   "half": "tuning",
+   "collectMs": 405.919,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/__main__.py",
+    "django/core/management/__init__.py",
+    "django/core/management/base.py",
+    "django/core/management/utils.py",
+    "django/core/management/commands/makemessages.py"
+   ],
+   "scoreMs": 51.5246
+  },
+  {
+   "id": "django__django-13660",
+   "repo": "django/django",
+   "files": 6418,
+   "half": "held-out",
+   "collectMs": 465.879,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/core/management/__init__.py",
+    "django/core/management/base.py",
+    "django/core/management/commands/shell.py",
+    "django/__main__.py",
+    "django/core/management/commands/test.py"
+   ],
+   "scoreMs": 102.2094
+  },
+  {
+   "id": "django__django-13710",
+   "repo": "django/django",
+   "files": 6488,
+   "half": "tuning",
+   "collectMs": 417.4715,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/admin/options.py",
+    "django/views/generic/dates.py",
+    "django/contrib/admin/utils.py",
+    "django/db/backends/base/features.py",
+    "django/core/management/base.py"
+   ],
+   "scoreMs": 50.9613
+  },
+  {
+   "id": "django__django-13757",
+   "repo": "django/django",
+   "files": 6423,
+   "half": "held-out",
+   "collectMs": 480.034,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/json.py",
+    "django/db/models/query.py",
+    "tests/model_fields/test_jsonfield.py",
+    "django/contrib/postgres/lookups.py",
+    "django/contrib/postgres/fields/jsonb.py"
+   ],
+   "scoreMs": 57.7935
+  },
+  {
+   "id": "django__django-13768",
+   "repo": "django/django",
+   "files": 6423,
+   "half": "held-out",
+   "collectMs": 380.7307,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/dispatch/dispatcher.py",
+    "django/core/handlers/asgi.py",
+    "django/core/handlers/exception.py",
+    "django/contrib/auth/__init__.py",
+    "django/db/models/fields/related_descriptors.py"
+   ],
+   "scoreMs": 59.1511
+  },
+  {
+   "id": "django__django-13925",
+   "repo": "django/django",
+   "files": 6421,
+   "half": "tuning",
+   "collectMs": 432.2975,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/apps/config.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/__init__.py",
+    "django/db/models/options.py",
+    "django/contrib/admin/apps.py"
+   ],
+   "scoreMs": 112.4229
+  },
+  {
+   "id": "django__django-13933",
+   "repo": "django/django",
+   "files": 6423,
+   "half": "tuning",
+   "collectMs": 479.1884,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/forms/fields.py",
+    "django/forms/models.py",
+    "django/forms/widgets.py",
+    "django/core/exceptions.py",
+    "django/db/models/query.py"
+   ],
+   "scoreMs": 44.4187
+  },
+  {
+   "id": "django__django-13964",
+   "repo": "django/django",
+   "files": 6432,
+   "half": "held-out",
+   "collectMs": 452.8249,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 15,
+    "+named paths": 15,
+    "+module names": 15,
+    "full (+definitions)": 14
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "django/db/models/deletion.py",
+    "django/db/transaction.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/query.py"
+   ],
+   "scoreMs": 92.1129
+  },
+  {
+   "id": "django__django-14016",
+   "repo": "django/django",
+   "files": 6433,
+   "half": "held-out",
+   "collectMs": 393.6307,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 49,
+    "+named paths": 49,
+    "+module names": 50,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/views/debug.py",
+    "django/utils/datastructures.py",
+    "django/utils/autoreload.py",
+    "django/db/models/fields/json.py",
+    "docs/ref/contrib/gis/gdal.txt"
+   ],
+   "scoreMs": 56.586
+  },
+  {
+   "id": "django__django-14017",
+   "repo": "django/django",
+   "files": 6433,
+   "half": "tuning",
+   "collectMs": 617.0984,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/query_utils.py",
+    "django/db/models/expressions.py",
+    "django/contrib/postgres/search.py",
+    "django/db/models/query.py",
+    "django/db/backends/base/operations.py"
+   ],
+   "scoreMs": 70.1653
+  },
+  {
+   "id": "django__django-14155",
+   "repo": "django/django",
+   "files": 6443,
+   "half": "tuning",
+   "collectMs": 364.5573,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/urls/resolvers.py",
+    "django/contrib/admin/options.py",
+    "django/db/migrations/autodetector.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/views/debug.py"
+   ],
+   "scoreMs": 44.1121
+  },
+  {
+   "id": "django__django-14238",
+   "repo": "django/django",
+   "files": 6453,
+   "half": "tuning",
+   "collectMs": 365.2898,
+   "ranks": {
+    "bm25": 19,
+    "+path tokens": 19,
+    "+source/test/vendor prior": 13,
+    "+named paths": 16,
+    "+module names": 16,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/models/options.py",
+    "django/db/models/fields/__init__.py",
+    "django/core/management/__init__.py",
+    "django/apps/config.py",
+    "django/db/models/base.py"
+   ],
+   "scoreMs": 116.9756
+  },
+  {
+   "id": "django__django-14382",
+   "repo": "django/django",
+   "files": 6462,
+   "half": "held-out",
+   "collectMs": 399.1624,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/core/management/templates.py",
+    "django/core/management/base.py",
+    "django/core/management/commands/loaddata.py",
+    "django/core/management/commands/dumpdata.py",
+    "django/core/management/commands/makemessages.py"
+   ],
+   "scoreMs": 65.8273
+  },
+  {
+   "id": "django__django-14411",
+   "repo": "django/django",
+   "files": 6462,
+   "half": "held-out",
+   "collectMs": 344.0619,
+   "ranks": {
+    "bm25": 14,
+    "+path tokens": 14,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/auth/forms.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/contrib/admin/tests.py",
+    "django/contrib/admin/options.py",
+    "django/contrib/admin/helpers.py"
+   ],
+   "scoreMs": 32.2288
+  },
+  {
+   "id": "django__django-14534",
+   "repo": "django/django",
+   "files": 6484,
+   "half": "tuning",
+   "collectMs": 463.7787,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/forms/boundfield.py",
+    "django/forms/widgets.py",
+    "django/contrib/admin/widgets.py",
+    "js_tests/gis/mapwidget.test.js",
+    "django/contrib/postgres/forms/array.py"
+   ],
+   "scoreMs": 107.8172
+  },
+  {
+   "id": "django__django-14580",
+   "repo": "django/django",
+   "files": 6478,
+   "half": "held-out",
+   "collectMs": 508.6974,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 26,
+    "+named paths": 26,
+    "+module names": 27,
+    "full (+definitions)": 29
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/db/migrations/writer.py",
+    "django/db/migrations/operations/models.py",
+    "django/contrib/admin/migrations/0001_initial.py",
+    "django/contrib/redirects/migrations/0001_initial.py"
+   ],
+   "scoreMs": 113.202
+  },
+  {
+   "id": "django__django-14608",
+   "repo": "django/django",
+   "files": 6485,
+   "half": "tuning",
+   "collectMs": 405.288,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 11,
+    "+named paths": 11,
+    "+module names": 11,
+    "full (+definitions)": 12
+   },
+   "top": [
+    "django/forms/utils.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/contrib/admin/options.py",
+    "docs/_ext/djangodocs.py",
+    "docs/conf.py"
+   ],
+   "scoreMs": 46.4163
+  },
+  {
+   "id": "django__django-14667",
+   "repo": "django/django",
+   "files": 6485,
+   "half": "tuning",
+   "collectMs": 425.1522,
+   "ranks": {
+    "bm25": 39,
+    "+path tokens": 39,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/sql/query.py",
+    "django/db/backends/oracle/base.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/db/backends/base/features.py"
+   ],
+   "scoreMs": 50.0967
+  },
+  {
+   "id": "django__django-14672",
+   "repo": "django/django",
+   "files": 6485,
+   "half": "tuning",
+   "collectMs": 397.9256,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/db/models/base.py",
+    "django/core/management/__init__.py",
+    "django/db/models/fields/reverse_related.py",
+    "django/core/checks/model_checks.py",
+    "django/core/management/base.py"
+   ],
+   "scoreMs": 111.0472
+  },
+  {
+   "id": "django__django-14730",
+   "repo": "django/django",
+   "files": 6484,
+   "half": "tuning",
+   "collectMs": 416.0009,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 10,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "django/db/models/fields/reverse_related.py",
+    "django/db/models/fields/related_descriptors.py",
+    "tests/model_fields/models.py",
+    "django/contrib/admin/options.py"
+   ],
+   "scoreMs": 41.1554
+  },
+  {
+   "id": "django__django-14752",
+   "repo": "django/django",
+   "files": 6484,
+   "half": "held-out",
+   "collectMs": 391.5292,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/admin/views/autocomplete.py",
+    "django/forms/widgets.py",
+    "django/core/paginator.py",
+    "django/core/exceptions.py",
+    "django/http/response.py"
+   ],
+   "scoreMs": 108.8868
+  },
+  {
+   "id": "django__django-14787",
+   "repo": "django/django",
+   "files": 6539,
+   "half": "held-out",
+   "collectMs": 439.3087,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/decorators.py",
+    "django/template/defaultfilters.py",
+    "django/utils/functional.py",
+    "django/template/base.py",
+    "docs/topics/i18n/translation.txt"
+   ],
+   "scoreMs": 52.5222
+  },
+  {
+   "id": "django__django-14855",
+   "repo": "django/django",
+   "files": 6494,
+   "half": "held-out",
+   "collectMs": 509.3203,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/admin/helpers.py",
+    "django/contrib/admin/options.py",
+    "django/contrib/admin/utils.py",
+    "django/db/models/fields/related.py",
+    "django/contrib/auth/admin.py"
+   ],
+   "scoreMs": 71.4212
+  },
+  {
+   "id": "django__django-14915",
+   "repo": "django/django",
+   "files": 6525,
+   "half": "held-out",
+   "collectMs": 433.0133,
+   "ranks": {
+    "bm25": 21,
+    "+path tokens": 21,
+    "+source/test/vendor prior": 6,
+    "+named paths": 6,
+    "+module names": 6,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/forms/models.py",
+    "django/template/loader_tags.py",
+    "django/forms/widgets.py",
+    "django/forms/fields.py",
+    "django/db/models/fields/__init__.py"
+   ],
+   "scoreMs": 58.1221
+  },
+  {
+   "id": "django__django-14997",
+   "repo": "django/django",
+   "files": 6526,
+   "half": "held-out",
+   "collectMs": 376.4234,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/db/migrations/executor.py",
+    "django/db/migrations/migration.py",
+    "django/core/management/commands/migrate.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/migrations/operations/models.py"
+   ],
+   "scoreMs": 157.2285
+  },
+  {
+   "id": "django__django-14999",
+   "repo": "django/django",
+   "files": 6543,
+   "half": "tuning",
+   "collectMs": 350.1151,
+   "ranks": {
+    "bm25": 27,
+    "+path tokens": 27,
+    "+source/test/vendor prior": 7,
+    "+named paths": 7,
+    "+module names": 7,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/migrations/operations/models.py",
+    "django/db/backends/sqlite3/schema.py",
+    "django/db/backends/sqlite3/features.py",
+    "django/db/backends/base/schema.py",
+    "django/db/backends/oracle/schema.py"
+   ],
+   "scoreMs": 28.646
+  },
+  {
+   "id": "django__django-15061",
+   "repo": "django/django",
+   "files": 6546,
+   "half": "tuning",
+   "collectMs": 321.6248,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/forms/widgets.py",
+    "django/contrib/admin/widgets.py",
+    "django/forms/boundfield.py",
+    "django/contrib/auth/forms.py",
+    "django/contrib/postgres/forms/array.py"
+   ],
+   "scoreMs": 33.3709
+  },
+  {
+   "id": "django__django-15202",
+   "repo": "django/django",
+   "files": 6584,
+   "half": "tuning",
+   "collectMs": 469.0607,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 3,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/forms/fields.py",
+    "django/core/validators.py",
+    "django/db/models/fields/__init__.py",
+    "django/core/exceptions.py",
+    "django/contrib/postgres/forms/array.py"
+   ],
+   "scoreMs": 63.9273
+  },
+  {
+   "id": "django__django-15213",
+   "repo": "django/django",
+   "files": 6584,
+   "half": "held-out",
+   "collectMs": 408.3919,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 34,
+    "+named paths": 34,
+    "+module names": 34,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/expressions.py",
+    "django/db/models/fields/__init__.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/db/models/sql/where.py"
+   ],
+   "scoreMs": 40.2286
+  },
+  {
+   "id": "django__django-15252",
+   "repo": "django/django",
+   "files": 6591,
+   "half": "tuning",
+   "collectMs": 405.5578,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/migrations/recorder.py",
+    "django/db/migrations/executor.py",
+    "django/db/backends/base/creation.py",
+    "django/test/runner.py",
+    "django/db/backends/oracle/base.py"
+   ],
+   "scoreMs": 47.7842
+  },
+  {
+   "id": "django__django-15320",
+   "repo": "django/django",
+   "files": 6594,
+   "half": "held-out",
+   "collectMs": 384.3262,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/models/sql/query.py",
+    "django/db/models/expressions.py",
+    "django/db/models/query.py",
+    "django/db/models/sql/where.py",
+    "django/db/models/fields/related_lookups.py"
+   ],
+   "scoreMs": 71.8612
+  },
+  {
+   "id": "django__django-15347",
+   "repo": "django/django",
+   "files": 6599,
+   "half": "tuning",
+   "collectMs": 328.4366,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/messages/storage/cookie.py",
+    "django/conf/__init__.py",
+    "django/contrib/messages/storage/base.py",
+    "django/contrib/auth/hashers.py",
+    "django/contrib/messages/api.py"
+   ],
+   "scoreMs": 82.5422
+  },
+  {
+   "id": "django__django-15388",
+   "repo": "django/django",
+   "files": 6603,
+   "half": "held-out",
+   "collectMs": 347.1261,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "tests/i18n/sampleproject/manage.py",
+    "django/core/management/__init__.py",
+    "django/utils/termcolors.py",
+    "django/core/servers/basehttp.py",
+    "django/core/management/base.py"
+   ],
+   "scoreMs": 47.5736
+  },
+  {
+   "id": "django__django-15400",
+   "repo": "django/django",
+   "files": 6604,
+   "half": "held-out",
+   "collectMs": 327.606,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/functional.py",
+    "django/db/models/expressions.py",
+    "tests/decorators/tests.py",
+    "django/contrib/gis/geos/mutable_list.py",
+    "django/conf/__init__.py"
+   ],
+   "scoreMs": 50.7235
+  },
+  {
+   "id": "django__django-15498",
+   "repo": "django/django",
+   "files": 6614,
+   "half": "tuning",
+   "collectMs": 273.7788,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 11,
+    "+named paths": 11,
+    "+module names": 11,
+    "full (+definitions)": 11
+   },
+   "top": [
+    "django/contrib/admin/options.py",
+    "django/db/models/sql/query.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/contrib/sessions/backends/base.py",
+    "django/db/models/fields/__init__.py"
+   ],
+   "scoreMs": 25.4077
+  },
+  {
+   "id": "django__django-15695",
+   "repo": "django/django",
+   "files": 6634,
+   "half": "tuning",
+   "collectMs": 365.0327,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "tests/migrations/test_operations.py",
+    "django/db/migrations/operations/models.py",
+    "django/db/utils.py",
+    "tests/migrations/test_base.py",
+    "django/db/migrations/loader.py"
+   ],
+   "scoreMs": 74.3245
+  },
+  {
+   "id": "django__django-15738",
+   "repo": "django/django",
+   "files": 6636,
+   "half": "held-out",
+   "collectMs": 511.0835,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 41,
+    "+named paths": 42,
+    "+module names": 42,
+    "full (+definitions)": 45
+   },
+   "top": [
+    "django/db/models/fields/__init__.py",
+    "django/db/models/fields/related.py",
+    "django/forms/fields.py",
+    "django/db/models/deletion.py",
+    "tests/i18n/sampleproject/manage.py"
+   ],
+   "scoreMs": 73.4218
+  },
+  {
+   "id": "django__django-15781",
+   "repo": "django/django",
+   "files": 6637,
+   "half": "tuning",
+   "collectMs": 356.9114,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/core/management/base.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/contrib/staticfiles/management/commands/collectstatic.py",
+    "django/core/management/commands/sqlmigrate.py",
+    "django/core/management/commands/runserver.py"
+   ],
+   "scoreMs": 32.5455
+  },
+  {
+   "id": "django__django-15789",
+   "repo": "django/django",
+   "files": 6638,
+   "half": "tuning",
+   "collectMs": 376.0209,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/html.py",
+    "django/core/serializers/json.py",
+    "django/template/defaultfilters.py",
+    "django/http/response.py",
+    "django/forms/fields.py"
+   ],
+   "scoreMs": 60.2211
+  },
+  {
+   "id": "django__django-15790",
+   "repo": "django/django",
+   "files": 6637,
+   "half": "held-out",
+   "collectMs": 322.6245,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/core/checks/templates.py",
+    "django/template/backends/django.py",
+    "django/core/checks/translation.py",
+    "tests/check_framework/test_templates.py",
+    "django/template/defaulttags.py"
+   ],
+   "scoreMs": 41.5719
+  },
+  {
+   "id": "django__django-15814",
+   "repo": "django/django",
+   "files": 6638,
+   "half": "held-out",
+   "collectMs": 337.6912,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 4,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/sql/query.py",
+    "django/core/management/__init__.py",
+    "tests/i18n/sampleproject/manage.py",
+    "django/db/models/fields/related.py"
+   ],
+   "scoreMs": 118.7363
+  },
+  {
+   "id": "django__django-15819",
+   "repo": "django/django",
+   "files": 6639,
+   "half": "held-out",
+   "collectMs": 354.8138,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 21,
+    "+named paths": 21,
+    "+module names": 21,
+    "full (+definitions)": 22
+   },
+   "top": [
+    "django/db/models/fields/related.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/db/models/fields/reverse_related.py",
+    "django/db/models/base.py",
+    "django/contrib/contenttypes/fields.py"
+   ],
+   "scoreMs": 54.6943
+  },
+  {
+   "id": "django__django-15851",
+   "repo": "django/django",
+   "files": 6647,
+   "half": "held-out",
+   "collectMs": 346.0929,
+   "ranks": {
+    "bm25": 25,
+    "+path tokens": 13,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "tests/i18n/sampleproject/manage.py",
+    "django/db/backends/postgresql/client.py",
+    "django/db/backends/postgresql/base.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/query.py"
+   ],
+   "scoreMs": 34.4086
+  },
+  {
+   "id": "django__django-15902",
+   "repo": "django/django",
+   "files": 6645,
+   "half": "held-out",
+   "collectMs": 314.8773,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 7,
+    "+named paths": 7,
+    "+module names": 7,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/forms/formsets.py",
+    "django/core/management/base.py",
+    "django/db/backends/base/base.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/http/multipartparser.py"
+   ],
+   "scoreMs": 37.2578
+  },
+  {
+   "id": "django__django-15996",
+   "repo": "django/django",
+   "files": 6641,
+   "half": "tuning",
+   "collectMs": 404.8302,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/migrations/serializer.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py",
+    "django/core/validators.py",
+    "docs/ref/contrib/gis/gdal.txt"
+   ],
+   "scoreMs": 56.8156
+  },
+  {
+   "id": "django__django-16041",
+   "repo": "django/django",
+   "files": 6645,
+   "half": "held-out",
+   "collectMs": 493.8528,
+   "ranks": {
+    "bm25": 32,
+    "+path tokens": 32,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 5,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "django/template/defaulttags.py",
+    "django/forms/formsets.py",
+    "django/forms/models.py",
+    "django/contrib/admin/options.py",
+    "django/shortcuts.py"
+   ],
+   "scoreMs": 67.3605
+  },
+  {
+   "id": "django__django-16046",
+   "repo": "django/django",
+   "files": 6645,
+   "half": "held-out",
+   "collectMs": 348.8504,
+   "ranks": {
+    "bm25": 11,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/utils/numberformat.py",
+    "django/contrib/gis/gdal/datasource.py",
+    "django/template/defaultfilters.py",
+    "docs/conf.py",
+    "django/contrib/admin/templatetags/admin_list.py"
+   ],
+   "scoreMs": 34.6967
+  },
+  {
+   "id": "django__django-16139",
+   "repo": "django/django",
+   "files": 6650,
+   "half": "held-out",
+   "collectMs": 467.8434,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/auth/forms.py",
+    "django/forms/models.py",
+    "django/template/loader_tags.py",
+    "django/contrib/auth/admin.py",
+    "django/contrib/admin/options.py"
+   ],
+   "scoreMs": 75.4219
+  },
+  {
+   "id": "django__django-16229",
+   "repo": "django/django",
+   "files": 6655,
+   "half": "held-out",
+   "collectMs": 461.6259,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 17,
+    "+named paths": 17,
+    "+module names": 17,
+    "full (+definitions)": 24
+   },
+   "top": [
+    "django/contrib/admin/options.py",
+    "django/contrib/postgres/fields/array.py",
+    "django/db/models/fields/related.py",
+    "django/db/models/deletion.py",
+    "django/forms/models.py"
+   ],
+   "scoreMs": 64.6141
+  },
+  {
+   "id": "django__django-16255",
+   "repo": "django/django",
+   "files": 6651,
+   "half": "tuning",
+   "collectMs": 352.3092,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 14,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/sitemaps/__init__.py",
+    "django/core/handlers/base.py",
+    "django/contrib/sitemaps/views.py",
+    "django/utils/decorators.py",
+    "django/core/handlers/exception.py"
+   ],
+   "scoreMs": 52.864
+  },
+  {
+   "id": "django__django-16379",
+   "repo": "django/django",
+   "files": 6661,
+   "half": "tuning",
+   "collectMs": 350.4969,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/core/cache/backends/filebased.py",
+    "django/core/cache/backends/base.py",
+    "django/contrib/sessions/backends/file.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/contrib/sessions/backends/base.py"
+   ],
+   "scoreMs": 65.422
+  },
+  {
+   "id": "django__django-16400",
+   "repo": "django/django",
+   "files": 6661,
+   "half": "tuning",
+   "collectMs": 384.6555,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/middleware/security.py",
+    "django/http/request.py",
+    "django/db/utils.py",
+    "django/middleware/csrf.py",
+    "django/db/models/base.py"
+   ],
+   "scoreMs": 80.5235
+  },
+  {
+   "id": "django__django-16408",
+   "repo": "django/django",
+   "files": 6644,
+   "half": "tuning",
+   "collectMs": 454.2559,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 13,
+    "+named paths": 13,
+    "+module names": 13,
+    "full (+definitions)": 16
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/query_utils.py",
+    "tests/known_related_objects/tests.py",
+    "tests/known_related_objects/models.py",
+    "django/test/testcases.py"
+   ],
+   "scoreMs": 71.8832
+  },
+  {
+   "id": "django__django-16527",
+   "repo": "django/django",
+   "files": 6648,
+   "half": "tuning",
+   "collectMs": 388.013,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/contrib/admin/templatetags/admin_modify.py",
+    "django/contrib/admin/options.py",
+    "django/contrib/auth/admin.py",
+    "docs/ref/contrib/gis/gdal.txt",
+    "django/contrib/admin/helpers.py"
+   ],
+   "scoreMs": 53.9254
+  },
+  {
+   "id": "django__django-16595",
+   "repo": "django/django",
+   "files": 6654,
+   "half": "held-out",
+   "collectMs": 426.7527,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/migrations/operations/fields.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/migrations/optimizer.py",
+    "django/forms/fields.py",
+    "django/db/migrations/operations/base.py"
+   ],
+   "scoreMs": 71.0185
+  },
+  {
+   "id": "django__django-16816",
+   "repo": "django/django",
+   "files": 6698,
+   "half": "held-out",
+   "collectMs": 401.3014,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 9,
+    "+named paths": 15,
+    "+module names": 16,
+    "full (+definitions)": 21
+   },
+   "top": [
+    "django/contrib/admin/templatetags/admin_list.py",
+    "django/contrib/admin/utils.py",
+    "django/template/base.py",
+    "django/template/response.py",
+    "django/template/loader_tags.py"
+   ],
+   "scoreMs": 119.5702
+  },
+  {
+   "id": "django__django-16820",
+   "repo": "django/django",
+   "files": 6698,
+   "half": "tuning",
+   "collectMs": 279.9936,
+   "ranks": {
+    "bm25": 19,
+    "+path tokens": 18,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 5,
+    "full (+definitions)": 5
+   },
+   "top": [
+    "django/db/migrations/autodetector.py",
+    "django/db/migrations/state.py",
+    "django/db/backends/sqlite3/schema.py",
+    "django/db/models/options.py",
+    "django/db/migrations/operations/models.py"
+   ],
+   "scoreMs": 37.9336
+  },
+  {
+   "id": "django__django-16873",
+   "repo": "django/django",
+   "files": 6699,
+   "half": "held-out",
+   "collectMs": 391.0003,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 6,
+    "+named paths": 8,
+    "+module names": 3,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "django/test/utils.py",
+    "tests/template_tests/utils.py",
+    "tests/template_tests/filter_tests/test_join.py",
+    "django/template/defaulttags.py",
+    "django/utils/html.py"
+   ],
+   "scoreMs": 74.7706
+  },
+  {
+   "id": "django__django-16910",
+   "repo": "django/django",
+   "files": 6702,
+   "half": "tuning",
+   "collectMs": 459.1294,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 24,
+    "+named paths": 24,
+    "+module names": 24,
+    "full (+definitions)": 28
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/models/deletion.py",
+    "django/db/models/fields/related.py",
+    "django/db/models/fields/__init__.py",
+    "django/forms/fields.py"
+   ],
+   "scoreMs": 61.0821
+  },
+  {
+   "id": "django__django-17051",
+   "repo": "django/django",
+   "files": 6707,
+   "half": "held-out",
+   "collectMs": 389.2931,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "django/db/models/query.py",
+    "django/db/backends/base/features.py",
+    "django/db/backends/sqlite3/operations.py",
+    "django/db/models/fields/related_descriptors.py",
+    "django/db/backends/postgresql/operations.py"
+   ],
+   "scoreMs": 48.4282
+  },
+  {
+   "id": "django__django-17087",
+   "repo": "django/django",
+   "files": 6712,
+   "half": "held-out",
+   "collectMs": 484.2818,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "django/contrib/postgres/fields/array.py",
+    "django/db/migrations/operations/fields.py",
+    "django/db/models/fields/__init__.py",
+    "django/db/models/enums.py",
+    "django/forms/fields.py"
+   ],
+   "scoreMs": 110.9318
+  },
+  {
+   "id": "matplotlib__matplotlib-18869",
+   "repo": "matplotlib/matplotlib",
+   "files": 4366,
+   "half": "held-out",
+   "collectMs": 276.7721,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "lib/matplotlib/rcsetup.py",
+    "lib/matplotlib/artist.py",
+    "lib/matplotlib/dviread.py",
+    "lib/matplotlib/patches.py",
+    "lib/matplotlib/lines.py"
+   ],
+   "scoreMs": 28.9825
+  },
+  {
+   "id": "matplotlib__matplotlib-22711",
+   "repo": "matplotlib/matplotlib",
+   "files": 4432,
+   "half": "held-out",
+   "collectMs": 292.9902,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 2,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/widgets.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/axes/_axes.py",
+    "lib/matplotlib/transforms.py",
+    "lib/matplotlib/colors.py"
+   ],
+   "scoreMs": 114.4533
+  },
+  {
+   "id": "matplotlib__matplotlib-22835",
+   "repo": "matplotlib/matplotlib",
+   "files": 4440,
+   "half": "held-out",
+   "collectMs": 293.6145,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 4,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "lib/matplotlib/colors.py",
+    "lib/matplotlib/artist.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/axes/_axes.py",
+    "tutorials/colors/colormapnorms.py"
+   ],
+   "scoreMs": 61.8005
+  },
+  {
+   "id": "matplotlib__matplotlib-23299",
+   "repo": "matplotlib/matplotlib",
+   "files": 4451,
+   "half": "held-out",
+   "collectMs": 319.4129,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 32,
+    "+named paths": 32,
+    "+module names": 32,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/_pylab_helpers.py",
+    "lib/matplotlib/__init__.py",
+    "lib/matplotlib/backends/backend_qt.py",
+    "lib/matplotlib/backends/qt_compat.py"
+   ],
+   "scoreMs": 62.2536
+  },
+  {
+   "id": "matplotlib__matplotlib-23314",
+   "repo": "matplotlib/matplotlib",
+   "files": 4449,
+   "half": "tuning",
+   "collectMs": 285.9569,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "lib/matplotlib/gridspec.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/widgets.py",
+    "lib/matplotlib/artist.py"
+   ],
+   "scoreMs": 49.2669
+  },
+  {
+   "id": "matplotlib__matplotlib-23476",
+   "repo": "matplotlib/matplotlib",
+   "files": 4469,
+   "half": "tuning",
+   "collectMs": 306.1821,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/backend_bases.py",
+    "lib/matplotlib/backends/backend_macosx.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/__init__.py"
+   ],
+   "scoreMs": 79.0864
+  },
+  {
+   "id": "matplotlib__matplotlib-23562",
+   "repo": "matplotlib/matplotlib",
+   "files": 4469,
+   "half": "tuning",
+   "collectMs": 320.9145,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "lib/mpl_toolkits/mplot3d/axes3d.py",
+    "lib/mpl_toolkits/mplot3d/art3d.py",
+    "lib/matplotlib/figure.py",
+    "examples/units/basic_units.py",
+    "lib/matplotlib/pyplot.py"
+   ],
+   "scoreMs": 51.7954
+  },
+  {
+   "id": "matplotlib__matplotlib-23563",
+   "repo": "matplotlib/matplotlib",
+   "files": 4471,
+   "half": "held-out",
+   "collectMs": 310.476,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "lib/matplotlib/pyplot.py",
+    "lib/mpl_toolkits/mplot3d/axes3d.py",
+    "lib/mpl_toolkits/mplot3d/art3d.py",
+    "lib/matplotlib/artist.py",
+    "lib/matplotlib/image.py"
+   ],
+   "scoreMs": 99.4639
+  },
+  {
+   "id": "matplotlib__matplotlib-23913",
+   "repo": "matplotlib/matplotlib",
+   "files": 4510,
+   "half": "held-out",
+   "collectMs": 256.5413,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "lib/matplotlib/backends/backend_agg.py",
+    "lib/matplotlib/axes/_axes.py",
+    "lib/matplotlib/pyplot.py",
+    "tutorials/intermediate/constrainedlayout_guide.py",
+    "doc/conf.py"
+   ],
+   "scoreMs": 23.3839
+  },
+  {
+   "id": "matplotlib__matplotlib-23964",
+   "repo": "matplotlib/matplotlib",
+   "files": 4357,
+   "half": "tuning",
+   "collectMs": 307.7982,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/artist.py",
+    "lib/matplotlib/image.py",
+    "lib/matplotlib/backends/backend_ps.py",
+    "lib/matplotlib/backend_bases.py"
+   ],
+   "scoreMs": 64.6135
+  },
+  {
+   "id": "matplotlib__matplotlib-23987",
+   "repo": "matplotlib/matplotlib",
+   "files": 4357,
+   "half": "tuning",
+   "collectMs": 303.3222,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/figure.py",
+    "examples/units/basic_units.py",
+    "lib/matplotlib/gridspec.py",
+    "lib/matplotlib/layout_engine.py"
+   ],
+   "scoreMs": 35.1737
+  },
+  {
+   "id": "matplotlib__matplotlib-24149",
+   "repo": "matplotlib/matplotlib",
+   "files": 4367,
+   "half": "tuning",
+   "collectMs": 301.0093,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 7,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "lib/matplotlib/cbook/__init__.py",
+    "lib/matplotlib/axes/_axes.py",
+    "lib/matplotlib/__init__.py",
+    "lib/matplotlib/artist.py",
+    "lib/matplotlib/patches.py"
+   ],
+   "scoreMs": 57.8252
+  },
+  {
+   "id": "matplotlib__matplotlib-24265",
+   "repo": "matplotlib/matplotlib",
+   "files": 4387,
+   "half": "held-out",
+   "collectMs": 302.6968,
+   "ranks": {
+    "bm25": 31,
+    "+path tokens": 31,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 6,
+    "full (+definitions)": 8
+   },
+   "top": [
+    "lib/matplotlib/pyplot.py",
+    "setupext.py",
+    "examples/text_labels_and_annotations/font_table.py",
+    "lib/matplotlib/sphinxext/plot_directive.py",
+    "lib/matplotlib/animation.py"
+   ],
+   "scoreMs": 43.9228
+  },
+  {
+   "id": "matplotlib__matplotlib-24334",
+   "repo": "matplotlib/matplotlib",
+   "files": 4406,
+   "half": "held-out",
+   "collectMs": 282.5618,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 8,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "lib/matplotlib/contour.py",
+    "lib/matplotlib/axis.py",
+    "lib/matplotlib/colorbar.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/mpl_toolkits/mplot3d/axis3d.py"
+   ],
+   "scoreMs": 33.5086
+  },
+  {
+   "id": "matplotlib__matplotlib-24970",
+   "repo": "matplotlib/matplotlib",
+   "files": 4464,
+   "half": "tuning",
+   "collectMs": 292.3561,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/colors.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/cm.py",
+    "lib/matplotlib/_api/deprecation.py",
+    "lib/matplotlib/cbook.py"
+   ],
+   "scoreMs": 51.8863
+  },
+  {
+   "id": "matplotlib__matplotlib-25079",
+   "repo": "matplotlib/matplotlib",
+   "files": 4467,
+   "half": "held-out",
+   "collectMs": 316.5586,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/colors.py",
+    "lib/matplotlib/image.py",
+    "lib/matplotlib/collections.py",
+    "lib/matplotlib/cm.py",
+    "lib/matplotlib/artist.py"
+   ],
+   "scoreMs": 103.384
+  },
+  {
+   "id": "matplotlib__matplotlib-25311",
+   "repo": "matplotlib/matplotlib",
+   "files": 4401,
+   "half": "tuning",
+   "collectMs": 295.0718,
+   "ranks": {
+    "bm25": 21,
+    "+path tokens": 21,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 6,
+    "full (+definitions)": 11
+   },
+   "top": [
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/backends/backend_qtagg.py",
+    "lib/matplotlib/legend.py",
+    "lib/matplotlib/axes/_axes.py"
+   ],
+   "scoreMs": 49.9601
+  },
+  {
+   "id": "matplotlib__matplotlib-25332",
+   "repo": "matplotlib/matplotlib",
+   "files": 4402,
+   "half": "tuning",
+   "collectMs": 302.237,
+   "ranks": {
+    "bm25": 8,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 5,
+    "+named paths": 5,
+    "+module names": 6,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/axes/_base.py",
+    "lib/matplotlib/pyplot.py",
+    "galleries/examples/subplots_axes_and_figures/align_labels_demo.py",
+    "galleries/examples/text_labels_and_annotations/align_ylabels.py"
+   ],
+   "scoreMs": 52.8861
+  },
+  {
+   "id": "matplotlib__matplotlib-25433",
+   "repo": "matplotlib/matplotlib",
+   "files": 4407,
+   "half": "held-out",
+   "collectMs": 285.4137,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 46,
+    "+named paths": 46,
+    "+module names": 46,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "lib/matplotlib/widgets.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/figure.py",
+    "galleries/examples/widgets/slider_snap_demo.py",
+    "lib/matplotlib/axes/_axes.py"
+   ],
+   "scoreMs": 59.9093
+  },
+  {
+   "id": "matplotlib__matplotlib-25442",
+   "repo": "matplotlib/matplotlib",
+   "files": 4407,
+   "half": "held-out",
+   "collectMs": 317.8567,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/offsetbox.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/backend_bases.py",
+    "lib/matplotlib/backend_managers.py",
+    "lib/mpl_toolkits/mplot3d/axes3d.py"
+   ],
+   "scoreMs": 56.6285
+  },
+  {
+   "id": "matplotlib__matplotlib-25498",
+   "repo": "matplotlib/matplotlib",
+   "files": 4414,
+   "half": "tuning",
+   "collectMs": 320.1256,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/matplotlib/colorbar.py",
+    "lib/matplotlib/colors.py",
+    "lib/matplotlib/pyplot.py",
+    "lib/matplotlib/figure.py",
+    "lib/matplotlib/axes/_axes.py"
+   ],
+   "scoreMs": 87.3378
+  },
+  {
+   "id": "matplotlib__matplotlib-26011",
+   "repo": "matplotlib/matplotlib",
+   "files": 4525,
+   "half": "held-out",
+   "collectMs": 269.6973,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 10,
+    "+source/test/vendor prior": 9,
+    "+named paths": 10,
+    "+module names": 10,
+    "full (+definitions)": 13
+   },
+   "top": [
+    "lib/matplotlib/axes/_base.py",
+    "lib/matplotlib/cbook.pyi",
+    "lib/matplotlib/cbook.py",
+    "lib/matplotlib/backend_bases.pyi",
+    "lib/matplotlib/axes/_base.pyi"
+   ],
+   "scoreMs": 56.038
+  },
+  {
+   "id": "matplotlib__matplotlib-26020",
+   "repo": "matplotlib/matplotlib",
+   "files": 4563,
+   "half": "tuning",
+   "collectMs": 293.7014,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "lib/mpl_toolkits/axes_grid1/axes_grid.py",
+    "lib/mpl_toolkits/axes_grid1/mpl_axes.py",
+    "lib/matplotlib/pyplot.py",
+    "doc/users/prev_whats_new/github_stats_3.6.1.rst",
+    "galleries/users_explain/figure/interactive_guide.rst"
+   ],
+   "scoreMs": 47.7388
+  },
+  {
+   "id": "mwaskom__seaborn-2848",
+   "repo": "mwaskom/seaborn",
+   "files": 260,
+   "half": "held-out",
+   "collectMs": 118.8036,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 5
+   },
+   "top": [
+    "seaborn/utils.py",
+    "seaborn/axisgrid.py",
+    "seaborn/regression.py",
+    "seaborn/matrix.py",
+    "seaborn/_oldcore.py"
+   ],
+   "scoreMs": 1.5916
+  },
+  {
+   "id": "mwaskom__seaborn-3010",
+   "repo": "mwaskom/seaborn",
+   "files": 286,
+   "half": "held-out",
+   "collectMs": 132.9919,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "seaborn/_core/plot.py",
+    "seaborn/_core/groupby.py",
+    "seaborn/_stats/regression.py",
+    "seaborn/_core/scales.py",
+    "seaborn/_marks/line.py"
+   ],
+   "scoreMs": 4.8876
+  },
+  {
+   "id": "mwaskom__seaborn-3190",
+   "repo": "mwaskom/seaborn",
+   "files": 324,
+   "half": "tuning",
+   "collectMs": 142.0412,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "seaborn/_core/scales.py",
+    "seaborn/_core/plot.py",
+    "seaborn/_marks/bar.py",
+    "seaborn/_core/properties.py",
+    "tests/_core/test_plot.py"
+   ],
+   "scoreMs": 3.6479
+  },
+  {
+   "id": "mwaskom__seaborn-3407",
+   "repo": "mwaskom/seaborn",
+   "files": 327,
+   "half": "tuning",
+   "collectMs": 126.8916,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "seaborn/axisgrid.py",
+    "seaborn/_core/data.py",
+    "seaborn/categorical.py",
+    "seaborn/_oldcore.py",
+    "seaborn/_core/rules.py"
+   ],
+   "scoreMs": 3.5929
+  },
+  {
+   "id": "pallets__flask-4045",
+   "repo": "pallets/flask",
+   "files": 235,
+   "half": "tuning",
+   "collectMs": 106.2075,
+   "ranks": {
+    "bm25": 14,
+    "+path tokens": 14,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "src/flask/app.py",
+    "src/flask/scaffold.py",
+    "src/flask/helpers.py",
+    "src/flask/blueprints.py",
+    "src/flask/debughelpers.py"
+   ],
+   "scoreMs": 0.7767
+  },
+  {
+   "id": "pallets__flask-4992",
+   "repo": "pallets/flask",
+   "files": 250,
+   "half": "tuning",
+   "collectMs": 110.7277,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/flask/config.py",
+    "src/flask/testing.py",
+    "src/flask/app.py",
+    "src/flask/json/provider.py",
+    "src/flask/scaffold.py"
+   ],
+   "scoreMs": 2.7359
+  },
+  {
+   "id": "pallets__flask-5063",
+   "repo": "pallets/flask",
+   "files": 253,
+   "half": "tuning",
+   "collectMs": 119.2931,
+   "ranks": {
+    "bm25": 19,
+    "+path tokens": 19,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "src/flask/app.py",
+    "src/flask/blueprints.py",
+    "src/flask/scaffold.py",
+    "src/flask/cli.py",
+    "examples/tutorial/flaskr/__init__.py"
+   ],
+   "scoreMs": 2.5714
+  },
+  {
+   "id": "psf__requests-1963",
+   "repo": "psf/requests",
+   "files": 121,
+   "half": "tuning",
+   "collectMs": 111.8764,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "requests/sessions.py",
+    "requests/packages/urllib3/util.py",
+    "requests/models.py",
+    "requests/packages/urllib3/connectionpool.py",
+    "requests/packages/urllib3/packages/six.py"
+   ],
+   "scoreMs": 0.7286
+  },
+  {
+   "id": "psf__requests-2148",
+   "repo": "psf/requests",
+   "files": 128,
+   "half": "tuning",
+   "collectMs": 112.6225,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "requests/models.py",
+    "requests/packages/urllib3/response.py",
+    "requests/exceptions.py",
+    "requests/packages/urllib3/contrib/pyopenssl.py",
+    "requests/packages/urllib3/util/timeout.py"
+   ],
+   "scoreMs": 1.9226
+  },
+  {
+   "id": "psf__requests-2317",
+   "repo": "psf/requests",
+   "files": 128,
+   "half": "tuning",
+   "collectMs": 101.777,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 5,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "requests/sessions.py",
+    "requests/utils.py",
+    "requests/packages/chardet/hebrewprober.py",
+    "requests/packages/urllib3/packages/six.py",
+    "requests/models.py"
+   ],
+   "scoreMs": 1.7807
+  },
+  {
+   "id": "psf__requests-2674",
+   "repo": "psf/requests",
+   "files": 132,
+   "half": "held-out",
+   "collectMs": 112.0477,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 6,
+    "+named paths": 6,
+    "+module names": 7,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "requests/packages/urllib3/exceptions.py",
+    "requests/exceptions.py",
+    "requests/models.py",
+    "requests/packages/urllib3/response.py",
+    "requests/packages/urllib3/connectionpool.py"
+   ],
+   "scoreMs": 1.0668
+  },
+  {
+   "id": "psf__requests-3362",
+   "repo": "psf/requests",
+   "files": 140,
+   "half": "held-out",
+   "collectMs": 116.3919,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "requests/models.py",
+    "requests/packages/urllib3/packages/six.py",
+    "requests/utils.py",
+    "requests/packages/urllib3/fields.py",
+    "requests/packages/urllib3/connectionpool.py"
+   ],
+   "scoreMs": 1.0301
+  },
+  {
+   "id": "psf__requests-863",
+   "repo": "psf/requests",
+   "files": 167,
+   "half": "held-out",
+   "collectMs": 106.9962,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "requests/models.py",
+    "requests/auth.py",
+    "requests/sessions.py",
+    "requests/hooks.py",
+    "requests/cookies.py"
+   ],
+   "scoreMs": 0.7455
+  },
+  {
+   "id": "pydata__xarray-3364",
+   "repo": "pydata/xarray",
+   "files": 234,
+   "half": "held-out",
+   "collectMs": 130.5234,
+   "ranks": {
+    "bm25": 18,
+    "+path tokens": 18,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 8,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "xarray/core/variable.py",
+    "xarray/core/concat.py",
+    "xarray/core/dataset.py",
+    "versioneer.py",
+    "xarray/core/groupby.py"
+   ],
+   "scoreMs": 1.289
+  },
+  {
+   "id": "pydata__xarray-4094",
+   "repo": "pydata/xarray",
+   "files": 258,
+   "half": "held-out",
+   "collectMs": 156.3519,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "xarray/core/dataset.py",
+    "xarray/core/dataarray.py",
+    "xarray/util/print_versions.py",
+    "xarray/core/merge.py",
+    "doc/io.rst"
+   ],
+   "scoreMs": 2.1413
+  },
+  {
+   "id": "pydata__xarray-4248",
+   "repo": "pydata/xarray",
+   "files": 260,
+   "half": "held-out",
+   "collectMs": 131.7699,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 10,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "xarray/core/dataset.py",
+    "xarray/core/missing.py",
+    "xarray/core/dataarray.py",
+    "xarray/core/formatting.py",
+    "xarray/plot/facetgrid.py"
+   ],
+   "scoreMs": 1.7707
+  },
+  {
+   "id": "pydata__xarray-4493",
+   "repo": "pydata/xarray",
+   "files": 266,
+   "half": "tuning",
+   "collectMs": 157.7829,
+   "ranks": {
+    "bm25": 44,
+    "+path tokens": 40,
+    "+source/test/vendor prior": 14,
+    "+named paths": 14,
+    "+module names": 14,
+    "full (+definitions)": 5
+   },
+   "top": [
+    "asv_bench/benchmarks/__init__.py",
+    "xarray/util/print_versions.py",
+    "xarray/core/dataset.py",
+    "xarray/core/dataarray.py",
+    "xarray/core/variable.py"
+   ],
+   "scoreMs": 4.7247
+  },
+  {
+   "id": "pydata__xarray-5131",
+   "repo": "pydata/xarray",
+   "files": 284,
+   "half": "tuning",
+   "collectMs": 137.3477,
+   "ranks": {
+    "bm25": 41,
+    "+path tokens": 40,
+    "+source/test/vendor prior": 14,
+    "+named paths": 14,
+    "+module names": 14,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "xarray/core/common.py",
+    "xarray/core/groupby.py",
+    "xarray/core/dataset.py",
+    "xarray/core/computation.py",
+    "xarray/core/variable.py"
+   ],
+   "scoreMs": 1.9606
+  },
+  {
+   "id": "pylint-dev__pylint-5859",
+   "repo": "pylint-dev/pylint",
+   "files": 2072,
+   "half": "held-out",
+   "collectMs": 155.1805,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "doc/user_guide/output.rst",
+    "pylint/checkers/misc.py",
+    "pylint/checkers/stdlib.py",
+    "pylint/lint/run.py",
+    "pylint/epylint.py"
+   ],
+   "scoreMs": 11.6889
+  },
+  {
+   "id": "pylint-dev__pylint-6506",
+   "repo": "pylint-dev/pylint",
+   "files": 2563,
+   "half": "held-out",
+   "collectMs": 164.6159,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "pylint/config/config_initialization.py",
+    "pylint/lint/run.py",
+    "pylint/__init__.py",
+    "pylint/config/exceptions.py",
+    "pylint/extensions/_check_docs_utils.py"
+   ],
+   "scoreMs": 18.7037
+  },
+  {
+   "id": "pylint-dev__pylint-7080",
+   "repo": "pylint-dev/pylint",
+   "files": 3323,
+   "half": "held-out",
+   "collectMs": 175.4778,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "examples/pyproject.toml",
+    "doc/user_guide/usage/output.rst",
+    "tests/lint/test_caching.py",
+    "doc/whatsnew/2/2.4/full.rst",
+    ".github/workflows/primer_comment.yaml"
+   ],
+   "scoreMs": 19.3028
+  },
+  {
+   "id": "pylint-dev__pylint-7114",
+   "repo": "pylint-dev/pylint",
+   "files": 3382,
+   "half": "held-out",
+   "collectMs": 161.8308,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 31,
+    "+named paths": 35,
+    "+module names": 35,
+    "full (+definitions)": 36
+   },
+   "top": [
+    "tests/functional/a/__init__.py",
+    "tests/input/func_noerror_cycle/a.py",
+    "tests/input/func_noerror_cycle/b.py",
+    "tests/regrtest_data/beyond_top_three/a.py",
+    "pylint/checkers/stdlib.py"
+   ],
+   "scoreMs": 19.5633
+  },
+  {
+   "id": "pylint-dev__pylint-7228",
+   "repo": "pylint-dev/pylint",
+   "files": 3379,
+   "half": "tuning",
+   "collectMs": 174.4081,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 45,
+    "+named paths": 45,
+    "+module names": 45,
+    "full (+definitions)": 46
+   },
+   "top": [
+    "pylint/config/arguments_manager.py",
+    "pylint/config/config_initialization.py",
+    "pylint/__init__.py",
+    "pylint/lint/run.py",
+    "pylint/testutils/_primer/package_to_lint.py"
+   ],
+   "scoreMs": 43.7467
+  },
+  {
+   "id": "pylint-dev__pylint-7993",
+   "repo": "pylint-dev/pylint",
+   "files": 3393,
+   "half": "tuning",
+   "collectMs": 167.1783,
+   "ranks": {
+    "bm25": 32,
+    "+path tokens": 32,
+    "+source/test/vendor prior": 9,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "pylint/reporters/text.py",
+    "pylint/lint/run.py",
+    "pylint/lint/pylinter.py",
+    "pylint/config/__init__.py",
+    "pylint/config/arguments_provider.py"
+   ],
+   "scoreMs": 20.7073
+  },
+  {
+   "id": "pytest-dev__pytest-11143",
+   "repo": "pytest-dev/pytest",
+   "files": 578,
+   "half": "tuning",
+   "collectMs": 162.4168,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/python.py",
+    "src/_pytest/runner.py",
+    "src/_pytest/pathlib.py",
+    "src/_pytest/config/__init__.py"
+   ],
+   "scoreMs": 6.4758
+  },
+  {
+   "id": "pytest-dev__pytest-11148",
+   "repo": "pytest-dev/pytest",
+   "files": 576,
+   "half": "held-out",
+   "collectMs": 182.6127,
+   "ranks": {
+    "bm25": 26,
+    "+path tokens": 26,
+    "+source/test/vendor prior": 15,
+    "+named paths": 15,
+    "+module names": 15,
+    "full (+definitions)": 17
+   },
+   "top": [
+    "src/_pytest/logging.py",
+    "src/_pytest/_py/path.py",
+    "src/_pytest/debugging.py",
+    "src/_pytest/capture.py",
+    "src/_pytest/assertion/rewrite.py"
+   ],
+   "scoreMs": 11.0843
+  },
+  {
+   "id": "pytest-dev__pytest-5103",
+   "repo": "pytest-dev/pytest",
+   "files": 418,
+   "half": "tuning",
+   "collectMs": 154.9633,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "doc/en/example/multipython.py",
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/pathlib.py",
+    "src/_pytest/_code/code.py",
+    "src/_pytest/compat.py"
+   ],
+   "scoreMs": 3.5931
+  },
+  {
+   "id": "pytest-dev__pytest-5221",
+   "repo": "pytest-dev/pytest",
+   "files": 433,
+   "half": "tuning",
+   "collectMs": 130.0579,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "src/_pytest/fixtures.py",
+    "src/_pytest/python.py",
+    "src/_pytest/doctest.py",
+    "src/_pytest/python_api.py",
+    "src/_pytest/assertion/rewrite.py"
+   ],
+   "scoreMs": 2.0294
+  },
+  {
+   "id": "pytest-dev__pytest-5227",
+   "repo": "pytest-dev/pytest",
+   "files": 434,
+   "half": "tuning",
+   "collectMs": 161.6046,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "doc/en/usage.rst",
+    "src/_pytest/_code/code.py",
+    "src/_pytest/main.py",
+    "src/_pytest/junitxml.py",
+    "src/_pytest/terminal.py"
+   ],
+   "scoreMs": 2.7795
+  },
+  {
+   "id": "pytest-dev__pytest-5413",
+   "repo": "pytest-dev/pytest",
+   "files": 426,
+   "half": "tuning",
+   "collectMs": 125.0737,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 19,
+    "+named paths": 19,
+    "+module names": 19,
+    "full (+definitions)": 21
+   },
+   "top": [
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/fixtures.py",
+    "src/_pytest/python_api.py",
+    "src/_pytest/config/__init__.py",
+    "src/_pytest/logging.py"
+   ],
+   "scoreMs": 1.95
+  },
+  {
+   "id": "pytest-dev__pytest-5495",
+   "repo": "pytest-dev/pytest",
+   "files": 446,
+   "half": "tuning",
+   "collectMs": 133.958,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/assertion/util.py",
+    "src/_pytest/_code/code.py",
+    "src/_pytest/python_api.py",
+    "src/_pytest/config/__init__.py"
+   ],
+   "scoreMs": 2.3318
+  },
+  {
+   "id": "pytest-dev__pytest-5692",
+   "repo": "pytest-dev/pytest",
+   "files": 450,
+   "half": "tuning",
+   "collectMs": 151.0901,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/_pytest/junitxml.py",
+    "src/_pytest/reports.py",
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/terminal.py",
+    "src/_pytest/pytester.py"
+   ],
+   "scoreMs": 3.3786
+  },
+  {
+   "id": "pytest-dev__pytest-6116",
+   "repo": "pytest-dev/pytest",
+   "files": 474,
+   "half": "tuning",
+   "collectMs": 137.2782,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 18,
+    "+named paths": 18,
+    "+module names": 18,
+    "full (+definitions)": 16
+   },
+   "top": [
+    "src/_pytest/python_api.py",
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/python.py",
+    "src/_pytest/capture.py",
+    "src/_pytest/config/__init__.py"
+   ],
+   "scoreMs": 2.6691
+  },
+  {
+   "id": "pytest-dev__pytest-7168",
+   "repo": "pytest-dev/pytest",
+   "files": 484,
+   "half": "tuning",
+   "collectMs": 149.263,
+   "ranks": {
+    "bm25": 18,
+    "+path tokens": 18,
+    "+source/test/vendor prior": 8,
+    "+named paths": 5,
+    "+module names": 5,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "src/_pytest/_code/code.py",
+    "src/_pytest/runner.py",
+    "src/_pytest/_io/saferepr.py",
+    "src/_pytest/reports.py",
+    "src/_pytest/main.py"
+   ],
+   "scoreMs": 8.7815
+  },
+  {
+   "id": "pytest-dev__pytest-7220",
+   "repo": "pytest-dev/pytest",
+   "files": 512,
+   "half": "held-out",
+   "collectMs": 160.1336,
+   "ranks": {
+    "bm25": 44,
+    "+path tokens": 44,
+    "+source/test/vendor prior": 12,
+    "+named paths": 12,
+    "+module names": 12,
+    "full (+definitions)": 13
+   },
+   "top": [
+    "src/_pytest/pytester.py",
+    "src/_pytest/fixtures.py",
+    "src/_pytest/monkeypatch.py",
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/logging.py"
+   ],
+   "scoreMs": 5.7337
+  },
+  {
+   "id": "pytest-dev__pytest-7373",
+   "repo": "pytest-dev/pytest",
+   "files": 533,
+   "half": "held-out",
+   "collectMs": 150.5813,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/_pytest/mark/evaluate.py",
+    "src/_pytest/pytester.py",
+    "src/_pytest/skipping.py",
+    "src/_pytest/mark/expression.py",
+    "src/_pytest/fixtures.py"
+   ],
+   "scoreMs": 4.4734
+  },
+  {
+   "id": "pytest-dev__pytest-7432",
+   "repo": "pytest-dev/pytest",
+   "files": 541,
+   "half": "tuning",
+   "collectMs": 149.4928,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/_pytest/skipping.py",
+    "src/_pytest/outcomes.py",
+    "src/_pytest/pytester.py",
+    "src/_pytest/runner.py",
+    "src/_pytest/hookspec.py"
+   ],
+   "scoreMs": 3.8489
+  },
+  {
+   "id": "pytest-dev__pytest-7490",
+   "repo": "pytest-dev/pytest",
+   "files": 478,
+   "half": "held-out",
+   "collectMs": 144.4688,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "src/_pytest/fixtures.py",
+    "src/_pytest/nodes.py",
+    "src/_pytest/outcomes.py",
+    "src/_pytest/pytester.py",
+    "src/_pytest/junitxml.py"
+   ],
+   "scoreMs": 4.3355
+  },
+  {
+   "id": "pytest-dev__pytest-8365",
+   "repo": "pytest-dev/pytest",
+   "files": 535,
+   "half": "tuning",
+   "collectMs": 161.6811,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "src/_pytest/tmpdir.py",
+    "src/_pytest/pathlib.py",
+    "src/_pytest/pytester.py",
+    "testing/test_assertrewrite.py",
+    "testing/test_tmpdir.py"
+   ],
+   "scoreMs": 4.2096
+  },
+  {
+   "id": "pytest-dev__pytest-8906",
+   "repo": "pytest-dev/pytest",
+   "files": 573,
+   "half": "held-out",
+   "collectMs": 168.0838,
+   "ranks": {
+    "bm25": 8,
+    "+path tokens": 8,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 6
+   },
+   "top": [
+    "src/_pytest/outcomes.py",
+    "src/_pytest/compat.py",
+    "src/_pytest/python_api.py",
+    "testing/test_mark.py",
+    "src/_pytest/config/__init__.py"
+   ],
+   "scoreMs": 7.3113
+  },
+  {
+   "id": "pytest-dev__pytest-9359",
+   "repo": "pytest-dev/pytest",
+   "files": 622,
+   "half": "held-out",
+   "collectMs": 180.611,
+   "ranks": {
+    "bm25": 34,
+    "+path tokens": 33,
+    "+source/test/vendor prior": 11,
+    "+named paths": 11,
+    "+module names": 11,
+    "full (+definitions)": 12
+   },
+   "top": [
+    "src/_pytest/assertion/rewrite.py",
+    "src/_pytest/_code/code.py",
+    "doc/en/example/fixtures/test_fixtures_request_different_scope.py",
+    "doc/en/conf.py",
+    "src/_pytest/pytester.py"
+   ],
+   "scoreMs": 5.0418
+  },
+  {
+   "id": "scikit-learn__scikit-learn-10297",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1105,
+   "half": "tuning",
+   "collectMs": 205.4871,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/linear_model/ridge.py",
+    "sklearn/linear_model/least_angle.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/linear_model/__init__.py",
+    "sklearn/linear_model/coordinate_descent.py"
+   ],
+   "scoreMs": 12.4132
+  },
+  {
+   "id": "scikit-learn__scikit-learn-10508",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1103,
+   "half": "tuning",
+   "collectMs": 194.4141,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 3,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/preprocessing/label.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/preprocessing/__init__.py",
+    "sklearn/datasets/twenty_newsgroups.py",
+    "sklearn/linear_model/ridge.py"
+   ],
+   "scoreMs": 9.9338
+  },
+  {
+   "id": "scikit-learn__scikit-learn-10949",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1110,
+   "half": "tuning",
+   "collectMs": 185.3754,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/utils/validation.py",
+    "sklearn/exceptions.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/utils/__init__.py",
+    "benchmarks/bench_plot_nmf.py"
+   ],
+   "scoreMs": 10.3358
+  },
+  {
+   "id": "scikit-learn__scikit-learn-11040",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1117,
+   "half": "tuning",
+   "collectMs": 184.1398,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 4,
+    "+named paths": 5,
+    "+module names": 6,
+    "full (+definitions)": 5
+   },
+   "top": [
+    "sklearn/neighbors/binary_tree.pxi",
+    "sklearn/neighbors/unsupervised.py",
+    "sklearn/datasets/samples_generator.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/neighbors/base.py"
+   ],
+   "scoreMs": 12.7593
+  },
+  {
+   "id": "scikit-learn__scikit-learn-11281",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1121,
+   "half": "held-out",
+   "collectMs": 182.1757,
+   "ranks": {
+    "bm25": 26,
+    "+path tokens": 26,
+    "+source/test/vendor prior": 9,
+    "+named paths": 9,
+    "+module names": 9,
+    "full (+definitions)": 13
+   },
+   "top": [
+    "doc/developers/contributing.rst",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/pipeline.py",
+    "sklearn/mixture/gmm.py",
+    "sklearn/cluster/dbscan_.py"
+   ],
+   "scoreMs": 6.2057
+  },
+  {
+   "id": "scikit-learn__scikit-learn-12471",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1220,
+   "half": "tuning",
+   "collectMs": 199.935,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/preprocessing/_encoders.py",
+    "sklearn/preprocessing/__init__.py",
+    "examples/compose/plot_column_transformer_mixed_types.py",
+    "sklearn/preprocessing/label.py",
+    "sklearn/preprocessing/_discretization.py"
+   ],
+   "scoreMs": 9.4257
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13142",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1228,
+   "half": "tuning",
+   "collectMs": 226.0482,
+   "ranks": {
+    "bm25": 38,
+    "+path tokens": 36,
+    "+source/test/vendor prior": 11,
+    "+named paths": 12,
+    "+module names": 13,
+    "full (+definitions)": 9
+   },
+   "top": [
+    "sklearn/externals/joblib/externals/loky/backend/utils.py",
+    "sklearn/mixture/gaussian_mixture.py",
+    "sklearn/utils/testing.py",
+    "sklearn/mixture/tests/test_gaussian_mixture.py",
+    "sklearn/utils/estimator_checks.py"
+   ],
+   "scoreMs": 12.4726
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13241",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1183,
+   "half": "held-out",
+   "collectMs": 181.9531,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/decomposition/kernel_pca.py",
+    "sklearn/manifold/isomap.py",
+    "sklearn/manifold/spectral_embedding_.py",
+    "sklearn/cluster/spectral.py",
+    "sklearn/kernel_approximation.py"
+   ],
+   "scoreMs": 7.2079
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13439",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1202,
+   "half": "held-out",
+   "collectMs": 196.516,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sklearn/feature_selection/univariate_selection.py",
+    "sklearn/pipeline.py",
+    "sklearn/datasets/samples_generator.py",
+    "examples/feature_selection/plot_feature_selection_pipeline.py",
+    "sklearn/feature_selection/__init__.py"
+   ],
+   "scoreMs": 9.4624
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13496",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1202,
+   "half": "held-out",
+   "collectMs": 191.7765,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sklearn/ensemble/forest.py",
+    "sklearn/ensemble/iforest.py",
+    "sklearn/ensemble/bagging.py",
+    "sklearn/ensemble/__init__.py",
+    "doc/whats_new/older_versions.rst"
+   ],
+   "scoreMs": 13.1511
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13497",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1202,
+   "half": "tuning",
+   "collectMs": 180.3728,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/feature_selection/mutual_info_.py",
+    "sklearn/isotonic.py",
+    "sklearn/ensemble/forest.py",
+    "sklearn/cluster/optics_.py",
+    "sklearn/preprocessing/data.py"
+   ],
+   "scoreMs": 5.9616
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13584",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1201,
+   "half": "tuning",
+   "collectMs": 177.7237,
+   "ranks": {
+    "bm25": 23,
+    "+path tokens": 23,
+    "+source/test/vendor prior": 7,
+    "+named paths": 7,
+    "+module names": 7,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "sklearn/_config.py",
+    "sklearn/linear_model/logistic.py",
+    "sklearn/linear_model/__init__.py",
+    "examples/plot_changed_only_pprint_parameter.py",
+    "doc/whats_new/v0.21.rst"
+   ],
+   "scoreMs": 9.7064
+  },
+  {
+   "id": "scikit-learn__scikit-learn-13779",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1192,
+   "half": "tuning",
+   "collectMs": 204.8196,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/ensemble/voting.py",
+    "sklearn/ensemble/forest.py",
+    "sklearn/datasets/base.py",
+    "doc/themes/scikit-learn/static/jquery.maphilight.js",
+    "sklearn/linear_model/logistic.py"
+   ],
+   "scoreMs": 8.6405
+  },
+  {
+   "id": "scikit-learn__scikit-learn-14087",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1192,
+   "half": "tuning",
+   "collectMs": 205.4394,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/linear_model/logistic.py",
+    "sklearn/linear_model/__init__.py",
+    "sklearn/_build_utils/__init__.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/linear_model/ridge.py"
+   ],
+   "scoreMs": 10.8673
+  },
+  {
+   "id": "scikit-learn__scikit-learn-14092",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1192,
+   "half": "held-out",
+   "collectMs": 198.4085,
+   "ranks": {
+    "bm25": 24,
+    "+path tokens": 24,
+    "+source/test/vendor prior": 6,
+    "+named paths": 6,
+    "+module names": 9,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/neighbors/nca.py",
+    "sklearn/utils/tests/test_pprint.py",
+    "sklearn/neighbors/classification.py",
+    "sklearn/pipeline.py",
+    "sklearn/model_selection/_search.py"
+   ],
+   "scoreMs": 14.9404
+  },
+  {
+   "id": "scikit-learn__scikit-learn-14894",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1251,
+   "half": "held-out",
+   "collectMs": 210.8286,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/svm/base.py",
+    "sklearn/svm/classes.py",
+    "examples/linear_model/plot_sparse_logistic_regression_20newsgroups.py",
+    "sklearn/utils/_show_versions.py",
+    "sklearn/svm/src/liblinear/linear.cpp"
+   ],
+   "scoreMs": 13.2511
+  },
+  {
+   "id": "scikit-learn__scikit-learn-14983",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1224,
+   "half": "tuning",
+   "collectMs": 182.6005,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/model_selection/_split.py",
+    "sklearn/model_selection/__init__.py",
+    "sklearn/model_selection/_search.py",
+    "sklearn/feature_selection/rfe.py",
+    "sklearn/model_selection/_validation.py"
+   ],
+   "scoreMs": 10.2661
+  },
+  {
+   "id": "scikit-learn__scikit-learn-15512",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1269,
+   "half": "tuning",
+   "collectMs": 191.6166,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/cluster/_affinity_propagation.py",
+    "sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py",
+    "sklearn/cluster/__init__.py",
+    "examples/cluster/plot_affinity_propagation.py",
+    "doc/developers/contributing.rst"
+   ],
+   "scoreMs": 9.6573
+  },
+  {
+   "id": "scikit-learn__scikit-learn-15535",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1270,
+   "half": "held-out",
+   "collectMs": 193.5378,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/metrics/cluster/_supervised.py",
+    "sklearn/metrics/cluster/__init__.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/utils/__init__.py",
+    "sklearn/cluster/_hierarchical.py"
+   ],
+   "scoreMs": 12.5761
+  },
+  {
+   "id": "scikit-learn__scikit-learn-25500",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1532,
+   "half": "held-out",
+   "collectMs": 213.1071,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 29,
+    "+named paths": 32,
+    "+module names": 33,
+    "full (+definitions)": 7
+   },
+   "top": [
+    "sklearn/calibration.py",
+    "sklearn/model_selection/_validation.py",
+    "sklearn/pipeline.py",
+    "sklearn/utils/fixes.py",
+    "sklearn/utils/parallel.py"
+   ],
+   "scoreMs": 23.7226
+  },
+  {
+   "id": "scikit-learn__scikit-learn-25570",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1523,
+   "half": "held-out",
+   "collectMs": 211.5732,
+   "ranks": {
+    "bm25": 11,
+    "+path tokens": 11,
+    "+source/test/vendor prior": 8,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/compose/_column_transformer.py",
+    "sklearn/pipeline.py",
+    "sklearn/utils/_set_output.py",
+    "sklearn/base.py",
+    "sklearn/metrics/_plot/base.py"
+   ],
+   "scoreMs": 28.4753
+  },
+  {
+   "id": "scikit-learn__scikit-learn-25638",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1521,
+   "half": "held-out",
+   "collectMs": 202.2247,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/utils/multiclass.py",
+    "examples/applications/svm_gui.py",
+    "sklearn/utils/estimator_checks.py",
+    "sklearn/utils/_testing.py",
+    "sklearn/utils/validation.py"
+   ],
+   "scoreMs": 11.3973
+  },
+  {
+   "id": "scikit-learn__scikit-learn-25747",
+   "repo": "scikit-learn/scikit-learn",
+   "files": 1522,
+   "half": "tuning",
+   "collectMs": 213.5494,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sklearn/utils/_set_output.py",
+    "sklearn/base.py",
+    "sklearn/pipeline.py",
+    "sklearn/metrics/_plot/base.py",
+    "sklearn/_config.py"
+   ],
+   "scoreMs": 27.0005
+  },
+  {
+   "id": "sphinx-doc__sphinx-10325",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1591,
+   "half": "held-out",
+   "collectMs": 182.5303,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 11,
+    "+named paths": 11,
+    "+module names": 11,
+    "full (+definitions)": 11
+   },
+   "top": [
+    "sphinx/themes/basic/static/jquery-3.5.1.js",
+    "sphinx/ext/intersphinx.py",
+    "sphinx/themes/basic/static/underscore-1.13.1.js",
+    "sphinx/application.py",
+    "sphinx/builders/html/__init__.py"
+   ],
+   "scoreMs": 6.631
+  },
+  {
+   "id": "sphinx-doc__sphinx-10451",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1599,
+   "half": "tuning",
+   "collectMs": 239.0293,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/autosummary/__init__.py",
+    "sphinx/ext/autodoc/typehints.py",
+    "sphinx/util/inspect.py",
+    "doc/usage/extensions/example_numpy.py"
+   ],
+   "scoreMs": 10.5185
+  },
+  {
+   "id": "sphinx-doc__sphinx-11445",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1635,
+   "half": "held-out",
+   "collectMs": 206.1655,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/util/rst.py",
+    "sphinx/writers/texinfo.py",
+    "sphinx/application.py",
+    "tests/roots/test-html_assets/subdir/_build/index.html",
+    "sphinx/transforms/i18n.py"
+   ],
+   "scoreMs": 11.2832
+  },
+  {
+   "id": "sphinx-doc__sphinx-7686",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1416,
+   "half": "tuning",
+   "collectMs": 188.2438,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 1,
+    "+named paths": 2,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sphinx/ext/autosummary/templates/autosummary/module.rst",
+    "sphinx/ext/autosummary/__init__.py",
+    "sphinx/ext/autosummary/generate.py",
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/napoleon/__init__.py"
+   ],
+   "scoreMs": 9.4307
+  },
+  {
+   "id": "sphinx-doc__sphinx-7738",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1416,
+   "half": "tuning",
+   "collectMs": 221.7807,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 16,
+    "+named paths": 17,
+    "+module names": 17,
+    "full (+definitions)": 18
+   },
+   "top": [
+    "sphinx/ext/napoleon/__init__.py",
+    "sphinx/ext/autodoc/__init__.py",
+    "doc/_templates/index.html",
+    "doc/usage/extensions/example_google.py",
+    "doc/usage/extensions/example_numpy.py"
+   ],
+   "scoreMs": 12.1157
+  },
+  {
+   "id": "sphinx-doc__sphinx-7975",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1432,
+   "half": "held-out",
+   "collectMs": 145.9651,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 17,
+    "+named paths": 17,
+    "+module names": 17,
+    "full (+definitions)": 17
+   },
+   "top": [
+    "sphinx/writers/texinfo.py",
+    "sphinx/themes/basic/static/jquery-3.5.1.js",
+    "sphinx/domains/cpp.py",
+    "sphinx/ext/napoleon/__init__.py",
+    "sphinx/util/__init__.py"
+   ],
+   "scoreMs": 5.95
+  },
+  {
+   "id": "sphinx-doc__sphinx-8273",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1442,
+   "half": "held-out",
+   "collectMs": 168.5219,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sphinx/themes/basic/static/jquery-3.5.1.js",
+    "sphinx/application.py",
+    "sphinx/builders/__init__.py",
+    "sphinx/ext/autosummary/__init__.py",
+    "sphinx/cmd/quickstart.py"
+   ],
+   "scoreMs": 7.3791
+  },
+  {
+   "id": "sphinx-doc__sphinx-8282",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1445,
+   "half": "held-out",
+   "collectMs": 222.8787,
+   "ranks": {
+    "bm25": 4,
+    "+path tokens": 4,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/autodoc/typehints.py",
+    "sphinx/ext/autosummary/__init__.py",
+    "sphinx/util/inspect.py",
+    "sphinx/ext/napoleon/__init__.py"
+   ],
+   "scoreMs": 11.2745
+  },
+  {
+   "id": "sphinx-doc__sphinx-8435",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1454,
+   "half": "tuning",
+   "collectMs": 221.6303,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/napoleon/__init__.py",
+    "sphinx/application.py",
+    "sphinx/util/inspect.py",
+    "sphinx/ext/napoleon/docstring.py"
+   ],
+   "scoreMs": 13.6517
+  },
+  {
+   "id": "sphinx-doc__sphinx-8474",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1457,
+   "half": "held-out",
+   "collectMs": 194.3368,
+   "ranks": {
+    "bm25": 12,
+    "+path tokens": 12,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "sphinx/writers/latex.py",
+    "sphinx/themes/basic/static/jquery-3.5.1.js",
+    "sphinx/texinputs/sphinx.xdy",
+    "sphinx/domains/std.py",
+    "sphinx/builders/html/__init__.py"
+   ],
+   "scoreMs": 8.6826
+  },
+  {
+   "id": "sphinx-doc__sphinx-8506",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1459,
+   "half": "held-out",
+   "collectMs": 160.1266,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 13,
+    "+named paths": 13,
+    "+module names": 13,
+    "full (+definitions)": 13
+   },
+   "top": [
+    "sphinx/themes/basic/static/jquery-3.5.1.js",
+    "sphinx/domains/cpp.py",
+    "sphinx/util/smartypants.py",
+    "sphinx/domains/c.py",
+    "sphinx/ext/imgmath.py"
+   ],
+   "scoreMs": 9.169
+  },
+  {
+   "id": "sphinx-doc__sphinx-8595",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1464,
+   "half": "held-out",
+   "collectMs": 219.29,
+   "ranks": {
+    "bm25": 20,
+    "+path tokens": 20,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/autosummary/__init__.py",
+    "sphinx/util/nodes.py",
+    "sphinx/application.py",
+    "sphinx/ext/apidoc.py"
+   ],
+   "scoreMs": 12.0579
+  },
+  {
+   "id": "sphinx-doc__sphinx-8627",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1466,
+   "half": "held-out",
+   "collectMs": 195.5954,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": 13
+   },
+   "top": [
+    "doc/development/tutorials/examples/helloworld.py",
+    "sphinx/domains/cpp.py",
+    "doc/development/tutorials/examples/todo.py",
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/intersphinx.py"
+   ],
+   "scoreMs": 15.024
+  },
+  {
+   "id": "sphinx-doc__sphinx-8713",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1467,
+   "half": "tuning",
+   "collectMs": 218.1136,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/ext/napoleon/docstring.py",
+    "sphinx/ext/napoleon/__init__.py",
+    "doc/usage/extensions/example_numpy.py",
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/writers/html5.py"
+   ],
+   "scoreMs": 11.6798
+  },
+  {
+   "id": "sphinx-doc__sphinx-8721",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1473,
+   "half": "held-out",
+   "collectMs": 215.208,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sphinx/ext/viewcode.py",
+    "sphinx/builders/html/__init__.py",
+    "sphinx/cmd/quickstart.py",
+    "doc/conf.py",
+    "sphinx/ext/apidoc.py"
+   ],
+   "scoreMs": 10.1838
+  },
+  {
+   "id": "sphinx-doc__sphinx-8801",
+   "repo": "sphinx-doc/sphinx",
+   "files": 1474,
+   "half": "held-out",
+   "collectMs": 232.1805,
+   "ranks": {
+    "bm25": 16,
+    "+path tokens": 16,
+    "+source/test/vendor prior": 7,
+    "+named paths": 7,
+    "+module names": 7,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sphinx/ext/napoleon/__init__.py",
+    "sphinx/ext/autodoc/__init__.py",
+    "sphinx/ext/autodoc/importer.py",
+    "doc/usage/extensions/example_google.py",
+    "doc/usage/extensions/example_numpy.py"
+   ],
+   "scoreMs": 14.0629
+  },
+  {
+   "id": "sympy__sympy-11400",
+   "repo": "sympy/sympy",
+   "files": 1401,
+   "half": "tuning",
+   "collectMs": 172.8044,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/ccode.py",
+    "sympy/functions/elementary/piecewise.py",
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/printing/octave.py",
+    "sympy/printing/julia.py"
+   ],
+   "scoreMs": 5.0836
+  },
+  {
+   "id": "sympy__sympy-11870",
+   "repo": "sympy/sympy",
+   "files": 1498,
+   "half": "tuning",
+   "collectMs": 214.2181,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/simplify/trigsimp.py",
+    "sympy/matrices/matrices.py",
+    "sympy/core/expr.py",
+    "sympy/vector/basisdependent.py"
+   ],
+   "scoreMs": 5.7018
+  },
+  {
+   "id": "sympy__sympy-11897",
+   "repo": "sympy/sympy",
+   "files": 1419,
+   "half": "tuning",
+   "collectMs": 190.6596,
+   "ranks": {
+    "bm25": 39,
+    "+path tokens": 39,
+    "+source/test/vendor prior": 30,
+    "+named paths": 30,
+    "+module names": 30,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/printing/pretty/stringpict.py",
+    "sympy/integrals/transforms.py",
+    "sympy/core/symbol.py",
+    "sympy/utilities/iterables.py"
+   ],
+   "scoreMs": 7.07
+  },
+  {
+   "id": "sympy__sympy-12171",
+   "repo": "sympy/sympy",
+   "files": 1422,
+   "half": "tuning",
+   "collectMs": 218.25,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/printing/str.py",
+    "sympy/printing/mathematica.py",
+    "sympy/core/function.py",
+    "sympy/matrices/matrices.py",
+    "sympy/physics/vector/printing.py"
+   ],
+   "scoreMs": 9.8503
+  },
+  {
+   "id": "sympy__sympy-12236",
+   "repo": "sympy/sympy",
+   "files": 1422,
+   "half": "held-out",
+   "collectMs": 192.295,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/polys/partfrac.py",
+    "sympy/core/expr.py",
+    "sympy/matrices/matrices.py",
+    "sympy/physics/wigner.py",
+    "doc/src/conf.py"
+   ],
+   "scoreMs": 14.2833
+  },
+  {
+   "id": "sympy__sympy-12419",
+   "repo": "sympy/sympy",
+   "files": 1429,
+   "half": "held-out",
+   "collectMs": 217.9758,
+   "ranks": {
+    "bm25": 32,
+    "+path tokens": 32,
+    "+source/test/vendor prior": 20,
+    "+named paths": 20,
+    "+module names": 20,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "sympy/assumptions/ask.py",
+    "sympy/assumptions/handlers/matrices.py",
+    "sympy/concrete/summations.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/assumptions/assume.py"
+   ],
+   "scoreMs": 13.2374
+  },
+  {
+   "id": "sympy__sympy-12454",
+   "repo": "sympy/sympy",
+   "files": 1427,
+   "half": "tuning",
+   "collectMs": 197.3016,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/matrices/matrices.py",
+    "sympy/matrices/dense.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/matrices/immutable.py",
+    "sympy/matrices/sparse.py"
+   ],
+   "scoreMs": 15.9933
+  },
+  {
+   "id": "sympy__sympy-12481",
+   "repo": "sympy/sympy",
+   "files": 1427,
+   "half": "tuning",
+   "collectMs": 176.5373,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/combinatorics/permutations.py",
+    "sympy/matrices/matrices.py",
+    "sympy/utilities/iterables.py",
+    "sympy/combinatorics/util.py",
+    "sympy/functions/combinatorial/numbers.py"
+   ],
+   "scoreMs": 6.0107
+  },
+  {
+   "id": "sympy__sympy-13031",
+   "repo": "sympy/sympy",
+   "files": 1444,
+   "half": "held-out",
+   "collectMs": 179.7812,
+   "ranks": {
+    "bm25": 16,
+    "+path tokens": 16,
+    "+source/test/vendor prior": 12,
+    "+named paths": 12,
+    "+module names": 12,
+    "full (+definitions)": 14
+   },
+   "top": [
+    "sympy/matrices/common.py",
+    "sympy/holonomic/linearsolver.py",
+    "sympy/matrices/dense.py",
+    "sympy/matrices/matrices.py",
+    "sympy/tensor/array/sparse_ndim_array.py"
+   ],
+   "scoreMs": 10.7398
+  },
+  {
+   "id": "sympy__sympy-13043",
+   "repo": "sympy/sympy",
+   "files": 1455,
+   "half": "tuning",
+   "collectMs": 184.8038,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/integrals/intpoly.py",
+    "sympy/physics/quantum/gate.py",
+    "sympy/core/exprtools.py",
+    "sympy/matrices/matrices.py",
+    "sympy/simplify/powsimp.py"
+   ],
+   "scoreMs": 10.0494
+  },
+  {
+   "id": "sympy__sympy-13146",
+   "repo": "sympy/sympy",
+   "files": 1459,
+   "half": "held-out",
+   "collectMs": 187.8655,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 27,
+    "+named paths": 27,
+    "+module names": 27,
+    "full (+definitions)": 31
+   },
+   "top": [
+    "sympy/simplify/simplify.py",
+    "sympy/core/function.py",
+    "sympy/core/mul.py",
+    "sympy/vector/basisdependent.py",
+    "sympy/matrices/matrices.py"
+   ],
+   "scoreMs": 8.4375
+  },
+  {
+   "id": "sympy__sympy-13177",
+   "repo": "sympy/sympy",
+   "files": 1459,
+   "half": "tuning",
+   "collectMs": 188.8964,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 9,
+    "+named paths": 9,
+    "+module names": 9,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/core/mod.py",
+    "sympy/core/numbers.py",
+    "sympy/core/power.py",
+    "sympy/polys/polyroots.py",
+    "sympy/functions/elementary/exponential.py"
+   ],
+   "scoreMs": 8.1154
+  },
+  {
+   "id": "sympy__sympy-13437",
+   "repo": "sympy/sympy",
+   "files": 1498,
+   "half": "tuning",
+   "collectMs": 230.3384,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/functions/combinatorial/numbers.py",
+    "sympy/utilities/iterables.py",
+    "sympy/core/expr.py",
+    "sympy/matrices/matrices.py",
+    "sympy/series/limits.py"
+   ],
+   "scoreMs": 10.5221
+  },
+  {
+   "id": "sympy__sympy-13471",
+   "repo": "sympy/sympy",
+   "files": 1499,
+   "half": "held-out",
+   "collectMs": 210.5318,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 10,
+    "+source/test/vendor prior": 8,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/core/numbers.py",
+    "sympy/physics/mechanics/system.py",
+    "doc/ext/docscrape.py",
+    "release/fabfile.py",
+    "sympy/polys/polyutils.py"
+   ],
+   "scoreMs": 13.1089
+  },
+  {
+   "id": "sympy__sympy-13480",
+   "repo": "sympy/sympy",
+   "files": 1500,
+   "half": "held-out",
+   "collectMs": 257.9639,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/functions/elementary/hyperbolic.py",
+    "sympy/integrals/rubi/rules/hyperbolic.py",
+    "sympy/core/numbers.py",
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/plotting/intervalmath/lib_interval.py"
+   ],
+   "scoreMs": 11.9342
+  },
+  {
+   "id": "sympy__sympy-13647",
+   "repo": "sympy/sympy",
+   "files": 1507,
+   "half": "held-out",
+   "collectMs": 223.6282,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/matrices/common.py",
+    "sympy/matrices/dense.py",
+    "sympy/polys/subresultants_qq_zz.py",
+    "sympy/matrices/densetools.py",
+    "sympy/integrals/prde.py"
+   ],
+   "scoreMs": 13.0258
+  },
+  {
+   "id": "sympy__sympy-13773",
+   "repo": "sympy/sympy",
+   "files": 1507,
+   "half": "tuning",
+   "collectMs": 228.8756,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 44,
+    "+named paths": 44,
+    "+module names": 44,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/matrices/dense.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/matrices/common.py",
+    "sympy/core/sympify.py",
+    "sympy/codegen/ast.py"
+   ],
+   "scoreMs": 7.6666
+  },
+  {
+   "id": "sympy__sympy-13895",
+   "repo": "sympy/sympy",
+   "files": 1509,
+   "half": "tuning",
+   "collectMs": 216.6757,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/simplify/ratsimp.py",
+    "sympy/simplify/simplify.py",
+    "sympy/matrices/matrices.py",
+    "sympy/solvers/solvers.py",
+    "sympy/simplify/trigsimp.py"
+   ],
+   "scoreMs": 7.6797
+  },
+  {
+   "id": "sympy__sympy-13915",
+   "repo": "sympy/sympy",
+   "files": 1509,
+   "half": "tuning",
+   "collectMs": 288.6217,
+   "ranks": {
+    "bm25": 31,
+    "+path tokens": 31,
+    "+source/test/vendor prior": 26,
+    "+named paths": 26,
+    "+module names": 26,
+    "full (+definitions)": 30
+   },
+   "top": [
+    "sympy/matrices/matrices.py",
+    "sympy/core/basic.py",
+    "sympy/core/expr.py",
+    "sympy/core/function.py",
+    "sympy/integrals/risch.py"
+   ],
+   "scoreMs": 12.1947
+  },
+  {
+   "id": "sympy__sympy-13971",
+   "repo": "sympy/sympy",
+   "files": 1511,
+   "half": "held-out",
+   "collectMs": 240.4607,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "sympy/interactive/printing.py",
+    "sympy/series/sequences.py",
+    "sympy/printing/pretty/stringpict.py",
+    "sympy/printing/latex.py",
+    "sympy/core/symbol.py"
+   ],
+   "scoreMs": 13.5439
+  },
+  {
+   "id": "sympy__sympy-14024",
+   "repo": "sympy/sympy",
+   "files": 1526,
+   "half": "tuning",
+   "collectMs": 222.2936,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/combinatorics/fp_groups.py",
+    "sympy/simplify/trigsimp.py",
+    "sympy/polys/polyroots.py",
+    "sympy/categories/diagram_drawing.py",
+    "sympy/core/expr.py"
+   ],
+   "scoreMs": 6.0615
+  },
+  {
+   "id": "sympy__sympy-14308",
+   "repo": "sympy/sympy",
+   "files": 1545,
+   "half": "held-out",
+   "collectMs": 210.2292,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 45,
+    "+named paths": 45,
+    "+module names": 45,
+    "full (+definitions)": 45
+   },
+   "top": [
+    "sympy/vector/coordsysrect.py",
+    "sympy/vector/__init__.py",
+    "sympy/plotting/plot.py",
+    "sympy/plotting/pygletplot/plot_mode.py",
+    "sympy/physics/quantum/represent.py"
+   ],
+   "scoreMs": 9.2481
+  },
+  {
+   "id": "sympy__sympy-14317",
+   "repo": "sympy/sympy",
+   "files": 1545,
+   "half": "held-out",
+   "collectMs": 209.0768,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/polys/polytools.py",
+    "sympy/integrals/transforms.py",
+    "sympy/printing/pretty/stringpict.py",
+    "sympy/printing/pretty/pretty.py"
+   ],
+   "scoreMs": 5.8686
+  },
+  {
+   "id": "sympy__sympy-14396",
+   "repo": "sympy/sympy",
+   "files": 1545,
+   "half": "tuning",
+   "collectMs": 244.968,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/polys/polyoptions.py",
+    "sympy/polys/polytools.py",
+    "sympy/polys/polyerrors.py",
+    "sympy/stats/rv.py",
+    "sympy/core/containers.py"
+   ],
+   "scoreMs": 12.0446
+  },
+  {
+   "id": "sympy__sympy-14774",
+   "repo": "sympy/sympy",
+   "files": 1557,
+   "half": "tuning",
+   "collectMs": 275.8463,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/assumptions/handlers/order.py",
+    "sympy/plotting/intervalmath/lib_interval.py",
+    "sympy/printing/pretty/stringpict.py"
+   ],
+   "scoreMs": 11.5713
+  },
+  {
+   "id": "sympy__sympy-14817",
+   "repo": "sympy/sympy",
+   "files": 1557,
+   "half": "tuning",
+   "collectMs": 284.8338,
+   "ranks": {
+    "bm25": 12,
+    "+path tokens": 12,
+    "+source/test/vendor prior": 9,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/core/sympify.py",
+    "sympy/parsing/sympy_parser.py",
+    "sympy/printing/pretty/pretty.py",
+    "sympy/printing/printer.py",
+    "sympy/parsing/ast_parser.py"
+   ],
+   "scoreMs": 16.8462
+  },
+  {
+   "id": "sympy__sympy-15011",
+   "repo": "sympy/sympy",
+   "files": 1644,
+   "half": "tuning",
+   "collectMs": 259.2806,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/utilities/lambdify.py",
+    "sympy/plotting/experimental_lambdify.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/assumptions/handlers/matrices.py",
+    "sympy/printing/latex.py"
+   ],
+   "scoreMs": 16.1777
+  },
+  {
+   "id": "sympy__sympy-15308",
+   "repo": "sympy/sympy",
+   "files": 1649,
+   "half": "held-out",
+   "collectMs": 215.0864,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 4,
+    "+named paths": 4,
+    "+module names": 4,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/matrices/expressions/trace.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/assumptions/handlers/matrices.py",
+    "sympy/assumptions/handlers/order.py"
+   ],
+   "scoreMs": 6.7191
+  },
+  {
+   "id": "sympy__sympy-15345",
+   "repo": "sympy/sympy",
+   "files": 1648,
+   "half": "held-out",
+   "collectMs": 195.3706,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/mathematica.py",
+    "sympy/functions/elementary/miscellaneous.py",
+    "sympy/core/numbers.py",
+    "sympy/utilities/iterables.py",
+    "sympy/core/relational.py"
+   ],
+   "scoreMs": 6.7195
+  },
+  {
+   "id": "sympy__sympy-15346",
+   "repo": "sympy/sympy",
+   "files": 1648,
+   "half": "tuning",
+   "collectMs": 246.0788,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/assumptions/handlers/sets.py",
+    "sympy/plotting/intervalmath/lib_interval.py",
+    "sympy/core/numbers.py",
+    "sympy/physics/vector/vector.py"
+   ],
+   "scoreMs": 11.7901
+  },
+  {
+   "id": "sympy__sympy-15609",
+   "repo": "sympy/sympy",
+   "files": 1654,
+   "half": "tuning",
+   "collectMs": 227.4556,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "doc/src/conf.py",
+    "sympy/interactive/printing.py",
+    "sympy/codegen/ast.py"
+   ],
+   "scoreMs": 7.8228
+  },
+  {
+   "id": "sympy__sympy-15678",
+   "repo": "sympy/sympy",
+   "files": 1656,
+   "half": "tuning",
+   "collectMs": 314.0317,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/geometry/util.py",
+    "sympy/matrices/matrices.py",
+    "sympy/solvers/solvers.py",
+    "sympy/matrices/sparse.py",
+    "sympy/geometry/ellipse.py"
+   ],
+   "scoreMs": 14.6358
+  },
+  {
+   "id": "sympy__sympy-16106",
+   "repo": "sympy/sympy",
+   "files": 1659,
+   "half": "tuning",
+   "collectMs": 268.6175,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/mathml.py",
+    "sympy/printing/printer.py",
+    "sympy/tensor/indexed.py",
+    "sympy/core/compatibility.py",
+    "sympy/printing/theanocode.py"
+   ],
+   "scoreMs": 21.3351
+  },
+  {
+   "id": "sympy__sympy-16281",
+   "repo": "sympy/sympy",
+   "files": 1659,
+   "half": "held-out",
+   "collectMs": 223.034,
+   "ranks": {
+    "bm25": 45,
+    "+path tokens": 46,
+    "+source/test/vendor prior": 35,
+    "+named paths": 35,
+    "+module names": 35,
+    "full (+definitions)": 36
+   },
+   "top": [
+    "sympy/concrete/products.py",
+    "sympy/utilities/runtests.py",
+    "sympy/utilities/iterables.py",
+    "release/fabfile.py",
+    "sympy/functions/special/hyper.py"
+   ],
+   "scoreMs": 7.2279
+  },
+  {
+   "id": "sympy__sympy-16503",
+   "repo": "sympy/sympy",
+   "files": 1659,
+   "half": "held-out",
+   "collectMs": 205.1709,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/concrete/summations.py",
+    "sympy/utilities/runtests.py",
+    "sympy/solvers/ode.py",
+    "sympy/diffgeom/diffgeom.py",
+    "sympy/physics/vector/functions.py"
+   ],
+   "scoreMs": 4.9857
+  },
+  {
+   "id": "sympy__sympy-16792",
+   "repo": "sympy/sympy",
+   "files": 1662,
+   "half": "tuning",
+   "collectMs": 298.9744,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/utilities/autowrap.py",
+    "sympy/utilities/codegen.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/codegen/fnodes.py",
+    "sympy/utilities/tests/test_autowrap.py"
+   ],
+   "scoreMs": 10.5424
+  },
+  {
+   "id": "sympy__sympy-16988",
+   "repo": "sympy/sympy",
+   "files": 1667,
+   "half": "tuning",
+   "collectMs": 228.09,
+   "ranks": {
+    "bm25": 12,
+    "+path tokens": 12,
+    "+source/test/vendor prior": 10,
+    "+named paths": 10,
+    "+module names": 10,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/sets/sets.py",
+    "sympy/functions/elementary/piecewise.py",
+    "sympy/core/relational.py",
+    "sympy/solvers/solvers.py",
+    "sympy/printing/latex.py"
+   ],
+   "scoreMs": 8.5619
+  },
+  {
+   "id": "sympy__sympy-17022",
+   "repo": "sympy/sympy",
+   "files": 1669,
+   "half": "held-out",
+   "collectMs": 263.4154,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/utilities/lambdify.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/assumptions/handlers/matrices.py",
+    "sympy/plotting/experimental_lambdify.py",
+    "sympy/codegen/fnodes.py"
+   ],
+   "scoreMs": 11.035
+  },
+  {
+   "id": "sympy__sympy-17139",
+   "repo": "sympy/sympy",
+   "files": 1673,
+   "half": "tuning",
+   "collectMs": 329.2422,
+   "ranks": {
+    "bm25": 2,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 2,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/simplify/fu.py",
+    "sympy/simplify/trigsimp.py",
+    "sympy/strategies/core.py",
+    "sympy/simplify/simplify.py",
+    "sympy/core/expr.py"
+   ],
+   "scoreMs": 15.8061
+  },
+  {
+   "id": "sympy__sympy-17630",
+   "repo": "sympy/sympy",
+   "files": 1693,
+   "half": "held-out",
+   "collectMs": 299.2785,
+   "ranks": {
+    "bm25": 15,
+    "+path tokens": 15,
+    "+source/test/vendor prior": 13,
+    "+named paths": 13,
+    "+module names": 14,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/matrices/expressions/blockmatrix.py",
+    "sympy/strategies/core.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/core/numbers.py",
+    "sympy/assumptions/handlers/matrices.py"
+   ],
+   "scoreMs": 20.6298
+  },
+  {
+   "id": "sympy__sympy-17655",
+   "repo": "sympy/sympy",
+   "files": 1693,
+   "half": "tuning",
+   "collectMs": 279.5767,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/geometry/point.py",
+    "sympy/core/sympify.py",
+    "sympy/utilities/misc.py",
+    "sympy/geometry/exceptions.py",
+    "sympy/diffgeom/diffgeom.py"
+   ],
+   "scoreMs": 12.0794
+  },
+  {
+   "id": "sympy__sympy-18057",
+   "repo": "sympy/sympy",
+   "files": 1720,
+   "half": "held-out",
+   "collectMs": 281.6318,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/parsing/sympy_parser.py",
+    "sympy/core/sympify.py",
+    "sympy/core/expr.py",
+    "sympy/parsing/ast_parser.py",
+    "sympy/utilities/lambdify.py"
+   ],
+   "scoreMs": 15.76
+  },
+  {
+   "id": "sympy__sympy-18087",
+   "repo": "sympy/sympy",
+   "files": 1720,
+   "half": "held-out",
+   "collectMs": 345.0589,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/solvers/ode.py",
+    "sympy/plotting/intervalmath/lib_interval.py",
+    "sympy/matrices/matrices.py",
+    "sympy/integrals/integrals.py"
+   ],
+   "scoreMs": 13.6903
+  },
+  {
+   "id": "sympy__sympy-18189",
+   "repo": "sympy/sympy",
+   "files": 1723,
+   "half": "held-out",
+   "collectMs": 208.5703,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/solvers/diophantine.py",
+    "sympy/sets/handlers/intersection.py",
+    "sympy/polys/compatibility.py",
+    "sympy/integrals/risch.py",
+    "sympy/polys/factortools.py"
+   ],
+   "scoreMs": 5.3507
+  },
+  {
+   "id": "sympy__sympy-18199",
+   "repo": "sympy/sympy",
+   "files": 1723,
+   "half": "tuning",
+   "collectMs": 219.1167,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/ntheory/residue_ntheory.py",
+    "sympy/ntheory/factor_.py",
+    "sympy/solvers/diophantine.py",
+    "sympy/ntheory/__init__.py",
+    "sympy/solvers/solveset.py"
+   ],
+   "scoreMs": 6.4295
+  },
+  {
+   "id": "sympy__sympy-18532",
+   "repo": "sympy/sympy",
+   "files": 1742,
+   "half": "held-out",
+   "collectMs": 239.772,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/core/basic.py",
+    "sympy/matrices/common.py",
+    "sympy/combinatorics/permutations.py",
+    "sympy/utilities/enumerative.py",
+    "sympy/core/numbers.py"
+   ],
+   "scoreMs": 9.0041
+  },
+  {
+   "id": "sympy__sympy-18621",
+   "repo": "sympy/sympy",
+   "files": 1747,
+   "half": "held-out",
+   "collectMs": 272.3081,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/matrices/expressions/blockmatrix.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/matrices/matrices.py",
+    "sympy/matrices/dense.py",
+    "sympy/matrices/immutable.py"
+   ],
+   "scoreMs": 17.9474
+  },
+  {
+   "id": "sympy__sympy-18698",
+   "repo": "sympy/sympy",
+   "files": 1750,
+   "half": "tuning",
+   "collectMs": 210.4334,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 9,
+    "+named paths": 9,
+    "+module names": 9,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/polys/rings.py",
+    "sympy/polys/polyclasses.py",
+    "sympy/polys/polytools.py",
+    "sympy/polys/sqfreetools.py",
+    "sympy/polys/compatibility.py"
+   ],
+   "scoreMs": 5.1809
+  },
+  {
+   "id": "sympy__sympy-18835",
+   "repo": "sympy/sympy",
+   "files": 1759,
+   "half": "tuning",
+   "collectMs": 227.7047,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/utilities/iterables.py",
+    "sympy/core/containers.py",
+    "sympy/crypto/crypto.py",
+    "sympy/solvers/solveset.py",
+    "sympy/benchmarks/bench_symbench.py"
+   ],
+   "scoreMs": 8.6513
+  },
+  {
+   "id": "sympy__sympy-19007",
+   "repo": "sympy/sympy",
+   "files": 1760,
+   "half": "held-out",
+   "collectMs": 239.4917,
+   "ranks": {
+    "bm25": 5,
+    "+path tokens": 5,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/matrices/expressions/blockmatrix.py",
+    "sympy/assumptions/handlers/matrices.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/__init__.py",
+    "sympy/matrices/expressions/__init__.py"
+   ],
+   "scoreMs": 11.7168
+  },
+  {
+   "id": "sympy__sympy-19254",
+   "repo": "sympy/sympy",
+   "files": 1764,
+   "half": "held-out",
+   "collectMs": 242.5702,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 6,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/polys/factortools.py",
+    "sympy/polys/compatibility.py",
+    "sympy/polys/polytools.py",
+    "sympy/polys/rootisolation.py",
+    "sympy/polys/subresultants_qq_zz.py"
+   ],
+   "scoreMs": 11.6128
+  },
+  {
+   "id": "sympy__sympy-19487",
+   "repo": "sympy/sympy",
+   "files": 1770,
+   "half": "held-out",
+   "collectMs": 265.9557,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 31,
+    "+named paths": 31,
+    "+module names": 31,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/series/gruntz.py",
+    "sympy/functions/elementary/complexes.py",
+    "sympy/core/numbers.py",
+    "sympy/solvers/solvers.py",
+    "sympy/core/basic.py"
+   ],
+   "scoreMs": 12.6546
+  },
+  {
+   "id": "sympy__sympy-20049",
+   "repo": "sympy/sympy",
+   "files": 1812,
+   "half": "tuning",
+   "collectMs": 245.0771,
+   "ranks": {
+    "bm25": 6,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 2,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/physics/vector/point.py",
+    "sympy/physics/vector/frame.py",
+    "sympy/physics/vector/functions.py",
+    "sympy/physics/mechanics/__init__.py",
+    "sympy/physics/mechanics/kane.py"
+   ],
+   "scoreMs": 21.0956
+  },
+  {
+   "id": "sympy__sympy-20154",
+   "repo": "sympy/sympy",
+   "files": 1813,
+   "half": "held-out",
+   "collectMs": 226.9906,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/utilities/iterables.py",
+    "sympy/utilities/enumerative.py",
+    "sympy/solvers/diophantine/diophantine.py",
+    "sympy/categories/diagram_drawing.py",
+    "sympy/series/gruntz.py"
+   ],
+   "scoreMs": 14.1015
+  },
+  {
+   "id": "sympy__sympy-20212",
+   "repo": "sympy/sympy",
+   "files": 1813,
+   "half": "held-out",
+   "collectMs": 268.2095,
+   "ranks": {
+    "bm25": 9,
+    "+path tokens": 9,
+    "+source/test/vendor prior": 8,
+    "+named paths": 8,
+    "+module names": 8,
+    "full (+definitions)": 8
+   },
+   "top": [
+    "sympy/core/numbers.py",
+    "sympy/core/add.py",
+    "sympy/functions/elementary/trigonometric.py",
+    "sympy/core/mul.py",
+    "sympy/functions/special/gamma_functions.py"
+   ],
+   "scoreMs": 14.7919
+  },
+  {
+   "id": "sympy__sympy-20322",
+   "repo": "sympy/sympy",
+   "files": 1815,
+   "half": "tuning",
+   "collectMs": 240.7351,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 2,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "sympy/core/sympify.py",
+    "sympy/core/numbers.py",
+    "sympy/functions/elementary/integers.py",
+    "sympy/core/mul.py",
+    "sympy/core/expr.py"
+   ],
+   "scoreMs": 13.9313
+  },
+  {
+   "id": "sympy__sympy-20442",
+   "repo": "sympy/sympy",
+   "files": 1815,
+   "half": "held-out",
+   "collectMs": 250.8725,
+   "ranks": {
+    "bm25": 19,
+    "+path tokens": 19,
+    "+source/test/vendor prior": 10,
+    "+named paths": 10,
+    "+module names": 10,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/physics/units/util.py",
+    "sympy/physics/units/quantities.py",
+    "sympy/physics/units/__init__.py",
+    "sympy/polys/domainmatrix.py",
+    "sympy/solvers/solveset.py"
+   ],
+   "scoreMs": 13.79
+  },
+  {
+   "id": "sympy__sympy-20590",
+   "repo": "sympy/sympy",
+   "files": 1828,
+   "half": "held-out",
+   "collectMs": 269.1371,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/integrals/risch.py",
+    "sympy/core/numbers.py",
+    "sympy/codegen/ast.py",
+    "sympy/core/singleton.py",
+    "sympy/core/compatibility.py"
+   ],
+   "scoreMs": 16.9994
+  },
+  {
+   "id": "sympy__sympy-20639",
+   "repo": "sympy/sympy",
+   "files": 1829,
+   "half": "tuning",
+   "collectMs": 274.6915,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": 19
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/interactive/printing.py",
+    "sympy/interactive/session.py",
+    "sympy/printing/pretty/__init__.py",
+    "doc/src/conf.py"
+   ],
+   "scoreMs": 8.4002
+  },
+  {
+   "id": "sympy__sympy-21055",
+   "repo": "sympy/sympy",
+   "files": 1872,
+   "half": "tuning",
+   "collectMs": 380.1846,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": 39,
+    "+named paths": 39,
+    "+module names": 39,
+    "full (+definitions)": 12
+   },
+   "top": [
+    "sympy/integrals/integrals.py",
+    "sympy/functions/elementary/piecewise.py",
+    "sympy/assumptions/ask.py",
+    "sympy/functions/elementary/complexes.py",
+    "sympy/plotting/intervalmath/lib_interval.py"
+   ],
+   "scoreMs": 17.6722
+  },
+  {
+   "id": "sympy__sympy-21171",
+   "repo": "sympy/sympy",
+   "files": 1874,
+   "half": "tuning",
+   "collectMs": 294.6227,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 2,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/printing/latex.py",
+    "sympy/physics/continuum_mechanics/beam.py",
+    "sympy/interactive/printing.py",
+    "sympy/printing/printer.py",
+    "sympy/printing/pretty/pretty.py"
+   ],
+   "scoreMs": 31.1824
+  },
+  {
+   "id": "sympy__sympy-21379",
+   "repo": "sympy/sympy",
+   "files": 1885,
+   "half": "held-out",
+   "collectMs": 315.2297,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/plotting/intervalmath/lib_interval.py",
+    "sympy/functions/elementary/hyperbolic.py",
+    "sympy/functions/elementary/piecewise.py",
+    "sympy/polys/polyerrors.py",
+    "sympy/core/cache.py"
+   ],
+   "scoreMs": 13.0641
+  },
+  {
+   "id": "sympy__sympy-21612",
+   "repo": "sympy/sympy",
+   "files": 1890,
+   "half": "tuning",
+   "collectMs": 249.1802,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/parsing/latex/__init__.py",
+    "sympy/printing/latex.py",
+    "sympy/parsing/latex/_parse_latex_antlr.py",
+    "sympy/parsing/latex/_antlr/latexparser.py",
+    "sympy/__init__.py"
+   ],
+   "scoreMs": 14.926
+  },
+  {
+   "id": "sympy__sympy-21614",
+   "repo": "sympy/sympy",
+   "files": 1890,
+   "half": "held-out",
+   "collectMs": 256.0186,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 17,
+    "+named paths": 17,
+    "+module names": 18,
+    "full (+definitions)": 3
+   },
+   "top": [
+    "sympy/matrices/common.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/core/function.py",
+    "sympy/solvers/ode/single.py",
+    "sympy/integrals/integrals.py"
+   ],
+   "scoreMs": 12.8227
+  },
+  {
+   "id": "sympy__sympy-21627",
+   "repo": "sympy/sympy",
+   "files": 1890,
+   "half": "tuning",
+   "collectMs": 263.6697,
+   "ranks": {
+    "bm25": null,
+    "+path tokens": null,
+    "+source/test/vendor prior": null,
+    "+named paths": null,
+    "+module names": null,
+    "full (+definitions)": null
+   },
+   "top": [
+    "sympy/plotting/intervalmath/lib_interval.py",
+    "sympy/calculus/util.py",
+    "sympy/functions/elementary/hyperbolic.py",
+    "bin/coverage_doctest.py",
+    "sympy/core/sympify.py"
+   ],
+   "scoreMs": 9.23
+  },
+  {
+   "id": "sympy__sympy-21847",
+   "repo": "sympy/sympy",
+   "files": 1905,
+   "half": "held-out",
+   "collectMs": 259.3397,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/polys/polytools.py",
+    "sympy/polys/monomials.py",
+    "sympy/polys/orderings.py",
+    "sympy/polys/multivariate_resultants.py",
+    "sympy/core/mul.py"
+   ],
+   "scoreMs": 12.8993
+  },
+  {
+   "id": "sympy__sympy-22005",
+   "repo": "sympy/sympy",
+   "files": 1921,
+   "half": "held-out",
+   "collectMs": 317.6251,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/solvers/polysys.py",
+    "sympy/solvers/tests/test_polysys.py",
+    "sympy/polys/polytools.py",
+    "sympy/polys/polyerrors.py",
+    "sympy/parsing/c/c_parser.py"
+   ],
+   "scoreMs": 14.3734
+  },
+  {
+   "id": "sympy__sympy-22714",
+   "repo": "sympy/sympy",
+   "files": 1960,
+   "half": "held-out",
+   "collectMs": 291.535,
+   "ranks": {
+    "bm25": 10,
+    "+path tokens": 10,
+    "+source/test/vendor prior": 6,
+    "+named paths": 3,
+    "+module names": 3,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/parsing/sympy_parser.py",
+    "sympy/geometry/point.py",
+    "sympy/core/sympify.py",
+    "sympy/parsing/autolev/_antlr/autolevparser.py",
+    "sympy/parsing/ast_parser.py"
+   ],
+   "scoreMs": 18.1155
+  },
+  {
+   "id": "sympy__sympy-22840",
+   "repo": "sympy/sympy",
+   "files": 1960,
+   "half": "tuning",
+   "collectMs": 295.8754,
+   "ranks": {
+    "bm25": 28,
+    "+path tokens": 27,
+    "+source/test/vendor prior": 13,
+    "+named paths": 13,
+    "+module names": 14,
+    "full (+definitions)": 6
+   },
+   "top": [
+    "sympy/printing/codeprinter.py",
+    "sympy/solvers/ode/systems.py",
+    "sympy/matrices/expressions/matexpr.py",
+    "sympy/codegen/ast.py",
+    "sympy/series/formal.py"
+   ],
+   "scoreMs": 19.0437
+  },
+  {
+   "id": "sympy__sympy-23117",
+   "repo": "sympy/sympy",
+   "files": 1967,
+   "half": "tuning",
+   "collectMs": 311.8817,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 2,
+    "+module names": 2,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/tensor/array/ndim_array.py",
+    "sympy/tensor/array/dense_ndim_array.py",
+    "sympy/solvers/ode/systems.py",
+    "sympy/tensor/array/sparse_ndim_array.py",
+    "sympy/strategies/rl.py"
+   ],
+   "scoreMs": 20.6715
+  },
+  {
+   "id": "sympy__sympy-23191",
+   "repo": "sympy/sympy",
+   "files": 1968,
+   "half": "tuning",
+   "collectMs": 315.3819,
+   "ranks": {
+    "bm25": 22,
+    "+path tokens": 22,
+    "+source/test/vendor prior": 14,
+    "+named paths": 14,
+    "+module names": 15,
+    "full (+definitions)": 4
+   },
+   "top": [
+    "sympy/interactive/printing.py",
+    "sympy/vector/deloperator.py",
+    "sympy/vector/coordsysrect.py",
+    "sympy/printing/pretty/pretty.py",
+    "sympy/integrals/integrals.py"
+   ],
+   "scoreMs": 21.9963
+  },
+  {
+   "id": "sympy__sympy-23262",
+   "repo": "sympy/sympy",
+   "files": 1968,
+   "half": "tuning",
+   "collectMs": 280.0814,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/utilities/lambdify.py",
+    "sympy/plotting/experimental_lambdify.py",
+    "doc/src/conf.py",
+    "sympy/utilities/autowrap.py",
+    "sympy/utilities/codegen.py"
+   ],
+   "scoreMs": 15.9896
+  },
+  {
+   "id": "sympy__sympy-24066",
+   "repo": "sympy/sympy",
+   "files": 1988,
+   "half": "tuning",
+   "collectMs": 347.8712,
+   "ranks": {
+    "bm25": 3,
+    "+path tokens": 3,
+    "+source/test/vendor prior": 3,
+    "+named paths": 3,
+    "+module names": 4,
+    "full (+definitions)": 2
+   },
+   "top": [
+    "sympy/physics/units/dimensions.py",
+    "sympy/physics/units/unitsystem.py",
+    "sympy/physics/units/systems/si.py",
+    "sympy/physics/control/control_plots.py",
+    "sympy/parsing/autolev/_antlr/autolevparser.py"
+   ],
+   "scoreMs": 23.7254
+  },
+  {
+   "id": "sympy__sympy-24102",
+   "repo": "sympy/sympy",
+   "files": 1994,
+   "half": "tuning",
+   "collectMs": 288.5267,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/parsing/mathematica.py",
+    "sympy/interactive/session.py",
+    "sympy/utilities/misc.py",
+    "sympy/parsing/sympy_parser.py",
+    "sympy/core/sympify.py"
+   ],
+   "scoreMs": 17.1923
+  },
+  {
+   "id": "sympy__sympy-24152",
+   "repo": "sympy/sympy",
+   "files": 1995,
+   "half": "held-out",
+   "collectMs": 329.1949,
+   "ranks": {
+    "bm25": 1,
+    "+path tokens": 1,
+    "+source/test/vendor prior": 1,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/physics/quantum/tensorproduct.py",
+    "sympy/physics/quantum/qapply.py",
+    "sympy/core/mul.py",
+    "sympy/tensor/array/ndim_array.py",
+    "sympy/assumptions/ask.py"
+   ],
+   "scoreMs": 16.6895
+  },
+  {
+   "id": "sympy__sympy-24213",
+   "repo": "sympy/sympy",
+   "files": 1999,
+   "half": "held-out",
+   "collectMs": 285.9298,
+   "ranks": {
+    "bm25": 8,
+    "+path tokens": 8,
+    "+source/test/vendor prior": 5,
+    "+named paths": 1,
+    "+module names": 1,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/physics/units/unitsystem.py",
+    "sympy/physics/units/dimensions.py",
+    "sympy/physics/units/quantities.py",
+    "sympy/physics/units/systems/si.py",
+    "sympy/physics/control/control_plots.py"
+   ],
+   "scoreMs": 27.4868
+  },
+  {
+   "id": "sympy__sympy-24909",
+   "repo": "sympy/sympy",
+   "files": 1960,
+   "half": "tuning",
+   "collectMs": 216.7199,
+   "ranks": {
+    "bm25": 7,
+    "+path tokens": 7,
+    "+source/test/vendor prior": 6,
+    "+named paths": 6,
+    "+module names": 6,
+    "full (+definitions)": 1
+   },
+   "top": [
+    "sympy/physics/units/prefixes.py",
+    "sympy/physics/units/__init__.py",
+    "sympy/parsing/autolev/_antlr/autolevparser.py",
+    "sympy/physics/units/definitions/unit_definitions.py",
+    "sympy/physics/units/definitions/__init__.py"
+   ],
+   "scoreMs": 15.8025
+  }
+ ]
+}

@@ -97,6 +97,9 @@ test('MCP server: protocol, validation, framing, dry-run, status, progress', asy
     assert.equal(H.calls(dir).length, 0, 'dry run spawns nothing');
     assert.match(await s.text('codex_run', { task: 'where is parseConfig defined?', mode: 'ask', difficulty: 'trivial', dry_run: true }), /^strategy: tool — a text or symbol search/);
     assert.match(await s.text('codex_run', { task: 'x', mode: 'implement', difficulty: 'normal', paths: ['README.md'], verify: 'none', dry_run: true }), /^strategy: (claude|codex)[^\n]*\n  estimated effective tokens: codex \d+–\d+k, claude \d+–\d+k\n  check: read the result\n  not measured: Claude-side tokens/);
+    // Unscoped advice names where the task most likely lives; scoped advice does not repeat the scope.
+    assert.match(await s.text('codex_run', { task: 'Fix the typo in README.md', mode: 'implement', difficulty: 'trivial', verify: 'none', dry_run: true }), /\nlikely files \(ranked from the task text, may be wrong\): README\.md \(named\)/);
+    assert.doesNotMatch(await s.text('codex_run', { task: 'Fix the typo in README.md', mode: 'implement', difficulty: 'trivial', paths: ['README.md'], verify: 'none', dry_run: true }), /likely files/);
     assert.equal(H.calls(dir).length, 0, 'strategy advice spawns nothing');
 
     const out = await s.text('codex_run', { task: 'what is this repo', mode: 'ask', difficulty: 'trivial' }, { progressToken: 'tok' });

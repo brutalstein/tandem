@@ -66,6 +66,12 @@
       "description": "Trim Codex's skill/plugin catalogs from delegated runs (about 35% fewer input tokens).",
       "default": true
     },
+    "locate_hints": {
+      "type": "boolean",
+      "title": "Likely-file hints",
+      "description": "Rank the files a task most likely concerns (git grep, no index) and name the top few to Codex workers and in dry_run.",
+      "default": true
+    },
     "isolation": {
       "type": "string",
       "title": "Write isolation",
@@ -134,6 +140,7 @@
         "TANDEM_CLAUDE_MAX_MODEL": "${user_config.claude_max_model}",
         "TANDEM_MAX_PARALLEL": "${user_config.max_parallel}",
         "TANDEM_LEAN_CODEX": "${user_config.lean_codex}",
+        "TANDEM_LOCATE_HINTS": "${user_config.locate_hints}",
         "TANDEM_ISOLATION": "${user_config.isolation}",
         "TANDEM_WORKTREE_LINKS": "${user_config.worktree_links}",
         "TANDEM_VERIFY_ISOLATION": "${user_config.verify_isolation}",

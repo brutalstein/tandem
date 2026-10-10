@@ -83,7 +83,7 @@ That project's definition files are fingerprinted with the root's, so a job cann
 
 Not built:
 - an index, a symbol graph or embeddings: nothing measured here needed them. Scope sizing (`contextSize`) takes under 1 ms at every size.
-- any measure of how much Codex or Claude spend exploring a large repository. That is provider usage and needs real runs; the corpus task `nav-large` (300 modules) is ready for them.
+- any measure of how much Codex or Claude spend exploring a large repository. That is provider usage and needs real runs; the corpus task `nav-large` (300 modules) is ready for them. How accurately Tandem itself finds the relevant file is measured in §1f.
 
 ## 1e. p1-strategy vs main (paired, same machine, same session)
 
@@ -103,6 +103,52 @@ Not built:
 | Ledger transaction | 7.0 / 5.2 ms | 5.1 / 5.3 ms |
 
 No regression beyond noise. The single idle-CPU reading did not recur in a third or fourth run.
+
+## 1f. Finding the relevant code in large repositories (deterministic, real issues)
+
+`server/locate.js` ranks a repository's files by how likely a task concerns them. Tandem names the top five in Codex worker prompts and in `dry_run`, so the worker and Claude can start reading in the right place. The ranking uses no index and no model. It runs one `git grep` for the task's terms and for definitions of the identifiers the task names. It then combines four signals:
+- paths the task names, including traceback paths of an installed copy;
+- dotted module names;
+- definitions of named identifiers;
+- BM25 over identifier tokens, with a prior against tests, docs and vendored code.
+
+**Data.** 300 real issues from [SWE-bench Lite](https://www.swebench.com) in 12 Python repositories (django, sympy, matplotlib, scikit-learn and others; median 1,960 files per tree, up to 6,712).
+- Each issue is ranked on the tree of the commit it was filed against, with the issue text as the task.
+- The gold file is the one the merged fix changed.
+- A hash of the instance id splits the issues into a tuning half and a held-out half.
+- Every design choice and weight was made on the tuning half. The held-out half was only measured.
+
+Reproduce with `node bench/locate-eval.js <instances.json> <bare-clones-dir>`. Raw data: `bench/data/locate-swebench-lite.json`.
+
+Held-out half (147 issues). Recall@k is the share of issues whose gold file is in the top k.
+
+| Ranking | recall@1 | recall@3 | recall@5 | recall@10 | MRR |
+|---|---|---|---|---|---|
+| BM25 over file contents (the usual baseline) | 0.184 | 0.293 | 0.374 | 0.503 | 0.277 |
+| + file path tokens | 0.190 | 0.299 | 0.395 | 0.510 | 0.285 |
+| + prior against tests, docs and vendored code | 0.327 | 0.456 | 0.531 | 0.673 | 0.428 |
+| + paths named in the issue (tracebacks included) | 0.367 | 0.510 | 0.558 | 0.673 | 0.464 |
+| + dotted module names | 0.374 | 0.531 | 0.565 | 0.673 | 0.473 |
+| **+ definitions of named identifiers (shipped)** | **0.408** | **0.612** | **0.646** | **0.694** | **0.520** |
+
+On all 300 issues the shipped ranking reaches recall@1 0.477, recall@5 0.720 and recall@10 0.773, against 0.263, 0.453 and 0.570 for BM25. The tuning half scores higher than the held-out half for every variant, plain BM25 included (recall@5 0.529 against 0.374), so the two halves differ in difficulty. The gain over BM25 is similar on both halves.
+
+Cost, measured on working trees (Windows 11, Node 24.11.0, 20 issues for django and sympy, 12 queries for kubernetes; the first call is listed separately):
+
+| Repository | Tracked files | First call | Median | p95 |
+|---|---|---|---|---|
+| sympy | 2,094 | 259 ms | 301 ms | 372 ms |
+| django | 7,084 | 741 ms | 770 ms | 814 ms |
+| kubernetes | 31,421 | 2.2 s | 2.5 s | 2.7 s |
+
+The hint adds about 60–120 tokens to a worker prompt. A git call that takes longer than 15 s is stopped, and the job then runs without hints.
+
+How the cost was found. The first version read and tokenized every file: 1.6 s for 1,879 files. Querying git for the task's terms with one `-e` pattern per term took 11 s on django, because git grep scans the tree once per pattern. A single alternation scans once: 0.35 s for the same output. Definitions now share that pass, and untracked files are listed once instead of walked twice.
+
+What this does not show:
+- **Whether hints reduce what Codex or Claude spend exploring.** That needs real runs: `bench/locate-real.js` runs the paired experiment (hints off/on, Codex and Claude, held-out issues), and it spends provider quota.
+- **Languages other than Python.** Accuracy was measured only on Python repositories. The definition patterns recognise `class`, `struct`, `interface`, `enum`, `type` and `trait` declarations, Python `def`, JavaScript `function` and `const f = (…)`, Go `func` and Rust `fn`. They do not recognise Java, C# or C function and method signatures; those files are still ranked by the other signals.
+- **Multi-file fixes.** SWE-bench Lite keeps only fixes that change one file.
 
 ## 1b. Safety overhead per job: main vs the hardening branch (deterministic)
 
@@ -255,6 +301,16 @@ Raw rows: `bench/data/real-v2-pilot/runs.jsonl` (routing policy before the calib
 
 ```bash
 node bench/overhead.js --out bench/data/overhead-v2.json
+```
+
+Localization (§1f). The fetch step downloads SWE-bench Lite and about 1.2 GB of bare clones; it uses no provider quota:
+
+```bash
+node bench/locate-fetch.js ../locate-data
+```
+
+```bash
+node bench/locate-eval.js ../locate-data/swebench-lite.json ../locate-data/repos --out bench/data/locate-swebench-lite.json
 ```
 
 ```bash
