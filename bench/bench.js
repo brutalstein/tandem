@@ -195,18 +195,21 @@ async function main() {
   const work = path.join(out, 'work'); // not the shared temp folder: another local user could pre-create it (gitignored)
   fs.mkdirSync(out, { recursive: true });
   const log = path.join(out, 'runs.jsonl');
-  const done = new Set(fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)).filter(r => r.outcome !== 'unavailable').map(r => `${r.task}|${r.arm}|${r.rep}`) : []);
+  // Read without a separate existence check: these files are written later (no check-then-use race).
+  const readOr = (file, parse, empty) => { try { return parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return empty; throw e; } };
+  const readRows = () => readOr(log, t => t.split('\n').filter(Boolean).map(l => JSON.parse(l)), []);
+  const done = new Set(readRows().filter(r => r.outcome !== 'unavailable').map(r => `${r.task}|${r.arm}|${r.rep}`));
   const codexV = spawnSync(process.execPath, ['-e', "require('./server/codex').discover({force:true}).then(e=>console.log(JSON.stringify({v:e.version,login:e.loggedIn,models:e.models.map(m=>m.slug)})))"], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, TANDEM_DATA: path.join(work, 'probe') } });
   const claudeV = (runClaude(['--version'], { encoding: 'utf8' }).stdout || '').trim();
   const meta = { started: new Date().toISOString(), platform: `${process.platform} ${os.release()} ${os.arch()}`, cpus: os.cpus().length, cpu: os.cpus()[0].model, node: process.version, codex: JSON.parse(codexV.stdout || '{}'), claude: claudeV, reps, claudeReps, claudeModel, tasks, arms, ablation, tandemCommit: (() => { try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim() + (execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' }).trim() ? '-dirty' : ''); } catch { return 'unknown'; } })() };
   const metaFile = path.join(out, 'meta.json'); // one record per (resumed) session
-  const prior = fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, 'utf8')) : [];
+  const prior = readOr(metaFile, JSON.parse, []);
   fs.writeFileSync(metaFile, JSON.stringify([...(Array.isArray(prior) ? prior : [prior]), meta], scrub, 2));
 
   for (const c of cells) {
     const id = `${c.task}|${c.arm}|${c.rep}`;
     if (done.has(id)) continue;
-    const rows = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
+    const rows = readRows();
     const codexIn = rows.reduce((s, r) => s + ((r.usage && r.usage.input) || 0), 0);
     const claudeIn = rows.reduce((s, r) => s + (r.claude ? r.claude.input + r.claude.cacheRead + r.claude.cacheWrite : 0), 0);
     if (codexIn + WORST.codexIn > maxCodexIn || (CLAUDE_ARMS.includes(c.arm) && claudeIn + WORST.claudeIn > maxClaudeIn)) {
