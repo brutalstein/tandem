@@ -8,7 +8,10 @@ const { spawn, execFileSync } = require('child_process');
 const { sha1, readJson } = require('./store');
 const { killTree, codexCommand } = require('./codex');
 
-const DEFINITION_FILES = ['package.json', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js'];
+// Files that decide what a check runs. Besides configuration: a project .npmrc can replace npm's script shell, and
+// `python -m pytest` imports a pytest found in the working directory before the installed one.
+const DEFINITION_FILES = ['package.json', 'pytest.ini', '.pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'go.work', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js',
+  '.npmrc', 'pytest.py', 'pytest/__init__.py', 'pytest/__main__.py', '_pytest/__init__.py', '.cargo/config.toml', '.cargo/config'];
 const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|(^|\/)test_[^/]+\.py$/i;
 const CONFTEST = /(^|\/)conftest\.py$/i;
 const IS_WIN = process.platform === 'win32';
@@ -27,32 +30,44 @@ function checkAt(dir) {
 
 // The project that owns the scoped paths: the deepest directory holding all of them that has a check of its own
 // (a service in a monorepo), else the root. Relative, '/'-separated; '' is the root. Only plain names below the
-// root qualify, because the result becomes part of a shell command.
+// root qualify (no leading '-' or '.'), because the result becomes part of a shell command.
 function project(dir, paths = []) {
   const parts = paths.map(p => String(p).replace(/\\/g, '/').split('/').filter(s => s && s !== '.'));
-  if (!parts.length || parts.some(p => p.some(s => s === '..' || !/^[A-Za-z0-9_.-]+$/.test(s)))) return '';
+  if (!parts.length || parts.some(p => p.some(s => !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(s)))) return '';
   let common = parts[0];
   for (const p of parts.slice(1)) { let i = 0; while (i < common.length && common[i] === p[i]) i++; common = common.slice(0, i); }
-  let root; try { root = fs.realpathSync(dir); } catch { return ''; }
   for (let n = common.length; n > 0; n--) {
-    const full = path.join(dir, ...common.slice(0, n));
-    let real; try { real = fs.realpathSync(full); } catch { continue; }
-    if (real.startsWith(root + path.sep) && fs.statSync(real).isDirectory() && checkAt(full)) return common.slice(0, n).join('/');
+    const sub = common.slice(0, n).join('/');
+    if (contained(dir, sub) && checkAt(path.join(dir, sub))) return sub;
   }
   return '';
 }
 
-function detect(dir, paths = []) {
-  const sub = project(dir, paths);
+// `sub` is a real directory inside `dir`, not a link out of it. Checked again before the check runs: the job may
+// have replaced the directory since.
+function contained(dir, sub) {
+  try {
+    const root = fs.realpathSync(dir), real = fs.realpathSync(path.join(dir, sub));
+    return real.startsWith(root + path.sep) && fs.statSync(real).isDirectory();
+  } catch { return false; }
+}
+
+// The check for the project at `sub` (from project()); '' is the root.
+function checkFor(dir, sub) {
   const cmd = checkAt(path.join(dir, sub));
   return cmd && sub ? `cd ${IS_WIN ? sub.replace(/\//g, '\\') : sub} && ${cmd}` : cmd;
 }
 
+const detect = (dir, paths = []) => checkFor(dir, project(dir, paths));
+
 // package.json contributes only its `scripts` (dependency bumps are not a verification change).
-// `sub` adds the definition files of the scoped project (see project()), so its check cannot be weakened either.
+// With `sub`, every directory from the root down to the scoped project counts: tools look for their configuration
+// upwards from where the check starts.
 function fingerprint(dir, sub = '') {
   const fp = {};
-  for (const d of sub ? ['', sub] : ['']) {
+  const segs = sub ? sub.split('/') : [];
+  for (let n = 0; n <= segs.length; n++) {
+    const d = segs.slice(0, n).join('/');
     for (const f of DEFINITION_FILES) {
       const p = path.join(dir, d, f);
       if (!fs.existsSync(p)) continue;
@@ -178,7 +193,7 @@ function sandboxCheck(bin, cwd, extraDeny, timeoutMs) {
     if (r.ok && m) return { problem: null, unprotected: JSON.parse(m[1]) };
     const why = r.tail.split(/\r?\n/).filter(l => l.trim() && !/^WARNING|^\[tandem\]|TANDEM_PROBE/.test(l)).pop();
     return { problem: (r.timedOut ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || `no probe result (exit ${r.code})`).slice(0, 300) };
-  });
+  }).catch(e => { p.at = Date.now(); return { problem: String(e.message).slice(0, 300) }; }); // never cache a rejection
   probe = p;
   return p.done;
 }
@@ -205,10 +220,15 @@ function exec(command, cwd, timeoutMs, sandboxed) {
     // Node gives a child socket pairs as pipes. Codex's Linux sandbox filters socket calls, and Node inside it then
     // writes nothing to stdout (measured: exit 0, no output), so sandboxed POSIX output goes to a private file.
     const file = sandboxed && !IS_WIN ? path.join(os.tmpdir(), `tandem-verify-${process.pid}-${Math.random().toString(36).slice(2)}.log`) : null;
-    const fd = file ? fs.openSync(file, 'wx', 0o600) : null;
-    const opt = { cwd, windowsHide: true, detached: !IS_WIN, ...(file && { stdio: ['ignore', fd, fd] }) };
-    let child;
-    try { child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true }); } finally { if (file) fs.closeSync(fd); }
+    let child, fd = null;
+    try {
+      if (file) fd = fs.openSync(file, 'wx', 0o600);
+      const opt = { cwd, windowsHide: true, detached: !IS_WIN, ...(file && { stdio: ['ignore', fd, fd] }) };
+      child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
+    } catch (e) { // no output file (disk full, too many open files) or no process: a failed check, never a crash
+      if (file) fs.rmSync(file, { force: true });
+      return resolve({ ok: false, code: null, timedOut: false, tail: `[tandem] could not start the check: ${String(e.message).slice(0, 200)}`, ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
+    } finally { if (fd !== null) fs.closeSync(fd); }
     let out = '', timedOut = false;
     const keep = d => { out = (out + d).slice(-8000); };
     if (!file) { child.stdout.on('data', keep); child.stderr.on('data', keep); }
@@ -238,4 +258,4 @@ function tailOf(file, n) {
 }
 
 const resetSandboxProbe = () => { probe = null; }; // tests switch between a working and a failing sandbox
-module.exports = { environmentFailure, detect, project, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };
+module.exports = { environmentFailure, detect, project, contained, checkFor, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };

@@ -20,7 +20,7 @@ const TURN = [1000, 5000], SUBAGENT_TURN = [300, 1000], SPAWN = [3000, 8000], CA
 const CHECK_OUT = 1500, ANSWER = [300, 1500], TIE = 1.25;
 const SKIP = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.venv', 'target']);
 
-// Measured size of the scoped files (bytes / 4 ≈ tokens). null when no paths were given.
+// Measured size of the scoped files (bytes / 4 ≈ tokens). null when no paths were given or none of them exists yet.
 function contextSize(root, paths) {
   if (!paths || !paths.length) return null;
   let bytes = 0, files = 0;
@@ -28,11 +28,12 @@ function contextSize(root, paths) {
     if (files > 5000 || depth > 12) return;
     let st; try { st = fs.lstatSync(p); } catch { return; }
     if (st.isFile()) { bytes += st.size; files++; } else if (st.isDirectory()) {
-      for (const n of fs.readdirSync(p)) if (!SKIP.has(n)) walk(path.join(p, n), depth + 1);
+      let names; try { names = fs.readdirSync(p); } catch { return; }
+      for (const n of names) if (!SKIP.has(n)) walk(path.join(p, n), depth + 1);
     }
   };
   for (const p of paths) walk(path.resolve(root, p), 0);
-  return { tokens: Math.round(bytes / 4), files };
+  return files ? { tokens: Math.round(bytes / 4), files } : null; // nothing there yet (new files): size unknown
 }
 
 // A question a search answers exactly ("where is X defined", "list the files that import Y"). Conservative: any
@@ -69,7 +70,7 @@ function decide(task, root, codex, cfg) {
 
   let direct, sub = null;
   if (T === null) {
-    unknown.push('task size (no paths given)');
+    unknown.push('task size (no paths given, or the files do not exist yet)');
   } else {
     const read = mul([0.5, 1.5], [Math.min(T, 150000), Math.min(T, 150000)]);
     const turns = impl ? [2 + (checked ? 1 : 0), 4 + (checked ? 2 : 0) + files] : [1 + Math.min(files, 1), 2 + files];

@@ -88,6 +88,18 @@ What the simulated failover tests prove (`continuity.test.js`, `surface.test.js`
 
 What they do **not** prove: real quota exhaustion followed by a real reset (the provider's limit was not reached in this session), the real auth-loss path, and continuity of a real Claude Code session (Claude's own quota is not observable to Tandem). The real resume check covers the session-end path only.
 
+## Independent review of p1-strategy (2026-10-10)
+
+The review was done by a fresh-context agent of the same model family; it is not a cross-provider review. It read `git diff origin/main..HEAD -- server/` and reproduced each finding with small scripts.
+- It reported 5 bugs, 10 risks and 1 question.
+- 2 bugs were in this branch: a resumed job could pass on a check it wrote itself, and a configuration file between the root and the project could disable the tests.
+- 3 bugs were older ways to pass without running the tests: `.pytest.ini`, a local `pytest.py`, and a project `.npmrc`.
+- All 5 bugs and all 9 risks the report listed (its summary counted 10) are fixed, each with a regression test that fails on the code before the fix (`unit.test.js` and `orchestrator.test.js`, "(review)"). The POSIX-only test runs in CI.
+
+Left open:
+- A new top-level module that shadows one of pytest's own dependencies is not fingerprinted. That class has no fixed file list.
+- The question: whether the token objective's failure penalty should count as Codex cost in the strategy comparison. It is left as is and documented.
+
 ## Provider continuity, scenarios A–E (p1-strategy, 2026-10-10)
 
 The checkpoint design was not rewritten: no defect was found. Each scenario was checked on its own:

@@ -17,6 +17,21 @@
 ### Fixed
 - **Linux sandbox**: output of checks run in the sandbox was lost under seccomp; it is now captured through a file. CI proves full enforcement on disposable Linux, macOS and Windows VMs.
 - Polyglot repositories without a root manifest ran every job unverified.
+- **Independent review of this branch.** Each fix below has a regression test that fails on the code before it.
+  - A resumed job now keeps the check and project chosen at its first run. Before, a check the interrupted run wrote could verify it.
+  - Definition files are fingerprinted in every folder from the root down to the scoped project, not only at both ends. Before, a new `services/pytest.ini` could disable a service's tests.
+  - New definition files: `.pytest.ini`, `.npmrc`, `pytest.py`, `pytest/`, `_pytest/`, `go.work` and `.cargo/config(.toml)`. These close three existing ways to pass without running the tests:
+    - a new `.pytest.ini` with `--collect-only`;
+    - a local `pytest.py` that `python -m pytest` imports first;
+    - an `.npmrc` that replaces the script shell.
+  - Verification is blocked if the check folder becomes a link out of the workspace.
+  - A folder name that starts with `-` or `.` never becomes part of `cd`.
+  - A check whose output file or process cannot be created resolves as failed. A failed sandbox probe is no longer cached for the rest of the process.
+  - The worker's CHECK line now comes from the same command the job runs.
+  - `dry_run` confines paths the way a real job does.
+  - An unreadable folder no longer breaks sizing. Files that do not exist yet count as unknown size, not 0 tokens.
+  - Skill matching treats inflected generic words ("fixes", "bugs", "added") as generic, and removes stop words after plural folding.
+- Compatibility: a job suspended by an earlier version keeps its root-only check on resume. If the repository has one of the newly fingerprinted files, that resume reports a definition change and stays unverified.
 
 ### Measured, unchanged
 - Start-up, hook latency, idle memory and per-job safety work match `main` within noise. `tools/list` grew by 50 bytes.

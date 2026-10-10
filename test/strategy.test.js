@@ -27,7 +27,7 @@ test('locate questions go to a search tool, judgement questions do not', () => {
 test('context size is measured from the scoped files, skipping dependency folders', () => {
   assert.deepEqual(S.contextSize(dir, ['big']), { tokens: 36000, files: 12 });
   assert.equal(S.contextSize(dir, []), null);
-  assert.deepEqual(S.contextSize(dir, ['missing.js']), { tokens: 0, files: 0 });
+  assert.equal(S.contextSize(dir, ['missing.js']), null, 'a file that does not exist yet has an unknown size, not size 0');
 });
 
 test('a small edit stays with Claude: delegation overhead exceeds the work', () => {
@@ -64,6 +64,10 @@ test('without a size estimate the scoping rule applies; without Codex, Claude', 
   assert.equal(none('normal', 'npm test').strategy, 'codex');
   assert.equal(none('normal', null).strategy, 'claude');
   assert.ok(none('normal', 'npm test').unknown.some(u => /task size/.test(u)));
+  // New-file work used to be measured as 0 tokens and sent to Claude; it now gets the scoping rule.
+  const fresh = S.decide({ mode: 'implement', difficulty: 'hard', prompt: 'p', paths: ['src/auth/new-oauth.js'], verify: 'npm test' }, dir, { tokens: 40000, nObs: 5 }, cfg);
+  assert.equal(fresh.size, undefined);
+  assert.ok(fresh.unknown.some(u => /task size/.test(u)));
   assert.equal(S.decide({ mode: 'implement', difficulty: 'hard', prompt: 'p', paths: ['big'], verify: 'x' }, dir, null, cfg).strategy, 'claude');
 });
 

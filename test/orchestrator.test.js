@@ -187,6 +187,20 @@ test('monorepo: auto verification runs the scoped service\'s own check; weakenin
   assert.deepEqual(k.result.integrity.verifyDefinitionChanged, ['services/api/package.json']);
 });
 
+test('monorepo (review): a resumed job keeps the check of its first run, not one the interrupted run wrote', async () => {
+  clean();
+  const files = { 'package.json': JSON.stringify({ scripts: { test: H.CHECK('a.txt') } }), 'a.txt': 'old', 'services/api/x.js': '' };
+  const planted = JSON.stringify({ scripts: { test: 'node -e 0' } }); // a check that always passes
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'services/api/package.json': planted }] }, files);
+  const o = orch();
+  const j = await run(o, { cwd: dir, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(j.status, 'suspended');
+  fs.writeFileSync(path.join(dir, '.fake-scenario.json'), JSON.stringify({ default: { action: 'ok' }, writes: [{}, {}] }));
+  const r = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(r.result.verification.command, 'npm test --silent', 'the root check chosen at the first run');
+  assert.notEqual(r.status, 'verified', 'a.txt was never fixed');
+});
+
 test('test content tampering blocks verification before executing the check', async () => {
   clean();
   const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'a.txt': 'good', 'a.test.js': 'weakened' }] },
