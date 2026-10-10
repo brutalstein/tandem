@@ -42,21 +42,35 @@ Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the f
 | Lock stress (8 × 100 with planted crash locks) | 1 lost update (799/800) once the flush was added after the commit check; 25 / 25 after moving the check to just before the rename | real processes |
 | Integration wait during session end | race found on WSL (a job slipped into integration when the suspend freed its blocking claim); fixed, 5 / 5 repeats on WSL | simulated Codex |
 
-### Windows: stale Codex sandbox permissions (found during this work)
+### Windows: stale Codex sandbox permissions ("Stale sandbox ACLs")
 
-A Codex sandbox run that denied the whole home folder was interrupted (by a test timeout) while Codex was applying the deny across it. Every top-level home folder it had reached kept an inherited `DENY` for the `CodexSandboxUsers` group, while the home folder itself no longer had it. Later Codex runs did not repair this. Reproduced on a disposable 60 000-file tree: killing the run after 2.5 s left 7 of 40 folders with the stale entry, and a later clean run left them in place.
+A Codex sandbox run that denied the whole home folder (a manual probe, not something Tandem does) was interrupted while Codex applied the deny. Measured afterwards (2026-10-10, read-only, ACL metadata only):
 
-Detect (read-only):
+- The home folder's own access list holds two explicit `DENY` entries for `CodexSandboxUsers` (read on the folder, inherit-only read for everything below). Codex's own record (`~/.codex/.sandbox/deny_read_acl_state.json`) does not list the home folder, so Codex will never remove them.
+- Every folder below inherits them. Folders where Codex granted an explicit read (`.cargo`, `AppData`, `OneDrive`, …) stay readable to sandboxed commands; the home folder itself and `.config` are not (measured from inside the sandbox: `EPERM`).
+- The other entries (system, administrators, the user, one app-container traverse right) and the owner are not involved and are not touched by the repair below.
+
+The earlier advice here (re-enable inheritance on each child folder) does not address this state and must not be used.
+
+Detect (read-only): `node --test --test-name-pattern="untracked Codex" test/sandbox.test.js` fails and names each folder with an untracked read-deny entry.
+
+Repair: remove only those two entries from the home folder's own list. No elevation is needed, nothing else changes, and child folders lose only the inherited copies. Back up first and keep the backup outside the profile:
 
 ```powershell
-Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | Select-Object -ExpandProperty Name
+$d = 'C:ProgramData	andem-acl-backup'; New-Item -ItemType Directory -Force $d | Out-Null
+icacls $env:USERPROFILE /save "$dhome.icacls"           # DACL of the home folder object only
+$csu = (New-Object Security.Principal.NTAccount 'CodexSandboxUsers').Translate([Security.Principal.SecurityIdentifier]).Value
+icacls $env:USERPROFILE /remove:d "*$csu"                  # deny entries of that one SID, home folder only (no /T)
 ```
 
-Repair (rewrites only the access list of each affected folder, so Windows re-derives the inherited entries from the parent; owner unchanged; tested on the disposable tree, where it removed every stale entry):
+Rollback (DACL only; owner and auditing untouched):
 
 ```powershell
-Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | ForEach-Object { $a = $_.GetAccessControl('Access'); $a.SetAccessRuleProtection($false, $false); $_.SetAccessControl($a); "repaired $($_.Name)" }
+$s = (Get-Content 'C:ProgramData	andem-acl-backuphome.icacls' -Encoding Unicode)[1]
+$ds = New-Object Security.AccessControl.DirectorySecurity; $ds.SetSecurityDescriptorSddlForm($s, 'Access'); [IO.Directory]::SetAccessControl($env:USERPROFILE, $ds)
 ```
+
+Both were tested on disposable folders reproducing the exact descriptor: the repair removed the two entries and every inherited copy, kept explicit entries on children (an allow on a folder, a deny on a credential file), and kept owner and protection; the rollback restored the descriptor exactly. (`icacls /restore` failed there without elevation, so the rollback sets the DACL directly.) Afterwards, credential paths whose deny was only inherited (on the development machine `.ssh` and `.docker/config.json`) are no longer denied until Codex re-applies them; Tandem's probe detects that and refuses to run checks under the default setting.
 
 Tandem itself never denies the home folder; its deny list names individual credential files and small folders.
 
@@ -73,6 +87,59 @@ Tandem itself never denies the home folder; its deny list names individual crede
 What the simulated failover tests prove (`continuity.test.js`, `surface.test.js`): suspension on a limit mid-run with partial work kept; no Codex spawn while the recorded limit lasts; resume in the same thread and worktree; in-place resume keeps attribution; drift while stopped forces isolation and preserves the user edit; takeover blocks resume; session end suspends; dependency suspension and ordered resume; a killed owner's job resumes from its worktree; `continue --wait` starts only after the reset; Ctrl+C suspends (POSIX); after the MCP server ends, the CLI alone resumes the job and runs only the delegated checkpoint item.
 
 What they do **not** prove: real quota exhaustion followed by a real reset (the provider's limit was not reached in this session), the real auth-loss path, and continuity of a real Claude Code session (Claude's own quota is not observable to Tandem). The real resume check covers the session-end path only.
+
+## Windows ACL repair on the development machine (2026-10-10)
+
+The user ran the prepared `repair.ps1` (backup and `rollback.ps1` in `C:ProgramData	andem-acl-backup-20261010`).
+
+Results, measured afterwards:
+- The home folder holds 0 Codex sandbox deny entries; before the repair it held 2.
+- Its ACL equals the backup minus exactly those two entries.
+- `node --test test/sandbox.test.js`: 5 pass, 0 fail. It now runs under the full sandbox. The ACL diagnostic passes; the fail-safe test skips because the full sandbox is available.
+- Inside the sandbox, `.ssh`, `.docker/config.json`, `.codex/auth.json`, `.claude/.credentials.json` and `.npmrc` all fail with `EPERM`.
+
+## Independent review of p1-strategy (2026-10-10)
+
+The review was done by a fresh-context agent of the same model family; it is not a cross-provider review. It read `git diff origin/main..HEAD -- server/` and reproduced each finding with small scripts.
+- It reported 5 bugs, 10 risks and 1 question.
+- 2 bugs were in this branch: a resumed job could pass on a check it wrote itself, and a configuration file between the root and the project could disable the tests.
+- 3 bugs were older ways to pass without running the tests: `.pytest.ini`, a local `pytest.py`, and a project `.npmrc`.
+- All 5 bugs and all 9 risks the report listed (its summary counted 10) are fixed, each with a regression test that fails on the code before the fix (`unit.test.js` and `orchestrator.test.js`, "(review)"). The POSIX-only test runs in CI.
+
+Left open:
+- A new top-level module that shadows one of pytest's own dependencies is not fingerprinted. That class has no fixed file list.
+- The question: whether the token objective's failure penalty should count as Codex cost in the strategy comparison. It is left as is and documented.
+
+## Provider continuity, scenarios A–E (p1-strategy, 2026-10-10)
+
+The checkpoint design was not rewritten: no defect was found. Each scenario was checked on its own:
+
+| Scenario | Evidence | Kind |
+|---|---|---|
+| A. Codex unavailable | `orchestrator.test.js`: rate limit suspends the job (resumable), a provider-wide backoff follows, and later jobs suspend without spawning Codex. An unsupported model is marked unavailable and rerouted; the provider stays available. Auth and transient errors are told apart. `continuity.test.js` A tests: partial work kept, no spawn while the limit lasts. `strategy.test.js`: without Codex the strategy is Claude. | simulated |
+| A, repeated | `continuity.test.js` "A, repeated": limited mid-run twice; both partial steps and one Codex thread kept; one provider call per run; the third run finishes and integrates | simulated |
+| B. Claude unavailable | `surface.test.js` "Claude gone": session end suspends the job, and the `tandem` CLI continues it and the delegated checkpoint item with no Claude call. `continuity.test.js`: the stored and current ceilings both apply on resume (the stricter wins). `node test/real-resume.js`: a real Codex turn stopped by session end resumed in the same thread and worktree and finished `verified`. | simulated + **real Codex** |
+| C. Both unavailable | `continuity.test.js`: provider down at start suspends without spawning; session end suspends live jobs (resumable, not cancelled); a job waiting to integrate keeps its work; dependents suspend with their dependency | simulated |
+| D. Availability restored | `continuity.test.js`: files changed while suspended force an isolated resume that never overwrites the user edit; `continue --wait` waits for the recorded reset; a job taken over is never resumed; dependency-suspended jobs run after their dependency | simulated |
+| E. Process interruption | `continuity.test.js` "crash" and "crash, repeated" (the owner dies during the submit, then again during the resume; the third run uses the same worktree and both dead runs' work); `orchestrator.test.js` owner killed mid-integration; `unit.test.js` writers killed by SIGKILL never lose an acknowledged update | simulated |
+
+Checkpoint and resume overhead (`node bench/resume-overhead.js 10`, Windows 11, Node 24.11.0, simulated Codex):
+
+| Event | p50 | p95 |
+|---|---|---|
+| Provider start to durable `suspended` (includes the fake process start and exit) | 128 ms | 152 ms |
+| `resume()` to provider start | 150 ms | 157 ms |
+| `submit()` to provider start, fresh job (for comparison; includes creating the worktree) | 483 ms | 498 ms |
+| Resume state on disk | 93 bytes | |
+
+Resuming is cheaper than starting, because the worktree already exists. The token cost of a real resume is the replayed conversation: 120k input tokens, 101k of them cached (`docs/BENCHMARKS.md`).
+
+Not run in this branch, because each needs real quota and the user's approval:
+- a real quota exhaustion followed by a real reset;
+- a real auth loss;
+- a real exhaustion of Claude's quota. Tandem cannot observe Claude's quota, so B is triggered by the session ending.
+
+Codex exposes no quota query; Tandem reads the reset time from the provider's error message.
 
 ## Facts established by observation (not assumed)
 

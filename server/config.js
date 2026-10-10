@@ -44,6 +44,7 @@ function config() {
     leanCodex: opt('lean_codex') !== 'false',
     isolation: pick('isolation', ['auto', 'inplace', 'worktree'], 'auto'), // same default as plugin.json
     objective: pick('objective', ['balanced', 'tokens', 'time'], 'balanced'),
+    claudeCostWeight: num('claude_cost_weight', 1, 0.1, 20), // Claude token value relative to a Codex token (strategy advice)
     exploration: opt('exploration') !== 'false',
     // Dependency links are writable junctions/symlinks into the original project.
     // Keep isolation meaningful by default: users may explicitly opt in for trusted jobs.

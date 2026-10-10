@@ -95,6 +95,9 @@ test('MCP server: protocol, validation, framing, dry-run, status, progress', asy
     assert.match(await s.text('memory_search', { query: 'esbuild' }), /untrusted[\s\S]*esbuild/);
     assert.match(await s.text('codex_run', { task: 'x', mode: 'implement', difficulty: 'hard', dry_run: true }), /plan for implement\|hard: gpt-[\w.-]+@\w+ \(p=/);
     assert.equal(H.calls(dir).length, 0, 'dry run spawns nothing');
+    assert.match(await s.text('codex_run', { task: 'where is parseConfig defined?', mode: 'ask', difficulty: 'trivial', dry_run: true }), /^strategy: tool — a text or symbol search/);
+    assert.match(await s.text('codex_run', { task: 'x', mode: 'implement', difficulty: 'normal', paths: ['README.md'], verify: 'none', dry_run: true }), /^strategy: (claude|codex)[^\n]*\n  estimated effective tokens: codex \d+–\d+k, claude \d+–\d+k\n  check: read the result\n  not measured: Claude-side tokens/);
+    assert.equal(H.calls(dir).length, 0, 'strategy advice spawns nothing');
 
     const out = await s.text('codex_run', { task: 'what is this repo', mode: 'ask', difficulty: 'trivial' }, { progressToken: 'tok' });
     assert.match(out, /ANSWERED/);

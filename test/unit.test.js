@@ -409,6 +409,68 @@ test('verify: detection, fingerprint of scripts only, deleted tests, timeout', a
   assert.ok(bg.ms < 6000, `took ${bg.ms} ms`);
 });
 
+test('verify: in a monorepo the check comes from the project that owns the scope, and its definitions are fingerprinted', () => {
+  const dir = H.repo(null, {
+    'package.json': JSON.stringify({ scripts: { test: 'node lint.js' } }),
+    'services/api/package.json': JSON.stringify({ scripts: { test: 'node --test' } }), 'services/api/src/a.js': '',
+    'services/billing/pyproject.toml': '[tool.pytest.ini_options]\n', 'services/billing/billing/b.py': '',
+    'services/gateway/go.mod': 'module g\n', 'services/gateway/internal/g.go': '', 'docs/x.md': '',
+  });
+  const cd = p => `cd ${process.platform === 'win32' ? p.replace(/\//g, '\\') : p} && `;
+  assert.equal(verify.detect(dir, ['services/billing/billing/b.py']), cd('services/billing') + 'python -m pytest -q');
+  assert.equal(verify.detect(dir, ['services/api/src', 'services/api/package.json']), cd('services/api') + 'npm test --silent');
+  assert.equal(verify.detect(dir, ['services\\gateway\\internal\\g.go']), cd('services/gateway') + 'go test ./...');
+  assert.equal(verify.detect(dir, ['services/api/src/a.js', 'services/billing/billing/b.py']), 'npm test --silent', 'spanning two projects: the root check');
+  assert.equal(verify.detect(dir, ['docs/x.md']), 'npm test --silent', 'no project of its own: the root check');
+  assert.equal(verify.detect(dir), 'npm test --silent');
+  assert.equal(verify.detect(dir, ['../outside/services/api/src']), 'npm test --silent', 'never leaves the root');
+  assert.equal(verify.detect(dir, ['services/api/src/a b.js', 'services/api/src/a.js']), 'npm test --silent', 'a name unsafe in a shell command falls back');
+  const sub = verify.project(dir, ['services/billing/billing/b.py']);
+  const before = verify.fingerprint(dir, sub);
+  assert.ok(before['services/billing/pyproject.toml'] && before['package.json']);
+  H.write(dir, { 'services/billing/pyproject.toml': '[tool.pytest.ini_options]\naddopts = "-k nothing"\n' });
+  assert.deepEqual(verify.definitionChanges(before, verify.fingerprint(dir, sub)), ['services/billing/pyproject.toml'], 'weakening the sub-project check is a definition change');
+});
+
+test('verify (review): configuration between the root and the project, check-defining files, unsafe names, escaped check dir', () => {
+  const ti = require('../server/test-integrity');
+  const dir = H.repo(null, { 'services/api/pyproject.toml': '[project]\ndependencies = ["pytest"]\n', 'services/api/app.py': '' });
+  const sub = verify.project(dir, ['services/api/app.py']);
+  assert.equal(sub, 'services/api');
+  const before = verify.fingerprint(dir, sub);
+  // pytest looks for configuration upwards from where it starts; npm reads .npmrc; python -m pytest imports a local pytest.
+  H.write(dir, { 'services/pytest.ini': '[pytest]\naddopts = --collect-only\n', '.pytest.ini': '[pytest]\n', '.npmrc': 'script-shell=true\n', 'services/api/pytest.py': 'raise SystemExit(0)\n', 'services/api/pytest/__main__.py': '' });
+  assert.deepEqual(verify.definitionChanges(before, verify.fingerprint(dir, sub)).sort(),
+    ['.npmrc', '.pytest.ini', 'services/api/pytest.py', 'services/api/pytest/__main__.py', 'services/pytest.ini']);
+
+  assert.equal(verify.project(dir, ['-P/x']), '', 'a name that reads as an option never reaches cd');
+  assert.equal(verify.project(dir, ['.hidden/x']), '');
+
+  // The job replaces the project directory with a link out of the workspace: the run is blocked.
+  const outside = H.repo(null, { 'pyproject.toml': '[tool.pytest.ini_options]\n' });
+  assert.equal(ti.inspect(dir, before, verify.testFingerprint(dir), [], () => false, sub).checkDirEscaped, false);
+  fs.rmSync(path.join(dir, 'services', 'api'), { recursive: true, force: true });
+  fs.symlinkSync(outside, path.join(dir, 'services', 'api'), process.platform === 'win32' ? 'junction' : 'dir');
+  const scan = ti.inspect(dir, before, verify.testFingerprint(dir), [], () => false, sub);
+  assert.equal(scan.checkDirEscaped, true);
+  assert.equal(ti.blocked(scan), true);
+  assert.match(ti.reason(scan), /no longer a directory inside the workspace/);
+});
+
+test('verify (review): a check that cannot start resolves as failed, and a failed sandbox probe is not cached forever', { skip: process.platform === 'win32' && 'the output file is POSIX-only' }, async () => {
+  const dir = H.repo(null, {});
+  const tmp = process.env.TMPDIR;
+  process.env.TMPDIR = path.join(dir, 'no', 'such', 'dir');
+  verify.resetSandboxProbe();
+  try {
+    const r = await verify.run('node -e 0', dir, 20000, { verifyIsolation: 'sandbox', verifyDenyPaths: [] });
+    assert.equal(r.ok, false, 'resolved, not rejected');
+  } finally { if (tmp === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = tmp; }
+  verify.resetSandboxProbe();
+  const ok = await verify.run('node -e 0', dir, 20000, { verifyIsolation: 'sandbox', verifyDenyPaths: [] });
+  assert.equal(ok.ok, true, ok.tail);
+});
+
 test('verify sandbox arguments: profile, scrubbed environment, credential denies, exact command transport', () => {
   const dir = H.repo(null, { 'x.txt': 'x' });
   const secret = path.join(H.TMP, `secret-${process.pid}`);

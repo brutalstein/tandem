@@ -4,15 +4,19 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execFile, execFileSync } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { sha1, readJson } = require('./store');
 const { killTree, codexCommand } = require('./codex');
 
-const DEFINITION_FILES = ['package.json', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js'];
+// Files that decide what a check runs. Besides configuration: a project .npmrc can replace npm's script shell, and
+// `python -m pytest` imports a pytest found in the working directory before the installed one.
+const DEFINITION_FILES = ['package.json', 'pytest.ini', '.pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini', 'conftest.py', 'Cargo.toml', 'go.mod', 'go.work', 'Makefile', 'jest.config.js', 'vitest.config.ts', 'vitest.config.js',
+  '.npmrc', 'pytest.py', 'pytest/__init__.py', 'pytest/__main__.py', '_pytest/__init__.py', '.cargo/config.toml', '.cargo/config'];
 const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|(^|\/)test_[^/]+\.py$/i;
 const CONFTEST = /(^|\/)conftest\.py$/i;
+const IS_WIN = process.platform === 'win32';
 
-function detect(dir) {
+function checkAt(dir) {
   const has = f => fs.existsSync(path.join(dir, f));
   if (has('package.json')) {
     const t = ((readJson(path.join(dir, 'package.json'), {}) || {}).scripts || {}).test;
@@ -24,13 +28,51 @@ function detect(dir) {
   return null;
 }
 
+// The project that owns the scoped paths: the deepest directory holding all of them that has a check of its own
+// (a service in a monorepo), else the root. Relative, '/'-separated; '' is the root. Only plain names below the
+// root qualify (no leading '-' or '.'), because the result becomes part of a shell command.
+function project(dir, paths = []) {
+  const parts = paths.map(p => String(p).replace(/\\/g, '/').split('/').filter(s => s && s !== '.'));
+  if (!parts.length || parts.some(p => p.some(s => !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(s)))) return '';
+  let common = parts[0];
+  for (const p of parts.slice(1)) { let i = 0; while (i < common.length && common[i] === p[i]) i++; common = common.slice(0, i); }
+  for (let n = common.length; n > 0; n--) {
+    const sub = common.slice(0, n).join('/');
+    if (contained(dir, sub) && checkAt(path.join(dir, sub))) return sub;
+  }
+  return '';
+}
+
+// `sub` is a real directory inside `dir`, not a link out of it. Checked again before the check runs: the job may
+// have replaced the directory since.
+function contained(dir, sub) {
+  try {
+    const root = fs.realpathSync(dir), real = fs.realpathSync(path.join(dir, sub));
+    return real.startsWith(root + path.sep) && fs.statSync(real).isDirectory();
+  } catch { return false; }
+}
+
+// The check for the project at `sub` (from project()); '' is the root.
+function checkFor(dir, sub) {
+  const cmd = checkAt(path.join(dir, sub));
+  return cmd && sub ? `cd ${IS_WIN ? sub.replace(/\//g, '\\') : sub} && ${cmd}` : cmd;
+}
+
+const detect = (dir, paths = []) => checkFor(dir, project(dir, paths));
+
 // package.json contributes only its `scripts` (dependency bumps are not a verification change).
-function fingerprint(dir) {
+// With `sub`, every directory from the root down to the scoped project counts: tools look for their configuration
+// upwards from where the check starts.
+function fingerprint(dir, sub = '') {
   const fp = {};
-  for (const f of DEFINITION_FILES) {
-    const p = path.join(dir, f);
-    if (!fs.existsSync(p)) continue;
-    fp[f] = f === 'package.json' ? sha1(JSON.stringify((readJson(p, {}) || {}).scripts || {})) : sha1(fs.readFileSync(p));
+  const segs = sub ? sub.split('/') : [];
+  for (let n = 0; n <= segs.length; n++) {
+    const d = segs.slice(0, n).join('/');
+    for (const f of DEFINITION_FILES) {
+      const p = path.join(dir, d, f);
+      if (!fs.existsSync(p)) continue;
+      fp[d ? `${d}/${f}` : f] = f === 'package.json' ? sha1(JSON.stringify((readJson(p, {}) || {}).scripts || {})) : sha1(fs.readFileSync(p));
+    }
   }
   return fp;
 }
@@ -106,7 +148,6 @@ function environmentFailure(v) {
 // on Windows): writes confined to the workspace and temp, no network, environment reduced to the core variables,
 // and these credential stores neither readable nor writable. Where a secret lives in one file, the file is denied:
 // on Windows every denied folder is re-ACLed recursively on each run.
-const IS_WIN = process.platform === 'win32';
 const SECRET_PATHS = ['.codex/auth.json', '.claude/.credentials.json', '.ssh', '.gnupg', '.aws', '.azure', '.kube/config',
   '.docker/config.json', '.config/gh/hosts.yml', '.config/gcloud', '.git-credentials', '.netrc', '.npmrc', '.pypirc',
   '.cargo/credentials', '.cargo/credentials.toml', 'AppData/Roaming/GitHub CLI/hosts.yml'];
@@ -146,16 +187,13 @@ function sandboxCheck(bin, cwd, extraDeny, timeoutMs) {
   const deny = denyList(extraDeny);
   const cmd = `"${process.execPath}" -e "${PROBE}" ${Buffer.from(JSON.stringify(deny)).toString('base64')}`;
   const p = { at: 0 };
-  p.done = new Promise(resolve => execFile(bin[0], [...bin[1], ...sandboxArgs(cwd, cmd, extraDeny)], { timeout: timeoutMs, windowsHide: true, maxBuffer: 1 << 20 },
-    (err, out, errOut) => {
-      p.at = Date.now();
-      const m = /TANDEM_PROBE (\[.*\])/.exec(String(out));
-      if (err || !m) {
-        const why = String(errOut || '').split(/\r?\n/).filter(l => l.trim() && !/^WARNING/.test(l)).pop();
-        return resolve({ problem: (err && err.killed ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || String(err ? err.message : 'no probe result')).slice(0, 300) });
-      }
-      resolve({ problem: null, unprotected: JSON.parse(m[1]) });
-    }));
+  p.done = exec(cmd, cwd, timeoutMs, [bin[0], [...bin[1], ...sandboxArgs(cwd, cmd, extraDeny)]]).then(r => {
+    p.at = Date.now();
+    const m = /TANDEM_PROBE (\[.*\])/.exec(r.tail);
+    if (r.ok && m) return { problem: null, unprotected: JSON.parse(m[1]) };
+    const why = r.tail.split(/\r?\n/).filter(l => l.trim() && !/^WARNING|^\[tandem\]|TANDEM_PROBE/.test(l)).pop();
+    return { problem: (r.timedOut ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || `no probe result (exit ${r.code})`).slice(0, 300) };
+  }).catch(e => { p.at = Date.now(); return { problem: String(e.message).slice(0, 300) }; }); // never cache a rejection
   probe = p;
   return p.done;
 }
@@ -179,11 +217,20 @@ async function run(command, cwd, timeoutMs, opts = {}) {
 function exec(command, cwd, timeoutMs, sandboxed) {
   return new Promise(resolve => {
     const started = Date.now();
-    const opt = { cwd, windowsHide: true, detached: !IS_WIN };
-    const child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
+    // Node gives a child socket pairs as pipes. Codex's Linux sandbox filters socket calls, and Node inside it then
+    // writes nothing to stdout (measured: exit 0, no output), so sandboxed POSIX output goes to a private file.
+    let child, fd = null, tmp = null, file = null;
+    try {
+      if (sandboxed && !IS_WIN) { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tandem-verify-')); file = path.join(tmp, 'out.log'); fd = fs.openSync(file, 'wx', 0o600); }
+      const opt = { cwd, windowsHide: true, detached: !IS_WIN, ...(file && { stdio: ['ignore', fd, fd] }) };
+      child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
+    } catch (e) { // no output file (disk full, too many open files) or no process: a failed check, never a crash
+      if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+      return resolve({ ok: false, code: null, timedOut: false, tail: `[tandem] could not start the check: ${String(e.message).slice(0, 200)}`, ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
+    } finally { if (fd !== null) fs.closeSync(fd); }
     let out = '', timedOut = false;
     const keep = d => { out = (out + d).slice(-8000); };
-    child.stdout.on('data', keep); child.stderr.on('data', keep);
+    if (!file) { child.stdout.on('data', keep); child.stderr.on('data', keep); }
     const timer = setTimeout(() => { timedOut = true; killTree(child); }, timeoutMs);
     child.on('error', e => { out += String(e.message); });
     let settled = false;
@@ -193,13 +240,21 @@ function exec(command, cwd, timeoutMs, sandboxed) {
       clearTimeout(timer);
       // What the check left behind in its process group dies with it (POSIX; a process that left the group survives).
       if (!IS_WIN) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
+      if (file) { out = tailOf(file, 8000) + out; fs.rmSync(tmp, { recursive: true, force: true }); }
       resolve({ ok: code === 0 && !timedOut, code, timedOut, tail: (out + (timedOut ? '\n[tandem] verification timed out' : '')).slice(-2500).trim(), ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
     };
     child.on('close', finish);
     // A test command may leave a process (dev server, watcher) holding the output pipe: don't wait for it.
-    child.on('exit', code => setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); finish(code); }, 1500).unref());
+    child.on('exit', code => setTimeout(() => { if (!file) { child.stdout.destroy(); child.stderr.destroy(); } finish(code); }, 1500).unref());
   });
 }
 
+function tailOf(file, n) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    try { const size = fs.fstatSync(fd).size, len = Math.min(n, size), b = Buffer.alloc(len); fs.readSync(fd, b, 0, len, size - len); return b.toString('utf8'); } finally { fs.closeSync(fd); }
+  } catch { return ''; }
+}
+
 const resetSandboxProbe = () => { probe = null; }; // tests switch between a working and a failing sandbox
-module.exports = { environmentFailure, detect, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };
+module.exports = { environmentFailure, detect, project, contained, checkFor, fingerprint, definitionChanges, deletedTests, testFingerprint, testChanges, run, sandboxArgs, denyList, resetSandboxProbe, TEST_FILE };

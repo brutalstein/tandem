@@ -45,6 +45,7 @@ test('implement in place: failed verification escalates; resume only on the same
   assert.deepEqual(j.result.changed, ['a.txt']);
   assert.equal(H.read(dir, 'dirty.txt'), 'user wip');
   const c = H.calls(dir);
+  assert.ok(c[0].prompt.includes('CHECK: afterwards Tandem runs `' + H.CHECK('a.txt') + '`'), 'the worker is told the acceptance check');
   assert.equal(c[1].args[1] === 'resume', j.attempts[0].model === j.attempts[1].model);
   if (c[1].args[1] !== 'resume') assert.match(c[1].prompt, /previous attempt did not succeed/i);
 });
@@ -167,6 +168,37 @@ test('in-place scope audit detects edits to already-dirty tracked files', async 
   assert.equal(j.result.verification.ok, true);
   assert.equal(j.status, 'unverified', 'a scope violation is never verified');
   assert.deepEqual(j.result.outOfScope, ['b.txt']);
+});
+
+test('monorepo: auto verification runs the scoped service\'s own check; weakening that check is caught', async () => {
+  clean();
+  const svcCheck = JSON.stringify({ scripts: { test: H.CHECK('a.txt') } });
+  const files = { 'services/api/package.json': svcCheck, 'services/api/a.txt': 'old', 'services/web/index.js': '' };
+  const dir = H.repo({ default: { action: 'ok' }, writes: [{ 'services/api/a.txt': 'good' }] }, files);
+  const j = await run(orch(), { cwd: dir, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(j.status, 'verified', 'no root manifest: before, nothing was detected and the job stayed unverified');
+  assert.match(H.calls(dir)[0].prompt, /CHECK: .*cd services.api && npm test --silent/);
+
+  clean();
+  const weak = JSON.stringify({ scripts: { test: 'node -e 0' } });
+  const d2 = H.repo({ default: { action: 'ok' }, writes: [{ 'services/api/a.txt': 'bad', 'services/api/package.json': weak }] }, files);
+  const k = await run(orch(), { cwd: d2, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(k.status, 'unverified');
+  assert.deepEqual(k.result.integrity.verifyDefinitionChanged, ['services/api/package.json']);
+});
+
+test('monorepo (review): a resumed job keeps the check of its first run, not one the interrupted run wrote', async () => {
+  clean();
+  const files = { 'package.json': JSON.stringify({ scripts: { test: H.CHECK('a.txt') } }), 'a.txt': 'old', 'services/api/x.js': '' };
+  const planted = JSON.stringify({ scripts: { test: 'node -e 0' } }); // a check that always passes
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'services/api/package.json': planted }] }, files);
+  const o = orch();
+  const j = await run(o, { cwd: dir, task: 'fix api', mode: 'implement', difficulty: 'normal', paths: ['services/api'], isolation: 'inplace' });
+  assert.equal(j.status, 'suspended');
+  fs.writeFileSync(path.join(dir, '.fake-scenario.json'), JSON.stringify({ default: { action: 'ok' }, writes: [{}, {}] }));
+  const r = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(r.result.verification.command, 'npm test --silent', 'the root check chosen at the first run');
+  assert.notEqual(r.status, 'verified', 'a.txt was never fixed');
 });
 
 test('test content tampering blocks verification before executing the check', async () => {

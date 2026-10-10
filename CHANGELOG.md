@@ -1,6 +1,49 @@
 # Changelog
 
-## Unreleased — hardening (branch hardening-v4)
+Version 2.0.0 was released on 2026-10-10. It contains every section below (all changes since v1.0.0), newest first.
+
+## 2.0.0 — strategy, measurement and sandbox evidence (PR #7)
+
+### Added
+- **Whole-strategy advice** (`codex_delegate` `dry_run`): one of a search tool, Claude itself, a Claude subagent or Codex. The choice is explained by a cost record: options as intervals, the assumptions, and what was not measured. New option `claude_cost_weight`.
+- **Benchmark corpus v2**: 20 tasks in 13 categories with hidden graders. Graders are validated to fail on the fixture, on tampering and on wrong answers. Claude arms and `--plan` budget estimates were added, and quota ceilings are checked before every run.
+- **Skill-selection evaluation** (`bench/skills-eval.js`): a 40-task labeled set and a 14-task held-out set.
+- **Measurements**: checkpoint and resume overhead (`bench/resume-overhead.js`), Tandem's per-job cost from 60 to 20,000 files (`bench/large-repo.js`), and a strategy sensitivity study (`bench/strategy-sim.js`).
+- Two new continuity tests: a job limited twice, and an owner killed twice. A Windows diagnostic test detects stale Codex sandbox deny entries on the home folder.
+- The worker prompt names the acceptance check Tandem will run.
+
+### Changed
+- Skill matching folds plurals, and generic words (fix, error, add, …) no longer count toward a clear match. Held-out recall went from 0.625 to 1.0, with no false positives on no-skill tasks.
+- **Monorepo verification**: an automatic check comes from the deepest project that holds every scoped path and has its own manifest, for example `cd services/billing && python -m pytest -q`. If there is none, the root check is used. That project's definition files are fingerprinted, so its check cannot be weakened.
+
+### Fixed
+- **Linux sandbox**: output of checks run in the sandbox was lost under seccomp; it is now captured through a file. CI proves full enforcement on disposable Linux, macOS and Windows VMs.
+- Polyglot repositories without a root manifest ran every job unverified.
+- **Independent review of this branch.** Each fix below has a regression test that fails on the code before it.
+  - A resumed job now keeps the check and project chosen at its first run. Before, a check the interrupted run wrote could verify it.
+  - Definition files are fingerprinted in every folder from the root down to the scoped project, not only at both ends. Before, a new `services/pytest.ini` could disable a service's tests.
+  - New definition files: `.pytest.ini`, `.npmrc`, `pytest.py`, `pytest/`, `_pytest/`, `go.work` and `.cargo/config(.toml)`. These close three existing ways to pass without running the tests:
+    - a new `.pytest.ini` with `--collect-only`;
+    - a local `pytest.py` that `python -m pytest` imports first;
+    - an `.npmrc` that replaces the script shell.
+  - Verification is blocked if the check folder becomes a link out of the workspace.
+  - A folder name that starts with `-` or `.` never becomes part of `cd`.
+  - A check whose output file or process cannot be created resolves as failed. A failed sandbox probe is no longer cached for the rest of the process.
+  - The worker's CHECK line now comes from the same command the job runs.
+  - `dry_run` confines paths the way a real job does.
+  - An unreadable folder no longer breaks sizing. Files that do not exist yet count as unknown size, not 0 tokens.
+  - Skill matching treats inflected generic words ("fixes", "bugs", "added") as generic, and removes stop words after plural folding.
+- `bench/bench.js` refused nothing: any unknown flag, `--help` included, started the default real-provider run with no ceiling. This happened once during development and spent 0.58M Codex input tokens (0.46M cached) over 4 runs. It now exits on any unknown flag, and a real run needs both `--max-codex-input` and `--max-claude-input`.
+- Compatibility: a job suspended by an earlier version keeps its root-only check on resume. If the repository has one of the newly fingerprinted files, that resume reports a definition change and stays unverified.
+
+### Measured
+- Approved real pilot: 5 tasks × (Tandem, Claude-only), 10/10 independently verified. Tandem used ×0.63 the effective tokens (CI 0.46–0.87) and ×1.20 the time (docs/BENCHMARKS.md).
+- `bench --analyze` compared Codex-only tokens and crashed on Claude arms. It now compares effective tokens of both providers.
+
+### Measured, unchanged
+- Start-up, hook latency, idle memory and per-job safety work match `main` within noise. `tools/list` grew by 50 bytes.
+
+## 2.0.0 — hardening (PR #6)
 
 ### Security
 - **Verification runs in the Codex OS sandbox.** Checks execute code the job wrote; they now run under `codex sandbox` with a Tandem profile: workspace-and-temp writes only, no network, core environment only, credential stores denied (plus `verify_deny_paths`). A probe inside the sandbox confirms each deny before checks run. If the sandbox cannot start or a deny is not enforced, the check is not run and the job stays `unverified` (no escalation, no routing evidence). New option `verify_isolation`: `sandbox` (default), `contain` (accept readable credential stores), `off` (previous behaviour). Results record the isolation level. Measured on Windows: Codex 0.154.0 did not reliably enforce deny rules there, so the default refuses on that machine (SECURITY.md).
@@ -17,7 +60,7 @@
 ### Changed
 - State files are flushed to disk before they replace the old copy (power-loss safety of Tandem's own state; about 5 ms per write). Not tested by cutting power.
 
-## Unreleased — continuity and capabilities (branch feat/continuity-v3)
+## 2.0.0 — continuity and capabilities
 
 ### Changed
 
@@ -49,7 +92,7 @@
 - `dry_run` reports this project's measured history for the task class.
 - Tests: `continuity.test.js` (failover scenarios), `capabilities.test.js`, an MCP-to-CLI end-to-end test, `test/real-resume.js` (real provider, manual).
 
-## 2.0.0 — unreleased
+## 2.0.0 — production hardening of v1
 
 Production hardening of v1. See [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md) for the audit that motivated each change.
 

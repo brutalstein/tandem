@@ -168,3 +168,101 @@ The monotonicity constraint encoded exactly the kind of assumption about model s
 ### Cost of deciding
 
 `decide()` takes 1.1 ms at the median and 1.4 ms at the 95th percentile. That measurement uses 16 rungs, up to 4 attempts, a full evidence store (8 classes × 80 observations) and Node 24.
+
+## 5. Which strategy: tool, you, a subagent or Codex
+
+`server/strategy.js` sits above the Codex policy and answers the earlier question: should this task be delegated at all? `codex_run` with `dry_run: true` returns its decision record first, then the Codex plan. It is advice to the lead; it never blocks a run.
+
+| Strategy | When |
+|---|---|
+| `tool` | a read-only question a search answers exactly ("where is X defined", "find all callers of Y"); no model call |
+| `claude` | you do it in the conversation |
+| `claude-subagent` | read-only work over enough files that a fresh, small context is cheaper than carrying them in yours |
+| `codex` | delegate (the policy above then picks model and effort) |
+
+Every option is an interval of **effective tokens** (the policy's `tokens` unit). Claude tokens are multiplied by `claude_cost_weight` (default 1): how much a Claude token costs you relative to a Codex token. Tandem does not convert one provider's quota into the other's; the weight states your exchange rate.
+
+```
+codex    = w · (write the task + 2–3 turns + read the diff or answer, carried) + E_codex · band
+claude   = w · (read + carried reads + turns · TURN + edits + check output)
+subagent = w · (spawn + read + 2–6 small turns + summary, carried)
+```
+
+- `E_codex` is the policy's expected cost of the routed plan under the `tokens` objective (including retries and the failure fallback), from this project's observations. `band` is ×0.75–1.33 with at least 3 observations of the class, ×0.5–2 otherwise.
+- Size is measured: the bytes of the files in `paths` (dependency folders skipped) / 4.
+- Claude-side costs are not observable by Tandem, so they are explicit ranges, listed in the record as "not measured":
+
+| Assumption | Range | Basis |
+|---|---|---|
+| TURN (one turn of the main conversation) | 1–5k | 10–50k tokens of cached context at 0.1 |
+| CARRY (later re-sending of what was read) | ×0.5–3 | 5–30 later turns at 0.1 |
+| subagent turn / spawn | 0.3–1k / 3–8k | small fresh context |
+| reads, edits | ×0.5–1.5 of the scoped size, edits ×0.05–0.3 | |
+
+Decision: the option with the lowest geometric midpoint wins, unless the simpler option (claude, then subagent, then codex) is within 25 %; `uncertain` marks overlapping intervals. Without `paths` there is no estimate, and the scoping rule applies: trivial or unchecked work stays with you, and checked work may be delegated. Hard and critical implementations always add your review of the whole diff.
+
+Measured anchor for the fixed cost of delegating: in the real pilot (`bench/data/real-v2-pilot`), the cheapest delegated trivial question cost 9.4k effective Codex tokens and 17 s, and the median task 37–48k.
+
+### Sensitivity (synthetic)
+
+`node bench/strategy-sim.js` draws "true" costs independently of the assumptions above, including scenarios where they are wrong, and compares total cost against a per-task oracle (1.00 = always the cheaper option):
+
+| Scenario (Claude weight) | always Claude | always Codex | size > 10k → Codex | Tandem |
+|---|---|---|---|---|
+| assumptions hold (×1) | 2.10 | 1.27 | **1.11** | 1.16 |
+| assumptions hold (×3) | 3.22 | **1.05** | 1.28 | 1.12 |
+| Claude cheaper than assumed (×1) | 1.76 | 1.62 | 1.15 | **1.08** |
+| Claude cheaper than assumed (×3) | 2.91 | 1.15 | 1.14 | **1.04** |
+| Claude dearer than assumed (×1) | 2.83 | **1.07** | 1.23 | 1.41 |
+| Claude dearer than assumed (×3) | 3.99 | **1.01** | 1.49 | 1.24 |
+| Codex dearer than estimated (×1) | 1.56 | 1.66 | 1.18 | **1.07** |
+| Codex dearer than estimated (×3) | 2.53 | 1.14 | 1.15 | **1.05** |
+
+No policy wins every scenario. Tandem has the lowest worst case (1.41 against 1.49, 1.66 and 3.99) and never doing the work yourself is the worst policy throughout. It loses to "always delegate" when Claude work is much dearer than assumed, and to the fixed threshold when the assumptions hold at equal weight (its tie rule favours the simpler strategy). These numbers come from the simulation's own cost model and say nothing about real savings. Calibrating the Claude-side ranges needs the real benchmark with Claude arms, which spends quota and has not been run.
+
+### Decisions on the benchmark corpus
+
+The same script prints what the layer decides for each of the 20 corpus tasks (Codex cost anchored on the real pilot, no project observations, so the widest band). With equal weights it keeps 19 tasks with you and sends the 300-module header lookup to a search tool. With Claude weighted ×3 it additionally delegates the trivial checked edit, where the Codex prior is cheapest. Every Claude-or-Codex choice is marked uncertain: the fixtures are small, and without observations the Codex band is ×0.5–2. Whether these choices are right is what the real benchmark's `claude-adaptive` arm measures; it has not been run.
+
+## 6. Where the tokens go (context)
+
+Measured before changing anything:
+
+| Item | Size | Source |
+|---|---|---|
+| Tandem's prompt to Codex (task, scope, check, ≤3 skill pointers, ≤1,800 chars of notes, rules) | 184–407 tokens, median 327, over the 20 corpus tasks | `Orchestrator.prompt` |
+| One Codex run's raw input (cached included) | 53k–196k, median 145k | real pilot |
+| One Codex run, effective tokens | 9.4k–74k | real pilot |
+| Tandem's MCP tool definitions in Claude's context | 7.0 KB | `bench/overhead.js` |
+
+Tandem's own prompt is about 0.2 % of what a Codex run reads. Compressing it further cannot change the cost of a job; the rest is Codex's own system prompt, configuration, tool schemas and the files it reads. Lean mode already removes Codex's skill list and plugins. The levers that matter are not delegating when it does not pay (§5), the cheapest sufficient model and effort (§2), and resuming the same thread on a retry (cached context). The only change made here: the worker prompt now names the check Tandem will run (`CHECK: …`), about 20 tokens, so the worker can run the acceptance command instead of guessing one. Its effect on retries has not been measured.
+
+## 7. Skill selection quality
+
+`node bench/skills-eval.js` measures `capabilities.select` (deterministic BM25, no model call). It uses a 22-skill catalog written for the study and modelled on common public skills. There are two task sets:
+- a 40-task labeled set: 24 tasks need a skill, 12 are ordinary tasks needing none, and 4 are near misses whose words match a skill that does not help;
+- a 14-task held-out set, written after the change below and run once, never tuned against.
+
+| | Labeled before | Labeled after | Held-out before | Held-out after |
+|---|---|---|---|---|
+| Precision | 0.958 | 0.962 | 1.0 | 1.0 |
+| Recall | 0.92 | 1.0 | 0.625 | 1.0 |
+| Exact match per task | 0.925 | 0.975 | 0.786 | 1.0 |
+| False positives on no-skill tasks | 6.3 % | 0 % | 0 % | 0 % |
+| Added prompt tokens per task | 20.8 | 22.5 | 12.3 | 19.8 |
+| Selection time per task | ≈0.1 ms | ≈0.1 ms | ≈0.05 ms | ≈0.07 ms |
+
+Every miss before the change was a singular/plural mismatch: "documents" against "document", "catalogs" against "catalog", and "tests" plus "test" counted as two terms. The change has two parts:
+- plural folding in the tokenizer;
+- a short list of words almost every coding task contains (fix, error, add, write, build, …). These words still score, but two of them no longer make a "clear match".
+
+The second part prevents a regression that folding alone caused on the existing fixture set: "Fix the off-by-one error" was matched to a pytest skill.
+
+The one remaining miss: "Add pytest fixtures and parametrized tests" also selects the Playwright skill, because "fixtures" and "tests" appear in both descriptions. A model call is not justified: the deterministic ranker needs no quota, takes 0.1 ms, and the measured errors are small.
+
+The study's limits:
+- The author of the catalog also wrote the labels.
+- The sets are small, so one task moves recall by several points.
+- The figures show the ranker works on plausible phrasing. They do not measure how a worker uses a skill once pointed at it.
+
+`test/capabilities.test.js` keeps floors just under these values.

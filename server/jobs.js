@@ -143,7 +143,7 @@ class Orchestrator {
     const isolation = spec.isolation || (spec.difficulty === 'critical' && this.cfg.isolation === 'auto' ? 'worktree' : this.cfg.isolation);
     const job = ledger.submit(projDir, {
       root, mode, difficulty: spec.difficulty || 'normal', task: spec.task.trim(), context: spec.context ? String(spec.context) : '',
-      paths, after: spec.after || [], verify: spec.verify ?? 'auto', model: spec.model || null, effort: spec.effort || null,
+      paths, after: spec.after || [], verify: spec.verify || 'auto', model: spec.model || null, effort: spec.effort || null,
       maxAttempts: spec.max_attempts || 2, isolationPref: git ? isolation : 'inplace', isolation: isolation === 'worktree' && git ? 'worktree' : undefined,
       // What the submitter authorized; a later resume (CLI, another session) runs under these, never wider.
       ceiling: spec.ceiling || { codexMaxModel: this.cfg.codexMaxModel, codexAllowedModels: this.cfg.codexAllowedModels, codexMaxEffort: this.cfg.codexMaxEffort },
@@ -289,11 +289,15 @@ class Orchestrator {
         ledger.patch(projDir, job.id, { worktree: { path: wt.path, base: snap.commit, tree: snap.tree, linked: wt.linked } });
       } catch (e) { return end('failed', { error: `could not create isolated worktree: ${String(e.message).slice(0, 300)}` }); }
     }
-    const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null : job.verify === 'auto' ? verify.detect(workdir) : job.verify;
-    const fpBefore = verifyCmd ? ((rf && rf.fpBefore) || verify.fingerprint(workdir)) : null;
+    // The check and the project whose definition files guard it are fixed at the first run: a resume must not pick
+    // up a check the interrupted run wrote. Resume files from before checkDir existed were fingerprinted at the root.
+    const checkDir = rf ? (typeof rf.checkDir === 'string' ? rf.checkDir : '') : job.verify === 'auto' ? verify.project(workdir, job.paths) : '';
+    const verifyCmd = job.mode !== 'implement' || job.verify === 'none' ? null
+      : rf && rf.verifyCmd !== undefined ? rf.verifyCmd : job.verify === 'auto' ? verify.checkFor(workdir, checkDir) : job.verify;
+    const fpBefore = verifyCmd ? ((rf && rf.fpBefore) || verify.fingerprint(workdir, checkDir)) : null;
     const testsBefore = verifyCmd ? ((rf && rf.testsBefore) || verify.testFingerprint(workdir)) : null;
     // Persist the pre-job baselines now, so even a crashed run can be resumed with its edits still attributed.
-    const baselines = { inplaceBase, dirtyBefore: inplace ? [...dirtyBefore] : null, fpBefore, testsBefore };
+    const baselines = { inplaceBase, dirtyBefore: inplace ? [...dirtyBefore] : null, fpBefore, testsBefore, checkDir, verifyCmd };
     if (job.mode === 'implement') store.writeJson(rfile, baselines);
 
     // ---- attempts ----
@@ -320,7 +324,7 @@ class Orchestrator {
       if (entry.cancelled) break;
       const rung = rungs[idx];
       const resume = threadId && threadModel === rung.model;
-      const prompt = !resume ? this.prompt(job, projDir, lastFail) + (rf && n === 1 ? '\n\nAn earlier run of this task was interrupted; the working tree may already hold its partial changes. Review them and continue rather than starting over.' : '')
+      const prompt = !resume ? this.prompt(job, projDir, lastFail, verifyCmd) + (rf && n === 1 ? '\n\nAn earlier run of this task was interrupted; the working tree may already hold its partial changes. Review them and continue rather than starting over.' : '')
         : lastFail ? `${lastFail.text}\n\nFix the problem. Same scope, rules and final JSON format as before.`
         : 'Your previous turn on this task was interrupted (provider limit or session end) before you reported. Continue from where you stopped: the working tree holds your partial changes. Same scope, rules and final JSON format as before.';
       const args = provider.buildArgs({ sandbox: job.mode === 'implement' ? 'workspace-write' : 'read-only', model: rung.model, effort: rung.effort, resumeThread: resume ? threadId : null, schemaFile: schemaFile(), lean: cfg.leanCodex, ephemeral: job.mode !== 'implement' });
@@ -383,7 +387,7 @@ class Orchestrator {
       // Both the preflight and final decision use one independently testable
       // integrity policy. Foreign in-place edits are attributed by the ledger.
       const preflight = testIntegrity.inspect(workdir, fpBefore, testsBefore,
-        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps, checkDir);
       if (testIntegrity.blocked(preflight)) {
         verification = {
           command: verifyCmd, ok: false, code: null, ms: 0,
@@ -421,7 +425,7 @@ class Orchestrator {
     const integrity = {};
     if (verifyCmd) {
       const inspected = testIntegrity.inspect(workdir, fpBefore, testsBefore,
-        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps);
+        wt ? [] : ledger.concurrentWrites(projDir, job.id), ledger.overlaps, checkDir);
       if (inspected.changedDefs.length) integrity.verifyDefinitionChanged = inspected.changedDefs;
       if (inspected.scanFailed) integrity.testScanError = 'could not inspect test files';
       if (inspected.changedTests.length) integrity.modifiedTests = inspected.changedTests;
@@ -573,7 +577,7 @@ class Orchestrator {
     return ledger.get(projDir, job.id);
   }
 
-  prompt(job, projDir, lastFail) {
+  prompt(job, projDir, lastFail, check = null) {
     const L = ['You are a Codex worker delegated by Claude Code (the lead engineer) via the Tandem orchestrator.', '', `TASK (${job.mode}):`, job.task];
     if (job.context) L.push('', 'CONTEXT FROM LEAD:', job.context);
     // Lean mode hides Codex's own skill list: point at the few installed skills that match this task.
@@ -587,6 +591,8 @@ class Orchestrator {
     }
     if (job.mode === 'implement') {
       L.push('', job.paths.length ? `SCOPE: modify only these paths: ${job.paths.join(', ')}` : 'SCOPE: modify only what the task needs; keep the change minimal.');
+      // The acceptance check the worker is judged by, so it can run the same command instead of guessing one.
+      if (check) L.push(`CHECK: afterwards Tandem runs \`${check}\` (sandboxed); the job succeeds only if it passes with existing tests unchanged.`);
       // Tell the worker what concurrent writers (in place or isolated) are working on, so two agents do
       // not implement the same thing. Paths that contain this job's own scope are omitted.
       const mine = job.paths.length ? job.paths : ['.'];

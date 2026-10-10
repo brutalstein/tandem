@@ -1,0 +1,50 @@
+{
+  "small library": {
+    "files": 60,
+    "testFiles": 12,
+    "gitInitMs": 559,
+    "detectedCheck": "npm test --silent",
+    "expectedCheck": "npm test --silent",
+    "checkCorrect": true,
+    "fingerprintMs": 60.3,
+    "contextSizeMs": 0.6,
+    "inplaceJobMs": 1055,
+    "worktreeJobMs": 869
+  },
+  "medium app": {
+    "files": 2000,
+    "testFiles": 400,
+    "gitInitMs": 7890,
+    "detectedCheck": "npm test --silent",
+    "expectedCheck": "npm test --silent",
+    "checkCorrect": true,
+    "fingerprintMs": 105.4,
+    "contextSizeMs": 0.4,
+    "inplaceJobMs": 1242,
+    "worktreeJobMs": 4290
+  },
+  "large multi-module": {
+    "files": 20000,
+    "testFiles": 4000,
+    "gitInitMs": 95156,
+    "detectedCheck": "npm test --silent",
+    "expectedCheck": "npm test --silent",
+    "checkCorrect": true,
+    "fingerprintMs": 510,
+    "contextSizeMs": 0.4,
+    "inplaceJobMs": 2484,
+    "worktreeJobMs": 29026
+  },
+  "polyglot services": {
+    "files": 3000,
+    "testFiles": 600,
+    "gitInitMs": 10155,
+    "detectedCheck": "cd services\\billing && python -m pytest -q",
+    "expectedCheck": "cd services/billing && python -m pytest -q",
+    "checkCorrect": true,
+    "fingerprintMs": 86.1,
+    "contextSizeMs": 0.3,
+    "inplaceJobMs": 1130,
+    "worktreeJobMs": 4654
+  }
+}
