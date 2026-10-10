@@ -109,11 +109,14 @@ function scan(root, platforms = ['codex', 'claude']) {
   return { skills: [...seen.values()], dupes };
 }
 
-const tokens = s => (String(s).toLowerCase().match(/[a-z0-9][a-z0-9+#.-]{2,}/g) || []).filter(t => !STOP.has(t));
+const fold = t => (t.length > 4 && /[^su]s$/.test(t) ? t.slice(0, -1) : t); // plural folding: documents/document, tests/test
+const tokens = s => (String(s).toLowerCase().match(/[a-z0-9][a-z0-9+#.-]{2,}/g) || []).filter(t => !STOP.has(t)).map(fold);
 const STOP = new Set('the and for with use when this that you your from are any all not into via can will should must also more use used using user users file files code task tasks skill skills'.split(' '));
+// Words nearly every coding task contains: they still score, but two of them are not a "clear match".
+const GENERIC = new Set('fix bug error add change update make new write create build implement'.split(' '));
 
 // BM25 over name + description. Only skills Codex may load implicitly; at most k, and only clear matches
-// (two or more distinct query terms), so an unrelated task gets no skill text at all.
+// (two or more distinct query terms, not counting GENERIC words), so an unrelated task gets no skill text at all.
 function select(task, skills, k = 3) {
   const docs = skills.filter(s => s.platform === 'codex' && s.implicit).map(s => ({ s, t: tokens(`${s.name.replace(/[-_]/g, ' ')} ${s.description} ${s.whenToUse}`) }));
   if (!docs.length) return [];
@@ -126,7 +129,7 @@ function select(task, skills, k = 3) {
     for (const t of q) {
       const f = d.t.filter(x => x === t).length;
       if (!f) continue;
-      hits++;
+      if (!GENERIC.has(t)) hits++;
       score += idf[t] * (f * 2.2) / (f + 1.2 * (0.25 + 0.75 * d.t.length / avg));
     }
     return { s: d.s, score, hits };

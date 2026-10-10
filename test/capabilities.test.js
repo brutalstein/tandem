@@ -70,6 +70,17 @@ test('select: only clear matches, at most 3, never explicit-only or Claude-only 
   assert.deepEqual({ tp, fp, fn }, { tp: 5, fp: 0, fn: 0 });
 });
 
+test('select: relevance on the 22-skill labeled and held-out sets (bench/skills-eval.js) does not regress', () => {
+  // Floors sit just under the measured values (labeled 0.962/1.0, held-out 1.0/1.0, no false positives on
+  // no-skill tasks) so a ranking change that loses a match or points ordinary tasks at a skill fails here.
+  const { evaluate, HELDOUT } = require('../bench/skills-eval');
+  const l = evaluate(), h = evaluate(3, HELDOUT);
+  assert.ok(l.precision >= 0.95 && l.recall >= 0.95, JSON.stringify(l.misses));
+  assert.ok(h.precision >= 0.9 && h.recall >= 0.9, JSON.stringify(h.misses));
+  assert.equal(l.falsePositiveRateOnNoSkillTasks, 0, JSON.stringify(l.misses));
+  assert.equal(h.falsePositiveRateOnNoSkillTasks, 0, JSON.stringify(h.misses));
+});
+
 test('worker prompt points at matching skills only (lean mode), and the job records which', async () => {
   H.resetEnv();
   const dir = H.repo({ default: { action: 'ok' } });

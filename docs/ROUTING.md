@@ -236,3 +236,33 @@ Measured before changing anything:
 | Tandem's MCP tool definitions in Claude's context | 7.0 KB | `bench/overhead.js` |
 
 Tandem's own prompt is about 0.2 % of what a Codex run reads. Compressing it further cannot change the cost of a job; the rest is Codex's own system prompt, configuration, tool schemas and the files it reads. Lean mode already removes Codex's skill list and plugins. The levers that matter are not delegating when it does not pay (§5), the cheapest sufficient model and effort (§2), and resuming the same thread on a retry (cached context). The only change made here: the worker prompt now names the check Tandem will run (`CHECK: …`), about 20 tokens, so the worker can run the acceptance command instead of guessing one. Its effect on retries has not been measured.
+
+## 7. Skill selection quality
+
+`node bench/skills-eval.js` measures `capabilities.select` (deterministic BM25, no model call). It uses a 22-skill catalog written for the study and modelled on common public skills. There are two task sets:
+- a 40-task labeled set: 24 tasks need a skill, 12 are ordinary tasks needing none, and 4 are near misses whose words match a skill that does not help;
+- a 14-task held-out set, written after the change below and run once, never tuned against.
+
+| | Labeled before | Labeled after | Held-out before | Held-out after |
+|---|---|---|---|---|
+| Precision | 0.958 | 0.962 | 1.0 | 1.0 |
+| Recall | 0.92 | 1.0 | 0.625 | 1.0 |
+| Exact match per task | 0.925 | 0.975 | 0.786 | 1.0 |
+| False positives on no-skill tasks | 6.3 % | 0 % | 0 % | 0 % |
+| Added prompt tokens per task | 20.8 | 22.5 | 12.3 | 19.8 |
+| Selection time per task | ≈0.1 ms | ≈0.1 ms | ≈0.05 ms | ≈0.07 ms |
+
+Every miss before the change was a singular/plural mismatch: "documents" against "document", "catalogs" against "catalog", and "tests" plus "test" counted as two terms. The change has two parts:
+- plural folding in the tokenizer;
+- a short list of words almost every coding task contains (fix, error, add, write, build, …). These words still score, but two of them no longer make a "clear match".
+
+The second part prevents a regression that folding alone caused on the existing fixture set: "Fix the off-by-one error" was matched to a pytest skill.
+
+The one remaining miss: "Add pytest fixtures and parametrized tests" also selects the Playwright skill, because "fixtures" and "tests" appear in both descriptions. A model call is not justified: the deterministic ranker needs no quota, takes 0.1 ms, and the measured errors are small.
+
+The study's limits:
+- The author of the catalog also wrote the labels.
+- The sets are small, so one task moves recall by several points.
+- The figures show the ranker works on plausible phrasing. They do not measure how a worker uses a skill once pointed at it.
+
+`test/capabilities.test.js` keeps floors just under these values.
