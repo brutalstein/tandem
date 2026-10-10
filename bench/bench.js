@@ -192,7 +192,7 @@ async function main() {
     cells.push(...shuffle(block, `block-${rep}`));
   }
   if (argv.includes('--plan')) return plan(cells, maxCodexIn, maxClaudeIn);
-  const work = path.join(os.tmpdir(), 'tandem-bench', path.basename(out));
+  const work = path.join(out, 'work'); // not the shared temp folder: another local user could pre-create it (gitignored)
   fs.mkdirSync(out, { recursive: true });
   const log = path.join(out, 'runs.jsonl');
   const done = new Set(fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)).filter(r => r.outcome !== 'unavailable').map(r => `${r.task}|${r.arm}|${r.rep}`) : []);

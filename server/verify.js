@@ -219,14 +219,13 @@ function exec(command, cwd, timeoutMs, sandboxed) {
     const started = Date.now();
     // Node gives a child socket pairs as pipes. Codex's Linux sandbox filters socket calls, and Node inside it then
     // writes nothing to stdout (measured: exit 0, no output), so sandboxed POSIX output goes to a private file.
-    const file = sandboxed && !IS_WIN ? path.join(os.tmpdir(), `tandem-verify-${process.pid}-${Math.random().toString(36).slice(2)}.log`) : null;
-    let child, fd = null;
+    let child, fd = null, tmp = null, file = null;
     try {
-      if (file) fd = fs.openSync(file, 'wx', 0o600);
+      if (sandboxed && !IS_WIN) { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tandem-verify-')); file = path.join(tmp, 'out.log'); fd = fs.openSync(file, 'wx', 0o600); }
       const opt = { cwd, windowsHide: true, detached: !IS_WIN, ...(file && { stdio: ['ignore', fd, fd] }) };
       child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
     } catch (e) { // no output file (disk full, too many open files) or no process: a failed check, never a crash
-      if (file) fs.rmSync(file, { force: true });
+      if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
       return resolve({ ok: false, code: null, timedOut: false, tail: `[tandem] could not start the check: ${String(e.message).slice(0, 200)}`, ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
     } finally { if (fd !== null) fs.closeSync(fd); }
     let out = '', timedOut = false;
@@ -241,7 +240,7 @@ function exec(command, cwd, timeoutMs, sandboxed) {
       clearTimeout(timer);
       // What the check left behind in its process group dies with it (POSIX; a process that left the group survives).
       if (!IS_WIN) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
-      if (file) { out = tailOf(file, 8000) + out; fs.rmSync(file, { force: true }); }
+      if (file) { out = tailOf(file, 8000) + out; fs.rmSync(tmp, { recursive: true, force: true }); }
       resolve({ ok: code === 0 && !timedOut, code, timedOut, tail: (out + (timedOut ? '\n[tandem] verification timed out' : '')).slice(-2500).trim(), ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
     };
     child.on('close', finish);

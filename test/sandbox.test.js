@@ -139,7 +139,7 @@ test('Windows: no untracked Codex sandbox read-deny entries on the home folder o
   const norm = p => path.resolve(p).toLowerCase();
   const known = new Set(tracked.map(norm));
   // Explicit (non-inherited) deny ACEs for the sandbox group that include read access.
-  const readDeny = new RegExp(`\(D;(?![^;]*ID)[^;]*;(FR|FA|GR|GA|0x[0-9A-Fa-f]+);;;${out.sid}\)`, 'g');
+  const readDeny = new RegExp(`\\(D;(?![^;]*ID)[^;]*;(FR|FA|GR|GA|0x[0-9A-Fa-f]+);;;${out.sid}\\)`, 'g');
   const isRead = r => !/^0x/.test(r) || (parseInt(r, 16) & 0x80000001) !== 0;
   const stale = [].concat(out.acl || []).filter(a => [...String(a.d).matchAll(readDeny)].some(m => isRead(m[1])) && !known.has(norm(a.p))).map(a => a.p);
   assert.deepEqual(stale, [], 'untracked read-deny entries for CodexSandboxUsers (see docs/VERIFICATION.md, "Stale sandbox ACLs"): ' + stale.join(', '));
