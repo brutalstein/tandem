@@ -1,4 +1,6 @@
 'use strict';
+const fs = require('fs');
+const path = require('path');
 // Benchmark task fixtures. Each task is a tiny but realistic repository plus an independent grader.
 // Implement tasks are graded by running the task's tests in the final tree AND checking that the
 // test files are byte-identical to the fixture (editing tests = fail). Ask/review tasks are graded
@@ -99,23 +101,56 @@ const REVIEW_CHANGE = {
 
 const TASKS = {
   'ask-config': {
-    mode: 'ask', difficulty: 'trivial', files: ASK,
+    category: 'question', mode: 'ask', difficulty: 'trivial', files: ASK,
     task: 'In this repository, what is the default port, and which environment variable overrides the request timeout? Answer in one or two sentences.',
     grade: ({ answer }) => /8080/.test(answer) && /APP_TIMEOUT_MS/.test(answer),
   },
   slugify: {
-    mode: 'implement', difficulty: 'normal', files: SLUG, paths: ['slug.js'], verify: 'node --test', tests: ['slug.test.js'],
+    category: 'feature', mode: 'implement', difficulty: 'normal', files: SLUG, paths: ['slug.js'], verify: 'node --test', tests: ['slug.test.js'],
     task: 'Implement slugify in slug.js so `node --test` passes: lowercase, strip diacritics (including Turkish letters such as ı, İ, ş, ç, ğ), turn every run of non-alphanumerics into a single hyphen, and trim leading/trailing hyphens. Do not modify the tests.',
   },
   'lru-bugs': {
-    mode: 'implement', difficulty: 'hard', files: LRU, paths: ['src'], verify: 'node --test', tests: ['test/lru.test.js'],
+    category: 'multi-bug', mode: 'implement', difficulty: 'hard', files: LRU, paths: ['src'], verify: 'node --test', tests: ['test/lru.test.js'],
     task: 'The LRU cache in src/lru.js is buggy and `node --test` fails. Find and fix every bug in src/ so all tests pass. Do not modify the tests.',
   },
   'review-page': {
-    mode: 'review', difficulty: 'hard', files: REVIEW_BASE, change: REVIEW_CHANGE,
+    category: 'review', mode: 'review', difficulty: 'hard', files: REVIEW_BASE, change: REVIEW_CHANGE,
     task: 'Review the uncommitted changes in this repository for correctness bugs. Report each defect with file and line.',
     grade: ({ answer }) => /page\.js/.test(answer) && /(off[- ]by[- ]one|page \* size|\(page - 1\)|skips? the first page|first page)/i.test(answer),
   },
 };
 
-module.exports = { TASKS };
+Object.assign(TASKS, require('./corpus').CORPUS);
+
+// Fresh git repository holding a task's fixture (plus its uncommitted change, for review tasks).
+function writeRepo(dir, t) {
+  const { execFileSync } = require('child_process');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  const put = files => { for (const [p, c] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true }); fs.writeFileSync(path.join(dir, p), c); } };
+  put(t.files);
+  const git = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'ignore' });
+  git('init', '-q'); git('config', 'core.autocrlf', 'false'); git('add', '-A'); git('-c', 'user.name=bench', '-c', 'user.email=bench@localhost', 'commit', '-qm', 'fixture');
+  if (t.change) put(t.change);
+}
+
+// Independent grading of a final tree or answer. implement: the visible tests pass, protected files are
+// byte-identical to the fixture, and the hidden tests (copied in only now) pass.
+function grade(t, dir, answer) {
+  if (t.mode !== 'implement') return { ok: !!t.grade({ answer: answer || '' }) };
+  const { spawnSync } = require('child_process');
+  const sha = b => require('crypto').createHash('sha256').update(b).digest('hex');
+  const tampered = t.tests.filter(f => !fs.existsSync(path.join(dir, f)) || sha(fs.readFileSync(path.join(dir, f))) !== sha(t.files[f]));
+  // A grader started under a test runner must not report into it (NODE_TEST_CONTEXT turns failures into exit 0).
+  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  const run = files => spawnSync(process.execPath, ['--test', ...files], { cwd: dir, env, encoding: 'utf8', timeout: 120000 }).status === 0;
+  const testsPass = run([]);
+  let hiddenPass = null;
+  if (t.hidden) {
+    for (const [p, c] of Object.entries(t.hidden)) { fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true }); fs.writeFileSync(path.join(dir, p), c); }
+    hiddenPass = run(Object.keys(t.hidden));
+  }
+  return { ok: testsPass && hiddenPass !== false && !tampered.length, testsPass, hiddenPass, tampered };
+}
+
+module.exports = { TASKS, writeRepo, grade };
