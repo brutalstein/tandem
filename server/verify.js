@@ -4,7 +4,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execFile, execFileSync } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { sha1, readJson } = require('./store');
 const { killTree, codexCommand } = require('./codex');
 
@@ -146,16 +146,13 @@ function sandboxCheck(bin, cwd, extraDeny, timeoutMs) {
   const deny = denyList(extraDeny);
   const cmd = `"${process.execPath}" -e "${PROBE}" ${Buffer.from(JSON.stringify(deny)).toString('base64')}`;
   const p = { at: 0 };
-  p.done = new Promise(resolve => execFile(bin[0], [...bin[1], ...sandboxArgs(cwd, cmd, extraDeny)], { timeout: timeoutMs, windowsHide: true, maxBuffer: 1 << 20 },
-    (err, out, errOut) => {
-      p.at = Date.now();
-      const m = /TANDEM_PROBE (\[.*\])/.exec(String(out));
-      if (err || !m) {
-        const why = String(errOut || '').split(/\r?\n/).filter(l => l.trim() && !/^WARNING/.test(l)).pop();
-        return resolve({ problem: (err && err.killed ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || String(err ? err.message : 'no probe result')).slice(0, 300) });
-      }
-      resolve({ problem: null, unprotected: JSON.parse(m[1]) });
-    }));
+  p.done = exec(cmd, cwd, timeoutMs, [bin[0], [...bin[1], ...sandboxArgs(cwd, cmd, extraDeny)]]).then(r => {
+    p.at = Date.now();
+    const m = /TANDEM_PROBE (\[.*\])/.exec(r.tail);
+    if (r.ok && m) return { problem: null, unprotected: JSON.parse(m[1]) };
+    const why = r.tail.split(/\r?\n/).filter(l => l.trim() && !/^WARNING|^\[tandem\]|TANDEM_PROBE/.test(l)).pop();
+    return { problem: (r.timedOut ? `sandbox start-up exceeded ${Math.round(timeoutMs / 1000)} s` : why || `no probe result (exit ${r.code})`).slice(0, 300) };
+  });
   probe = p;
   return p.done;
 }
@@ -179,11 +176,16 @@ async function run(command, cwd, timeoutMs, opts = {}) {
 function exec(command, cwd, timeoutMs, sandboxed) {
   return new Promise(resolve => {
     const started = Date.now();
-    const opt = { cwd, windowsHide: true, detached: !IS_WIN };
-    const child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true });
+    // Node gives a child socket pairs as pipes. Codex's Linux sandbox filters socket calls, and Node inside it then
+    // writes nothing to stdout (measured: exit 0, no output), so sandboxed POSIX output goes to a private file.
+    const file = sandboxed && !IS_WIN ? path.join(os.tmpdir(), `tandem-verify-${process.pid}-${Math.random().toString(36).slice(2)}.log`) : null;
+    const fd = file ? fs.openSync(file, 'wx', 0o600) : null;
+    const opt = { cwd, windowsHide: true, detached: !IS_WIN, ...(file && { stdio: ['ignore', fd, fd] }) };
+    let child;
+    try { child = sandboxed ? spawn(sandboxed[0], sandboxed[1], opt) : spawn(command, { ...opt, shell: true }); } finally { if (file) fs.closeSync(fd); }
     let out = '', timedOut = false;
     const keep = d => { out = (out + d).slice(-8000); };
-    child.stdout.on('data', keep); child.stderr.on('data', keep);
+    if (!file) { child.stdout.on('data', keep); child.stderr.on('data', keep); }
     const timer = setTimeout(() => { timedOut = true; killTree(child); }, timeoutMs);
     child.on('error', e => { out += String(e.message); });
     let settled = false;
@@ -193,12 +195,20 @@ function exec(command, cwd, timeoutMs, sandboxed) {
       clearTimeout(timer);
       // What the check left behind in its process group dies with it (POSIX; a process that left the group survives).
       if (!IS_WIN) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
+      if (file) { out = tailOf(file, 8000) + out; fs.rmSync(file, { force: true }); }
       resolve({ ok: code === 0 && !timedOut, code, timedOut, tail: (out + (timedOut ? '\n[tandem] verification timed out' : '')).slice(-2500).trim(), ms: Date.now() - started, command, isolation: sandboxed ? 'sandbox' : 'none' });
     };
     child.on('close', finish);
     // A test command may leave a process (dev server, watcher) holding the output pipe: don't wait for it.
-    child.on('exit', code => setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); finish(code); }, 1500).unref());
+    child.on('exit', code => setTimeout(() => { if (!file) { child.stdout.destroy(); child.stderr.destroy(); } finish(code); }, 1500).unref());
   });
+}
+
+function tailOf(file, n) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    try { const size = fs.fstatSync(fd).size, len = Math.min(n, size), b = Buffer.alloc(len); fs.readSync(fd, b, 0, len, size - len); return b.toString('utf8'); } finally { fs.closeSync(fd); }
+  } catch { return ''; }
 }
 
 const resetSandboxProbe = () => { probe = null; }; // tests switch between a working and a failing sandbox

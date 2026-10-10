@@ -110,3 +110,24 @@ test('a hung check is killed at its timeout', { skip: !bin && 'Codex CLI not ins
   assert.equal(r.timedOut, true);
   assert.ok(Date.now() - started < 15000, `took ${Date.now() - started} ms`);
 });
+
+// Regression guard for a damaged development machine: an interrupted Codex permission refresh once left
+// "deny read" entries for the Codex sandbox users on the home folder that Codex no longer tracked, making most of
+// the home folder unreadable to every later sandboxed command. Reads ACL metadata only.
+test('Windows: no untracked Codex sandbox read-deny entries on the home folder or its direct children', { skip: !IS_WIN && 'Windows only' }, t => {
+  const os = require('os');
+  const ps = "$ErrorActionPreference='SilentlyContinue'; $s=(New-Object Security.Principal.NTAccount 'CodexSandboxUsers').Translate([Security.Principal.SecurityIdentifier]).Value;"
+    + " if(!$s){'{}';exit}; $h=$env:USERPROFILE; $l=@($h)+@(Get-ChildItem -LiteralPath $h -Force -Directory | % FullName);"
+    + " @{sid=$s; acl=@($l | % { @{p=$_; d=(Get-Acl -LiteralPath $_).Sddl} })} | ConvertTo-Json -Depth 4 -Compress";
+  const out = JSON.parse(require('child_process').execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8', timeout: 60000 }) || '{}');
+  if (!out.sid) return t.skip('Codex Windows sandbox not set up on this machine');
+  let tracked = [];
+  try { tracked = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.codex', '.sandbox', 'deny_read_acl_state.json'), 'utf8')).principals[out.sid] || []; } catch {}
+  const norm = p => path.resolve(p).toLowerCase();
+  const known = new Set(tracked.map(norm));
+  // Explicit (non-inherited) deny ACEs for the sandbox group that include read access.
+  const readDeny = new RegExp(`\(D;(?![^;]*ID)[^;]*;(FR|FA|GR|GA|0x[0-9A-Fa-f]+);;;${out.sid}\)`, 'g');
+  const isRead = r => !/^0x/.test(r) || (parseInt(r, 16) & 0x80000001) !== 0;
+  const stale = [].concat(out.acl || []).filter(a => [...String(a.d).matchAll(readDeny)].some(m => isRead(m[1])) && !known.has(norm(a.p))).map(a => a.p);
+  assert.deepEqual(stale, [], 'untracked read-deny entries for CodexSandboxUsers (see docs/VERIFICATION.md, "Stale sandbox ACLs"): ' + stale.join(', '));
+});

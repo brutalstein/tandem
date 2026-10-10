@@ -42,21 +42,35 @@ Not verified in this audit: macOS and Node 20 locally (CI only), CodeQL on the f
 | Lock stress (8 × 100 with planted crash locks) | 1 lost update (799/800) once the flush was added after the commit check; 25 / 25 after moving the check to just before the rename | real processes |
 | Integration wait during session end | race found on WSL (a job slipped into integration when the suspend freed its blocking claim); fixed, 5 / 5 repeats on WSL | simulated Codex |
 
-### Windows: stale Codex sandbox permissions (found during this work)
+### Windows: stale Codex sandbox permissions ("Stale sandbox ACLs")
 
-A Codex sandbox run that denied the whole home folder was interrupted (by a test timeout) while Codex was applying the deny across it. Every top-level home folder it had reached kept an inherited `DENY` for the `CodexSandboxUsers` group, while the home folder itself no longer had it. Later Codex runs did not repair this. Reproduced on a disposable 60 000-file tree: killing the run after 2.5 s left 7 of 40 folders with the stale entry, and a later clean run left them in place.
+A Codex sandbox run that denied the whole home folder (a manual probe, not something Tandem does) was interrupted while Codex applied the deny. Measured afterwards (2026-10-10, read-only, ACL metadata only):
 
-Detect (read-only):
+- The home folder's own access list holds two explicit `DENY` entries for `CodexSandboxUsers` (read on the folder, inherit-only read for everything below). Codex's own record (`~/.codex/.sandbox/deny_read_acl_state.json`) does not list the home folder, so Codex will never remove them.
+- Every folder below inherits them. Folders where Codex granted an explicit read (`.cargo`, `AppData`, `OneDrive`, …) stay readable to sandboxed commands; the home folder itself and `.config` are not (measured from inside the sandbox: `EPERM`).
+- The other entries (system, administrators, the user, one app-container traverse right) and the owner are not involved and are not touched by the repair below.
+
+The earlier advice here (re-enable inheritance on each child folder) does not address this state and must not be used.
+
+Detect (read-only): `node --test --test-name-pattern="untracked Codex" test/sandbox.test.js` fails and names each folder with an untracked read-deny entry.
+
+Repair: remove only those two entries from the home folder's own list. No elevation is needed, nothing else changes, and child folders lose only the inherited copies. Back up first and keep the backup outside the profile:
 
 ```powershell
-Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | Select-Object -ExpandProperty Name
+$d = 'C:ProgramData	andem-acl-backup'; New-Item -ItemType Directory -Force $d | Out-Null
+icacls $env:USERPROFILE /save "$dhome.icacls"           # DACL of the home folder object only
+$csu = (New-Object Security.Principal.NTAccount 'CodexSandboxUsers').Translate([Security.Principal.SecurityIdentifier]).Value
+icacls $env:USERPROFILE /remove:d "*$csu"                  # deny entries of that one SID, home folder only (no /T)
 ```
 
-Repair (rewrites only the access list of each affected folder, so Windows re-derives the inherited entries from the parent; owner unchanged; tested on the disposable tree, where it removed every stale entry):
+Rollback (DACL only; owner and auditing untouched):
 
 ```powershell
-Get-ChildItem -LiteralPath $env:USERPROFILE -Force -Directory | Where-Object { ((icacls $_.FullName) -join "`n") -match 'CodexSandboxUsers:\(I\)[^\n]*DENY' } | ForEach-Object { $a = $_.GetAccessControl('Access'); $a.SetAccessRuleProtection($false, $false); $_.SetAccessControl($a); "repaired $($_.Name)" }
+$s = (Get-Content 'C:ProgramData	andem-acl-backuphome.icacls' -Encoding Unicode)[1]
+$ds = New-Object Security.AccessControl.DirectorySecurity; $ds.SetSecurityDescriptorSddlForm($s, 'Access'); [IO.Directory]::SetAccessControl($env:USERPROFILE, $ds)
 ```
+
+Both were tested on disposable folders reproducing the exact descriptor: the repair removed the two entries and every inherited copy, kept explicit entries on children (an allow on a folder, a deny on a credential file), and kept owner and protection; the rollback restored the descriptor exactly. (`icacls /restore` failed there without elevation, so the rollback sets the DACL directly.) Afterwards, credential paths whose deny was only inherited (on the development machine `.ssh` and `.docker/config.json`) are no longer denied until Codex re-applies them; Tandem's probe detects that and refuses to run checks under the default setting.
 
 Tandem itself never denies the home folder; its deny list names individual credential files and small folders.
 
