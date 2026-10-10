@@ -53,6 +53,33 @@ test('A: usage limit mid-run in a worktree: suspended with partial work kept; re
   assert.ok(!fs.existsSync(path.join(store.projectDir(dir), 'resume', j.id + '.json')), 'resume state removed once finished');
 });
 
+test('A, repeated: a job limited mid-run twice keeps both partial steps and one thread; the third run finishes it', async () => {
+  clean();
+  const writes = [{ 'a.txt': 'one' }, { 'b.txt': 'two' }, { 'a.txt': 'good' }];
+  const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes }, { 'a.txt': 'old', 'b.txt': 'old' });
+  const o = orch();
+  const j = await o.submit({ cwd: dir, task: 'fix a and b', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'b.txt'], verify: H.CHECK('a.txt'), isolation: 'worktree' }).promise;
+  assert.equal(j.status, 'suspended');
+  const wt = j.result.resumeFrom.worktree.path, thread = j.result.resumeFrom.threadId;
+
+  const second = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(second.status, 'suspended', 'limited again mid-run');
+  assert.equal(second.result.resumeFrom.threadId, thread);
+  assert.equal(canonicalWorktreePath(second.result.resumeFrom.worktree.path), canonicalWorktreePath(wt));
+  assert.deepEqual([H.read(wt, 'a.txt'), H.read(wt, 'b.txt')], ['one', 'two'], 'both partial steps kept');
+  assert.deepEqual([H.read(dir, 'a.txt'), H.read(dir, 'b.txt')], ['old', 'old'], 'nothing integrated');
+
+  scenario(dir, { default: { action: 'ok' }, writes });
+  const r = await o.resume(j.id, dir, { now: true }).promise;
+  assert.equal(r.status, 'verified');
+  assert.deepEqual([H.read(dir, 'a.txt'), H.read(dir, 'b.txt')], ['good', 'two'], 'final run built on both earlier steps');
+  const calls = H.calls(dir);
+  assert.equal(calls.length, 3, 'one provider call per run, no retry loop');
+  assert.deepEqual(calls.slice(1).map(c => [c.args[1], c.args[2]]), [['resume', thread], ['resume', thread]]);
+  assert.equal(r.resumed, 2, 'two resumes');
+  assert.equal(r.attempts.filter(a => a.before).length, 2, 'both earlier runs kept in the history');
+});
+
 test('A: in place: partial edits stay attributed to the job across a resume; user edits from before stay untouched', async () => {
   clean();
   const dir = H.repo({ default: { action: 'partial_ratelimit' }, writes: [{ 'a.txt': 'half' }, { 'a.txt': 'good' }] }, { 'a.txt': 'old', 'u.txt': 'u' });
@@ -156,6 +183,37 @@ test('crash: an interrupted job (owner died) resumes from its recorded worktree 
   assert.equal(canonicalWorktreePath(H.calls(dir).at(-1).cwd), canonicalWorktreePath(j.worktree.path), 'continued in the same canonical worktree');
   assert.match(H.calls(dir).at(-1).prompt, /interrupted/);
   assert.equal(H.read(dir, 'a.txt'), 'good');
+});
+
+test('crash, repeated: the owner dies again during the resume; the next resume still uses the same worktree and its work', async () => {
+  clean();
+  const dir = H.repo({ default: { action: 'hang' } }, { 'a.txt': 'old', 'b.txt': 'old' });
+  const spec = { cwd: dir, task: 'fix a', mode: 'implement', difficulty: 'normal', paths: ['a.txt', 'b.txt'], verify: H.CHECK('a.txt'), isolation: 'worktree' };
+  const jobs = JSON.stringify(path.join(H.ROOT, 'server', 'jobs.js'));
+  const killDuring = async (code, calls) => {
+    const child = require('child_process').spawn(process.execPath, ['-e', `const { Orchestrator } = require(${jobs}); const o = new Orchestrator(${JSON.stringify(H.CFG)}); ${code}`], { stdio: 'ignore' });
+    const exited = new Promise(r => child.once('exit', r));
+    await waitFor(() => H.calls(dir).length >= calls);
+    codex.killTree(child);
+    await exited;
+  };
+  await killDuring(`o.submit(${JSON.stringify(spec)});`, 1);
+  const first = orch().list(dir).find(x => x.task === 'fix a');
+  assert.equal(first.status, 'interrupted');
+  H.write(first.worktree.path, { 'a.txt': 'half' }); // what the first dead run left (the fake writes nothing when it hangs)
+  await killDuring(`o.resume(${JSON.stringify(first.id)}, ${JSON.stringify(dir)});`, 2);
+  const o = orch();
+  const j = o.list(dir).find(x => x.id === first.id);
+  assert.equal(j.status, 'interrupted', 'interrupted a second time');
+  assert.equal(canonicalWorktreePath(j.worktree.path), canonicalWorktreePath(first.worktree.path));
+  H.write(j.worktree.path, { 'b.txt': 'two' }); // what the second dead run left
+  assert.deepEqual([H.read(j.worktree.path, 'a.txt'), H.read(j.worktree.path, 'b.txt')], ['half', 'two'], 'work of both dead runs kept');
+  scenario(dir, { default: { action: 'ok' }, writes: [{}, {}, { 'a.txt': 'good' }] });
+  const r = await o.resume(j.id, dir).promise;
+  assert.equal(r.status, 'verified');
+  assert.equal(canonicalWorktreePath(H.calls(dir).at(-1).cwd), canonicalWorktreePath(first.worktree.path));
+  assert.deepEqual([H.read(dir, 'a.txt'), H.read(dir, 'b.txt')], ['good', 'two']);
+  assert.equal(H.calls(dir).length, 3);
 });
 
 test('CLI continue --wait: waits in the foreground until the recorded limit reset, then resumes', async () => {

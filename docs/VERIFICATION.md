@@ -88,6 +88,37 @@ What the simulated failover tests prove (`continuity.test.js`, `surface.test.js`
 
 What they do **not** prove: real quota exhaustion followed by a real reset (the provider's limit was not reached in this session), the real auth-loss path, and continuity of a real Claude Code session (Claude's own quota is not observable to Tandem). The real resume check covers the session-end path only.
 
+## Provider continuity, scenarios A–E (p1-strategy, 2026-10-10)
+
+The checkpoint design was not rewritten: no defect was found. Each scenario was checked on its own:
+
+| Scenario | Evidence | Kind |
+|---|---|---|
+| A. Codex unavailable | `orchestrator.test.js`: rate limit suspends the job (resumable), a provider-wide backoff follows, and later jobs suspend without spawning Codex. An unsupported model is marked unavailable and rerouted; the provider stays available. Auth and transient errors are told apart. `continuity.test.js` A tests: partial work kept, no spawn while the limit lasts. `strategy.test.js`: without Codex the strategy is Claude. | simulated |
+| A, repeated | `continuity.test.js` "A, repeated": limited mid-run twice; both partial steps and one Codex thread kept; one provider call per run; the third run finishes and integrates | simulated |
+| B. Claude unavailable | `surface.test.js` "Claude gone": session end suspends the job, and the `tandem` CLI continues it and the delegated checkpoint item with no Claude call. `continuity.test.js`: the stored and current ceilings both apply on resume (the stricter wins). `node test/real-resume.js`: a real Codex turn stopped by session end resumed in the same thread and worktree and finished `verified`. | simulated + **real Codex** |
+| C. Both unavailable | `continuity.test.js`: provider down at start suspends without spawning; session end suspends live jobs (resumable, not cancelled); a job waiting to integrate keeps its work; dependents suspend with their dependency | simulated |
+| D. Availability restored | `continuity.test.js`: files changed while suspended force an isolated resume that never overwrites the user edit; `continue --wait` waits for the recorded reset; a job taken over is never resumed; dependency-suspended jobs run after their dependency | simulated |
+| E. Process interruption | `continuity.test.js` "crash" and "crash, repeated" (the owner dies during the submit, then again during the resume; the third run uses the same worktree and both dead runs' work); `orchestrator.test.js` owner killed mid-integration; `unit.test.js` writers killed by SIGKILL never lose an acknowledged update | simulated |
+
+Checkpoint and resume overhead (`node bench/resume-overhead.js 10`, Windows 11, Node 24.11.0, simulated Codex):
+
+| Event | p50 | p95 |
+|---|---|---|
+| Provider start to durable `suspended` (includes the fake process start and exit) | 128 ms | 152 ms |
+| `resume()` to provider start | 150 ms | 157 ms |
+| `submit()` to provider start, fresh job (for comparison; includes creating the worktree) | 483 ms | 498 ms |
+| Resume state on disk | 93 bytes | |
+
+Resuming is cheaper than starting, because the worktree already exists. The token cost of a real resume is the replayed conversation: 120k input tokens, 101k of them cached (`docs/BENCHMARKS.md`).
+
+Not run in this branch, because each needs real quota and the user's approval:
+- a real quota exhaustion followed by a real reset;
+- a real auth loss;
+- a real exhaustion of Claude's quota. Tandem cannot observe Claude's quota, so B is triggered by the session ending.
+
+Codex exposes no quota query; Tandem reads the reset time from the provider's error message.
+
 ## Facts established by observation (not assumed)
 
 | Finding | How verified | Consequence |
