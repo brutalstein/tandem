@@ -85,6 +85,25 @@ Not built:
 - an index, a symbol graph or embeddings: nothing measured here needed them. Scope sizing (`contextSize`) takes under 1 ms at every size.
 - any measure of how much Codex or Claude spend exploring a large repository. That is provider usage and needs real runs; the corpus task `nav-large` (300 modules) is ready for them.
 
+## 1e. p1-strategy vs main (paired, same machine, same session)
+
+`bench/overhead.js` was run four times per tree and `bench/safety-overhead.js --files 2000` twice, alternating trees (Windows 11, Node 24.11.0). Each cell lists every run.
+
+| Event | main (b865921) | p1-strategy |
+|---|---|---|
+| MCP start + `tools/list`, median | 58.5 / 56.6 ms | 56.2 / 55.5 ms |
+| PreToolUse guard, Edit, no jobs | 41.1 / 36.1 ms | 36.3 / 36.0 ms |
+| Session-start hook | 42.5 / 40.0 ms | 39.7 / 39.3 ms |
+| MCP idle RSS | 49.6–49.7 MB | 49.4–49.8 MB |
+| Idle CPU | 0 in 4 runs | 0 in 3 of 4 runs; one 47 ms/min reading |
+| `tools/list` size | 6,958 B | 7,008 B |
+| Snapshot, 2,000 files | 207 / 193 ms | 197 / 203 ms |
+| Test fingerprint, 2,000 files | 60 / 57 ms | 58 / 58 ms |
+| Worktree create + remove | 1,466 / 1,471 ms | 1,454 / 1,449 ms |
+| Ledger transaction | 7.0 / 5.2 ms | 5.1 / 5.3 ms |
+
+No regression beyond noise. The single idle-CPU reading did not recur in a third or fourth run.
+
 ## 1b. Safety overhead per job: main vs the hardening branch (deterministic)
 
 `node bench/safety-overhead.js --server <server dir> --files <n>`. Medians in ms over 5 repetitions, Windows 11, Node 24.11.0, on a generated repository (10 % test files, 2 KB each, one dirty file, an ignored `node_modules`). No provider is called. Data: `bench/data/safety-overhead/`.

@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased — strategy, measurement and sandbox evidence (branch p1-strategy)
+
+### Added
+- **Whole-strategy advice** (`codex_delegate` `dry_run`): one of a search tool, Claude itself, a Claude subagent or Codex. The choice is explained by a cost record: options as intervals, the assumptions, and what was not measured. New option `claude_cost_weight`.
+- **Benchmark corpus v2**: 20 tasks in 13 categories with hidden graders. Graders are validated to fail on the fixture, on tampering and on wrong answers. Claude arms and `--plan` budget estimates were added, and quota ceilings are checked before every run.
+- **Skill-selection evaluation** (`bench/skills-eval.js`): a 40-task labeled set and a 14-task held-out set.
+- **Measurements**: checkpoint and resume overhead (`bench/resume-overhead.js`), Tandem's per-job cost from 60 to 20,000 files (`bench/large-repo.js`), and a strategy sensitivity study (`bench/strategy-sim.js`).
+- Two new continuity tests: a job limited twice, and an owner killed twice. A Windows diagnostic test detects stale Codex sandbox deny entries on the home folder.
+- The worker prompt names the acceptance check Tandem will run.
+
+### Changed
+- Skill matching folds plurals, and generic words (fix, error, add, …) no longer count toward a clear match. Held-out recall went from 0.625 to 1.0, with no false positives on no-skill tasks.
+- **Monorepo verification**: an automatic check comes from the deepest project that holds every scoped path and has its own manifest, for example `cd services/billing && python -m pytest -q`. If there is none, the root check is used. That project's definition files are fingerprinted, so its check cannot be weakened.
+
+### Fixed
+- **Linux sandbox**: output of checks run in the sandbox was lost under seccomp; it is now captured through a file. CI proves full enforcement on disposable Linux, macOS and Windows VMs.
+- Polyglot repositories without a root manifest ran every job unverified.
+
+### Measured, unchanged
+- Start-up, hook latency, idle memory and per-job safety work match `main` within noise. `tools/list` grew by 50 bytes.
+
 ## Unreleased — hardening (branch hardening-v4)
 
 ### Security
