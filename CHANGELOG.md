@@ -23,8 +23,11 @@ Version 2.0.0 was released on 2026-10-10. It contains every section below (all c
 - Cost on working trees: 0.3 s for sympy (2k files), 0.8 s for django (7k files) and 2.5 s for kubernetes (31k files). A worker prompt grows by about 60–120 tokens.
 - A first version that passed one `-e` per term took 11 s on django; a single alternation takes 0.35 s.
 
+### Fixed
+- `bench/bench.js` and `bench/locate-real.js` now stop when a usage limit suspends a job mid-run. Before, they only recognised `codex_unavailable` and kept starting runs. Found when the ChatGPT plan's Codex limit was reached during the first `locate-real` run: Tandem suspended the job with `rate_limited` and kept its state, and no credits were bought. The 37 runs after the limit used no tokens and were discarded.
+
 ### Not measured yet
-- Whether the hints reduce Codex or Claude exploration tokens. `bench/locate-real.js` measures this, but it needs a quota budget.
+- Whether the hints reduce Codex or Claude exploration tokens. `bench/locate-real.js` measures this. The first run on the user's subscription ended at the plan's usage limit after 3 runs, too few to report; it resumes from the same output directory after the limit resets. The Claude arms were not run: the Claude CLI on the development machine has an API key helper configured, so a run might bill API credits instead of the subscription.
 
 ## 2.0.0 — strategy, measurement and sandbox evidence (PR #7)
 

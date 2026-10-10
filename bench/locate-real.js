@@ -49,7 +49,9 @@ async function child(spec) {
   const o = new Orchestrator({ ...config(), maxParallel: 1, locateHints: spec.arm === 'codex-hint' });
   const started = Date.now();
   const j = await o.submit({ cwd: spec.dir, task: QUESTION + spec.problem, mode: 'ask', difficulty: 'normal', isolation: 'inplace' }).promise;
-  if (j.status === 'codex_unavailable') return { unavailable: (j.result && j.result.error || '').slice(0, 200) };
+  // A usage limit ends the job as codex_unavailable, or suspended (resumable) when it hits mid-run: not a failure.
+  const limited = (j.attempts || []).find(a => a.errorKind === 'rate_limited');
+  if (j.status === 'codex_unavailable' || (j.status === 'suspended' && limited)) return { unavailable: String((limited && limited.error) || (j.result && j.result.error) || j.status).slice(0, 200) };
   const rep = (j.result && j.result.report) || {};
   return { answer: [rep.summary, ...(rep.findings || [])].join('\n'), usage: j.result && j.result.usage, attempts: j.attempts, located: j.located || null, status: j.status, ms: Date.now() - started };
 }
