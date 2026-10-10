@@ -45,6 +45,7 @@ test('implement in place: failed verification escalates; resume only on the same
   assert.deepEqual(j.result.changed, ['a.txt']);
   assert.equal(H.read(dir, 'dirty.txt'), 'user wip');
   const c = H.calls(dir);
+  assert.ok(c[0].prompt.includes('CHECK: afterwards Tandem runs `' + H.CHECK('a.txt') + '`'), 'the worker is told the acceptance check');
   assert.equal(c[1].args[1] === 'resume', j.attempts[0].model === j.attempts[1].model);
   if (c[1].args[1] !== 'resume') assert.match(c[1].prompt, /previous attempt did not succeed/i);
 });

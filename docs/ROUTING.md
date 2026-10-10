@@ -223,3 +223,16 @@ No policy wins every scenario. Tandem has the lowest worst case (1.41 against 1.
 ### Decisions on the benchmark corpus
 
 The same script prints what the layer decides for each of the 20 corpus tasks (Codex cost anchored on the real pilot, no project observations, so the widest band). With equal weights it keeps 19 tasks with you and sends the 300-module header lookup to a search tool. With Claude weighted ×3 it additionally delegates the trivial checked edit, where the Codex prior is cheapest. Every Claude-or-Codex choice is marked uncertain: the fixtures are small, and without observations the Codex band is ×0.5–2. Whether these choices are right is what the real benchmark's `claude-adaptive` arm measures; it has not been run.
+
+## 6. Where the tokens go (context)
+
+Measured before changing anything:
+
+| Item | Size | Source |
+|---|---|---|
+| Tandem's prompt to Codex (task, scope, check, ≤3 skill pointers, ≤1,800 chars of notes, rules) | 184–407 tokens, median 327, over the 20 corpus tasks | `Orchestrator.prompt` |
+| One Codex run's raw input (cached included) | 53k–196k, median 145k | real pilot |
+| One Codex run, effective tokens | 9.4k–74k | real pilot |
+| Tandem's MCP tool definitions in Claude's context | 7.0 KB | `bench/overhead.js` |
+
+Tandem's own prompt is about 0.2 % of what a Codex run reads. Compressing it further cannot change the cost of a job; the rest is Codex's own system prompt, configuration, tool schemas and the files it reads. Lean mode already removes Codex's skill list and plugins. The levers that matter are not delegating when it does not pay (§5), the cheapest sufficient model and effort (§2), and resuming the same thread on a retry (cached context). The only change made here: the worker prompt now names the check Tandem will run (`CHECK: …`), about 20 tokens, so the worker can run the acceptance command instead of guessing one. Its effect on retries has not been measured.

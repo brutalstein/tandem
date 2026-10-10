@@ -587,6 +587,9 @@ class Orchestrator {
     }
     if (job.mode === 'implement') {
       L.push('', job.paths.length ? `SCOPE: modify only these paths: ${job.paths.join(', ')}` : 'SCOPE: modify only what the task needs; keep the change minimal.');
+      // The acceptance check the worker is judged by, so it can run the same command instead of guessing one.
+      const check = job.verify === 'none' ? null : job.verify === 'auto' || !job.verify ? verify.detect(job.root) : job.verify;
+      if (check) L.push(`CHECK: afterwards Tandem runs \`${check}\` (sandboxed); the job succeeds only if it passes with existing tests unchanged.`);
       // Tell the worker what concurrent writers (in place or isolated) are working on, so two agents do
       // not implement the same thing. Paths that contain this job's own scope are omitted.
       const mine = job.paths.length ? job.paths : ['.'];
