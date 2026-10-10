@@ -110,6 +110,14 @@
         "tokens",
         "time"
       ]
+    },
+    "claude_cost_weight": {
+      "type": "number",
+      "title": "Claude token weight",
+      "description": "How much a Claude token costs you relative to a Codex token (1 = equal; 3 = Claude usage is three times scarcer). Used only to advise whether to delegate (dry_run strategy).",
+      "default": 1,
+      "min": 0.1,
+      "max": 20
     }
   },
   "mcpServers": {
@@ -130,7 +138,8 @@
         "TANDEM_WORKTREE_LINKS": "${user_config.worktree_links}",
         "TANDEM_VERIFY_ISOLATION": "${user_config.verify_isolation}",
         "TANDEM_VERIFY_DENY_PATHS": "${user_config.verify_deny_paths}",
-        "TANDEM_OBJECTIVE": "${user_config.objective}"
+        "TANDEM_OBJECTIVE": "${user_config.objective}",
+        "TANDEM_CLAUDE_COST_WEIGHT": "${user_config.claude_cost_weight}"
       }
     }
   }

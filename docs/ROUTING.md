@@ -168,3 +168,54 @@ The monotonicity constraint encoded exactly the kind of assumption about model s
 ### Cost of deciding
 
 `decide()` takes 1.1 ms at the median and 1.4 ms at the 95th percentile. That measurement uses 16 rungs, up to 4 attempts, a full evidence store (8 classes × 80 observations) and Node 24.
+
+## 5. Which strategy: tool, you, a subagent or Codex
+
+`server/strategy.js` sits above the Codex policy and answers the earlier question: should this task be delegated at all? `codex_run` with `dry_run: true` returns its decision record first, then the Codex plan. It is advice to the lead; it never blocks a run.
+
+| Strategy | When |
+|---|---|
+| `tool` | a read-only question a search answers exactly ("where is X defined", "find all callers of Y"); no model call |
+| `claude` | you do it in the conversation |
+| `claude-subagent` | read-only work over enough files that a fresh, small context is cheaper than carrying them in yours |
+| `codex` | delegate (the policy above then picks model and effort) |
+
+Every option is an interval of **effective tokens** (the policy's `tokens` unit). Claude tokens are multiplied by `claude_cost_weight` (default 1): how much a Claude token costs you relative to a Codex token. Tandem does not convert one provider's quota into the other's; the weight states your exchange rate.
+
+```
+codex    = w · (write the task + 2–3 turns + read the diff or answer, carried) + E_codex · band
+claude   = w · (read + carried reads + turns · TURN + edits + check output)
+subagent = w · (spawn + read + 2–6 small turns + summary, carried)
+```
+
+- `E_codex` is the policy's expected cost of the routed plan under the `tokens` objective (including retries and the failure fallback), from this project's observations. `band` is ×0.75–1.33 with at least 3 observations of the class, ×0.5–2 otherwise.
+- Size is measured: the bytes of the files in `paths` (dependency folders skipped) / 4.
+- Claude-side costs are not observable by Tandem, so they are explicit ranges, listed in the record as "not measured":
+
+| Assumption | Range | Basis |
+|---|---|---|
+| TURN (one turn of the main conversation) | 1–5k | 10–50k tokens of cached context at 0.1 |
+| CARRY (later re-sending of what was read) | ×0.5–3 | 5–30 later turns at 0.1 |
+| subagent turn / spawn | 0.3–1k / 3–8k | small fresh context |
+| reads, edits | ×0.5–1.5 of the scoped size, edits ×0.05–0.3 | |
+
+Decision: the option with the lowest geometric midpoint wins, unless the simpler option (claude, then subagent, then codex) is within 25 %; `uncertain` marks overlapping intervals. Without `paths` there is no estimate, and the scoping rule applies: trivial or unchecked work stays with you, and checked work may be delegated. Hard and critical implementations always add your review of the whole diff.
+
+Measured anchor for the fixed cost of delegating: in the real pilot (`bench/data/real-v2-pilot`), the cheapest delegated trivial question cost 9.4k effective Codex tokens and 17 s, and the median task 37–48k.
+
+### Sensitivity (synthetic)
+
+`node bench/strategy-sim.js` draws "true" costs independently of the assumptions above, including scenarios where they are wrong, and compares total cost against a per-task oracle (1.00 = always the cheaper option):
+
+| Scenario (Claude weight) | always Claude | always Codex | size > 10k → Codex | Tandem |
+|---|---|---|---|---|
+| assumptions hold (×1) | 2.10 | 1.27 | **1.11** | 1.16 |
+| assumptions hold (×3) | 3.22 | **1.05** | 1.28 | 1.12 |
+| Claude cheaper than assumed (×1) | 1.76 | 1.62 | 1.15 | **1.08** |
+| Claude cheaper than assumed (×3) | 2.91 | 1.15 | 1.14 | **1.04** |
+| Claude dearer than assumed (×1) | 2.83 | **1.07** | 1.23 | 1.41 |
+| Claude dearer than assumed (×3) | 3.99 | **1.01** | 1.49 | 1.24 |
+| Codex dearer than estimated (×1) | 1.56 | 1.66 | 1.18 | **1.07** |
+| Codex dearer than estimated (×3) | 2.53 | 1.14 | 1.15 | **1.05** |
+
+No policy wins every scenario. Tandem has the lowest worst case (1.41 against 1.49, 1.66 and 3.99) and never doing the work yourself is the worst policy throughout. It loses to "always delegate" when Claude work is much dearer than assumed, and to the fixed threshold when the assumptions hold at equal weight (its tie rule favours the simpler strategy). These numbers come from the simulation's own cost model and say nothing about real savings. Calibrating the Claude-side ranges needs the real benchmark with Claude arms, which spends quota and has not been run.

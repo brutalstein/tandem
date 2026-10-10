@@ -8,6 +8,8 @@ const { Orchestrator, MODES, DIFFICULTIES } = require('./jobs');
 const codex = require('./codex');
 const catalog = require('./catalog');
 const policy = require('./policy');
+const strategy = require('./strategy');
+const verify = require('./verify');
 const ledger = require('./ledger');
 const memory = require('./memory');
 const worktree = require('./worktree');
@@ -46,7 +48,7 @@ const TOOLS = [
         verify: str('implement: command proving success, "auto" (detect npm/pytest/cargo/go tests; default) or "none".'),
         isolation: str('implement: auto (default: in place, or an isolated worktree when paths are busy), inplace, or worktree.', { enum: ['auto', 'inplace', 'worktree'] }),
         wait: { type: 'boolean', description: 'true (default): return the result. false: return a job id now; collect with codex_wait.' },
-        dry_run: { type: 'boolean', description: 'Return the routing plan (models, efforts, estimates) without running anything.' },
+        dry_run: { type: 'boolean', description: 'Return the strategy advice (tool, you, a subagent or Codex, with estimates) and the Codex routing plan without running anything.' },
         model: str('Optional explicit Codex model (must be permitted by the ceiling/allow-list).'),
         effort: str('Optional explicit reasoning effort (≤ ceiling).', { enum: EFFORTS }),
         max_attempts: { type: 'integer', minimum: 1, maximum: 4, description: 'Attempts incl. escalations (default 2).' },
@@ -150,18 +152,28 @@ async function waitFor(entries, timeoutMs) {
 }
 
 async function plan(a) {
-  const { projDir } = orch.ctx(a.cwd);
+  const { root, projDir } = orch.ctx(a.cwd);
   const env = await codex.discover();
   const rungs = catalog.rungs(env.models, cfg, codex.unavailable());
-  if (!rungs.length) return 'no permitted and available Codex model; see tandem_status';
+  const check = a.mode !== 'implement' || a.verify === 'none' ? null : !a.verify || a.verify === 'auto' ? verify.detect(root) : a.verify;
+  const task = { mode: a.mode, difficulty: a.difficulty, prompt: a.task, context: a.context, paths: a.paths, verify: check };
+  if (!rungs.length) return 'no permitted and available Codex model; see tandem_status\n' + formatStrategy(strategy.decide(task, root, null, cfg));
   const cls = `${a.mode}|${a.difficulty}`;
   const d = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: a.max_attempts || 2 });
+  const t = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, objective: 'tokens', exploration: false }, maxAttempts: a.max_attempts || 2 }).record;
+  const s = strategy.decide(task, root, { tokens: t.E * t.refTokens, nObs: t.nObs }, cfg);
   // Measured history of this task class in this project: what delegating it actually cost and yielded.
   const past = ledger.list(projDir).filter(j => `${j.mode}|${j.difficulty}` === cls && j.finished && j.result && j.result.usage);
   const med = xs => (xs.length ? xs.sort((a, b) => a - b)[xs.length >> 1] : 0);
   const ok = past.filter(j => ['verified', 'answered'].includes(j.status)).length;
   const hist = past.length ? `; this project's ${cls} jobs: ${ok}/${past.length} succeeded, median ${Math.round(med(past.map(j => j.finished - (j.started || j.created))) / 1000)}s, median Codex input ${k(med(past.map(j => j.result.usage.input)))} (cached ${k(med(past.map(j => j.result.usage.cached)))})` : `; no finished ${cls} jobs in this project yet`;
-  return `plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations${hist}`;
+  return `${formatStrategy(s)}\nCodex plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations${hist}`;
+}
+
+function formatStrategy(s) {
+  const opts = Object.entries(s.options).map(([n, [lo, hi]]) => `${n} ${Math.round(lo / 1000)}–${Math.round(hi / 1000)}k`).join(', ');
+  return [`strategy: ${s.strategy}${s.uncertain ? ' (uncertain: estimates overlap)' : ''} — ${s.why.join('; ')}`,
+    opts && `  estimated effective tokens: ${opts}`, `  check: ${s.review}`, s.unknown.length && `  not measured: ${s.unknown.join('; ')}`].filter(Boolean).join('\n');
 }
 
 async function status(a) {

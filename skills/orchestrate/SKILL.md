@@ -9,7 +9,7 @@ You are the lead engineer. Codex jobs and Claude subagents are workers. Goal: th
 
 ## 1. Before work
 - `memory_search` with the task's keywords. `verified` entries were confirmed; `tentative` ones (often Codex findings) may be wrong; `STALE` means a cited file changed since. Re-check before relying on anything not verified.
-- Size the task. Small (one file, a few tool calls, clear fix): do it yourself. Delegation has a fixed cost (≈12–25k Codex input tokens, ≈10 s start-up) plus your review time.
+- Size the task. Small (one file, a few tool calls, clear fix): do it yourself. Delegation has a fixed cost (≥9k effective Codex tokens and ≈17 s measured even for a trivial question) plus your review time. A lookup ("where is X defined") needs no model: search. Unsure? `codex_run` with `dry_run: true` and `paths` estimates tool / you / subagent / Codex and says which.
 
 ## 2. Split
 Break the work into units, each with explicit file ownership (`paths`).

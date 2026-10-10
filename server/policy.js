@@ -242,7 +242,7 @@ function plan(ps, Cs, { K, F, rho, after = -1, cond = false, mustAttempt = true 
 // Route a new job. Returns { seq: [rung indices], record } with an auditable decision record.
 // `evidence` (optional) is an in-memory evidence document, used by the simulator instead of the file.
 function decide(projDir, { cls, rungs, cfg, maxAttempts, seed, evidence }) {
-  const { est, rho, F, n, sample } = estimate(evidence || loadEvidence(projDir), cls, rungs, cfg);
+  const { est, rho, F, n, refs, sample } = estimate(evidence || loadEvidence(projDir), cls, rungs, cfg);
   const ps = est.map(e => e.p), Cs = est.map(e => e.C);
   const exploit = plan(ps, Cs, { K: maxAttempts, F, rho });
   let first = exploit.seq[0], explored = false;
@@ -257,7 +257,7 @@ function decide(projDir, { cls, rungs, cfg, maxAttempts, seed, evidence }) {
   const seq = [first, ...rest.seq];
   const E = Cs[first] + (1 - ps[first]) * rest.E;
   const fmt = i => ({ r: est[i].k, p: +est[i].p.toFixed(3), n: est[i].n, C: +est[i].C.toFixed(3) });
-  return { seq, E, record: { cls, nObs: n, rho: +rho.toFixed(2), F: +F.toFixed(3), E: +E.toFixed(3), explored, plan: seq.map(fmt), bestExploit: exploit.seq.map(i => est[i].k) } };
+  return { seq, E, record: { cls, nObs: n, refTokens: Math.round(refs.tok), rho: +rho.toFixed(2), F: +F.toFixed(3), E: +E.toFixed(3), explored, plan: seq.map(fmt), bestExploit: exploit.seq.map(i => est[i].k) } };
 }
 
 // After a failed attempt at rung index `at`, pick the next rung (same or more capable) or null to stop.

@@ -82,7 +82,7 @@ jobs:
       - name: adversarial sandbox tests
         shell: bash
         env:
-          TANDEM_TEST_REQUIRE_SANDBOX: ${{ runner.os != 'Windows' && '1' || '' }}
+          TANDEM_TEST_REQUIRE_SANDBOX: '1'
         run: node --test test/sandbox.test.js
 
   plugin:
@@ -116,6 +116,8 @@ jobs:
         run: node bench/router-sim.js --seeds 30 --out artifacts/router-sim.json
       - name: overhead micro-benchmarks
         run: node bench/overhead.js . --out artifacts/overhead.json
+      - name: strategy sensitivity study (synthetic)
+        run: node bench/strategy-sim.js --out artifacts/strategy-sim.json
       - name: charts from the measured data
         run: node bench/charts.js --sim artifacts/router-sim.json --overhead artifacts/overhead.json --out artifacts/charts
       - uses: actions/upload-artifact@v4
