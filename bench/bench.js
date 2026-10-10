@@ -159,6 +159,17 @@ function shuffle(xs, seed) { const rng = require('../server/policy').rngFrom(see
 async function main() {
   if (argv[0] === '--child') { const res = await child(JSON.parse(argv[1])); process.stdout.write('\n@@RESULT ' + JSON.stringify(res) + '\n'); return; }
   if (argv[0] === '--analyze') return analyze(argv[1]);
+  // Real runs spend quota: an unknown flag (even --help) or a missing ceiling stops here instead of starting the
+  // default run.
+  const VALUED = ['--out', '--reps', '--claude-reps', '--claude-model', '--tasks', '--arms', '--claude-arms', '--ablation', '--max-codex-input', '--max-claude-input'];
+  for (let i = 0; i < argv.length; i++) {
+    if (VALUED.includes(argv[i]) && i + 1 < argv.length) i++;
+    else if (argv[i] !== '--plan') { console.error(`unknown or incomplete option: ${argv[i]}\n` + fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 7).join('\n')); process.exit(2); }
+  }
+  if (!argv.includes('--plan') && (!argv.includes('--max-codex-input') || !argv.includes('--max-claude-input'))) {
+    console.error('a real run needs --max-codex-input and --max-claude-input (the approved ceilings); see --plan for an estimate');
+    process.exit(2);
+  }
   const out = path.resolve(opt('--out', path.join(ROOT, 'bench', 'runs', new Date().toISOString().slice(0, 10))));
   const reps = Number(opt('--reps', 3));
   const claudeReps = Number(opt('--claude-reps', 0));

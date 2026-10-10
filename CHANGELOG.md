@@ -31,6 +31,7 @@
   - `dry_run` confines paths the way a real job does.
   - An unreadable folder no longer breaks sizing. Files that do not exist yet count as unknown size, not 0 tokens.
   - Skill matching treats inflected generic words ("fixes", "bugs", "added") as generic, and removes stop words after plural folding.
+- `bench/bench.js` refused nothing: any unknown flag, `--help` included, started the default real-provider run with no ceiling. This happened once during development and spent 0.58M Codex input tokens (0.46M cached) over 4 runs. It now exits on any unknown flag, and a real run needs both `--max-codex-input` and `--max-claude-input`.
 - Compatibility: a job suspended by an earlier version keeps its root-only check on resume. If the repository has one of the newly fingerprinted files, that resume reports a definition change and stays unverified.
 
 ### Measured, unchanged
