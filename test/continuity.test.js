@@ -204,7 +204,7 @@ test('review: a job that ran isolated resumes in its kept worktree even when aut
   scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
   const r = await o.resume(j.id, dir, { now: true }).promise;
   assert.equal(r.status, 'verified');
-  assert.equal(path.resolve(H.calls(dir).at(-1).cwd), path.resolve(j.result.resumeFrom.worktree.path));
+  assert.equal(fs.realpathSync(H.calls(dir).at(-1).cwd), fs.realpathSync(j.result.resumeFrom.worktree.path)); // macOS: /var is /private/var
   assert.equal(H.read(dir, 'a.txt'), 'good');
 });
 

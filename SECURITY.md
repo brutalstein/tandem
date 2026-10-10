@@ -73,4 +73,7 @@ Evidence (`test/sandbox.test.js`, real Codex CLI 0.154.0, disposable directories
 | detached child | outlived the check, could still not write outside |
 | read a denied canary folder | denied in the first run; readable in later runs of the same configuration (see Known limits). The default setting then refuses to run checks |
 
-The fake-Codex suite proves the fail-safes: when the sandbox cannot start, or a denied path is readable, the check never runs and the job is `unverified` without escalation. `contain` and `off` run and record their isolation level in the result. Linux and macOS evidence is to come from the `verification sandbox` CI job, which installs a pinned Codex CLI; it has not run yet.
+The fake-Codex suite proves the fail-safes: when the sandbox cannot start, or a denied path is readable, the check never runs and the job is `unverified` without escalation. `contain` and `off` run and record their isolation level in the result. CI (`verification sandbox` job, pinned Codex CLI 0.154.0, GitHub-hosted runners):
+- **macOS:** full sandbox, with every probe above denied, including the read of the denied canary. A detached child outlived the check, still confined.
+- **Linux (Ubuntu):** the sandbox does not start: `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`. The runner does not allow the network namespace bubblewrap needs, and checks are not run. Linux machines that allow unprivileged user and network namespaces are untested.
+- **Windows:** the sandbox does not start without Codex's elevated setup, and checks are not run.

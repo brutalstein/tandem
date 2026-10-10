@@ -50,8 +50,9 @@ jobs:
 
   sandbox:
     # Adversarial checks of the real verification sandbox. `codex sandbox` needs no login and spends no quota.
-    # Linux and macOS must provide it; Windows runners lack Codex's elevated sandbox setup, so there the
-    # test proves the fail-safe (the check is not run) instead.
+    # macOS must provide it. GitHub's Linux runners cannot give bubblewrap a network namespace
+    # ("bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted") and Windows runners lack Codex's
+    # elevated sandbox setup, so there the test proves the fail-safe (the check is not run) instead.
     name: verification sandbox (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -73,7 +74,7 @@ jobs:
       - name: adversarial sandbox tests
         shell: bash
         env:
-          TANDEM_TEST_REQUIRE_SANDBOX: ${{ runner.os != 'Windows' && '1' || '' }}
+          TANDEM_TEST_REQUIRE_SANDBOX: ${{ runner.os == 'macOS' && '1' || '' }}
         run: node --test test/sandbox.test.js
 
   plugin:
