@@ -204,7 +204,9 @@ test('review: a job that ran isolated resumes in its kept worktree even when aut
   scenario(dir, { default: { action: 'ok' }, writes: [{}, { 'a.txt': 'good' }] });
   const r = await o.resume(j.id, dir, { now: true }).promise;
   assert.equal(r.status, 'verified');
-  assert.equal(fs.realpathSync(H.calls(dir).at(-1).cwd), fs.realpathSync(j.result.resumeFrom.worktree.path)); // macOS: /var is /private/var
+  // Canonical paths (macOS: /var is /private/var); the worktree itself is gone once its work landed.
+  const real = p => path.join(fs.realpathSync(path.dirname(p)), path.basename(p));
+  assert.equal(real(H.calls(dir).at(-1).cwd), real(j.result.resumeFrom.worktree.path));
   assert.equal(H.read(dir, 'a.txt'), 'good');
 });
 
