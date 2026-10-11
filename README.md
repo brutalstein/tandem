@@ -31,6 +31,7 @@ Adaptive model routing, parallel jobs, test-backed delegation, and shared projec
 | 🌳 **Works in parallel** | Coordinates file ownership and Git worktrees so agents don't write over each other. |
 | 🧪 **Asks for receipts** | Runs project tests instead of trusting an AI's “done ✅”. |
 | 🧩 **Remembers the important bits** | Shares project decisions and findings, with sources and stale-data checks. |
+| 🔎 **Starts in the right place** | Ranks the files a task most likely concerns with one `git grep` (no index) and points Codex and Claude there. On 147 held-out real issues the right file was in the top 5 for 65%, against 37% for plain BM25. |
 | ⏸️ **Survives a usage limit** | A provider limit or a closed session suspends the job with its work kept; resume it later in the same Codex thread, from Claude or from the `tandem` CLI. |
 
 **The workflow:** You talk to Claude → Claude delegates a well-scoped task → Codex works → Tandem verifies → Claude reports back.

@@ -9,6 +9,7 @@ const codex = require('./codex');
 const catalog = require('./catalog');
 const policy = require('./policy');
 const strategy = require('./strategy');
+const locate = require('./locate');
 const verify = require('./verify');
 const ledger = require('./ledger');
 const memory = require('./memory');
@@ -159,7 +160,10 @@ async function plan(a) {
   const paths = (a.paths || []).map(p => confine(root, p)); // as a real job sees them
   const check = a.mode !== 'implement' || a.verify === 'none' ? null : !a.verify || a.verify === 'auto' ? verify.detect(root, paths) : a.verify;
   const task = { mode: a.mode, difficulty: a.difficulty, prompt: a.task, context: a.context, paths, verify: check };
-  if (!rungs.length) return 'no permitted and available Codex model; see tandem_status\n' + formatStrategy(strategy.decide(task, root, null, cfg));
+  // Where the task most likely lives, so the lead can read it or scope the job without searching first.
+  const hits = cfg.locateHints && !paths.length ? locate.locate(`${a.task}\n${a.context || ''}`, { cwd: root }, 5) : [];
+  const likely = hits.length ? `\nlikely files (ranked from the task text, may be wrong): ${hits.map(h => h.path + (h.why.length ? ` (${h.why[0]})` : '')).join(', ')}` : '';
+  if (!rungs.length) return 'no permitted and available Codex model; see tandem_status\n' + formatStrategy(strategy.decide(task, root, null, cfg)) + likely;
   const cls = `${a.mode}|${a.difficulty}`;
   const d = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, exploration: false }, maxAttempts: a.max_attempts || 2 });
   const t = policy.decide(projDir, { cls, rungs, cfg: { ...cfg, objective: 'tokens', exploration: false }, maxAttempts: a.max_attempts || 2 }).record;
@@ -169,7 +173,7 @@ async function plan(a) {
   const med = xs => (xs.length ? xs.sort((a, b) => a - b)[xs.length >> 1] : 0);
   const ok = past.filter(j => ['verified', 'answered'].includes(j.status)).length;
   const hist = past.length ? `; this project's ${cls} jobs: ${ok}/${past.length} succeeded, median ${Math.round(med(past.map(j => j.finished - (j.started || j.created))) / 1000)}s, median Codex input ${k(med(past.map(j => j.result.usage.input)))} (cached ${k(med(past.map(j => j.result.usage.cached)))})` : `; no finished ${cls} jobs in this project yet`;
-  return `${formatStrategy(s)}\nCodex plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations${hist}`;
+  return `${formatStrategy(s)}\nCodex plan for ${cls}: ${d.record.plan.map(p => `${p.r} (p=${p.p}, n=${p.n}, cost=${p.C})`).join(' -> ')}; expected cost ${d.record.E} (unit: ${cfg.objective}), ρ=${d.record.rho}, ${d.record.nObs} observations${hist}${likely}`;
 }
 
 function formatStrategy(s) {

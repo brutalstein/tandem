@@ -77,7 +77,9 @@ async function child(spec) {
     Object.assign(spec2, { model: r.model, effort: r.effort });
   }
   const j = await o.submit(spec2).promise;
-  if (j.status === 'codex_unavailable') return { unavailable: (j.result && j.result.error || '').slice(0, 200) };
+  // A usage limit ends the job as codex_unavailable, or suspended (resumable) when it hits mid-run: not a failure.
+  const limited = (j.attempts || []).find(a => a.errorKind === 'rate_limited');
+  if (j.status === 'codex_unavailable' || (j.status === 'suspended' && limited)) return { unavailable: String((limited && limited.error) || (j.result && j.result.error) || j.status).slice(0, 200) };
   const rep = (j.result && j.result.report) || {};
   return { answer: [rep.summary, ...(rep.findings || [])].join('\n'), usage: j.result && j.result.usage, attempts: j.attempts, status: j.status, route: j.route && (j.route.plan || j.route.override), ms: Date.now() - started };
 }

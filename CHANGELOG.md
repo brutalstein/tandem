@@ -2,6 +2,33 @@
 
 Version 2.0.0 was released on 2026-10-10. It contains every section below (all changes since v1.0.0), newest first.
 
+## Unreleased — finding the relevant code (branch p2-localization)
+
+### Added
+- `server/locate.js` ranks the files a task most likely concerns. It needs no index and no model: one `git grep` pass covers the task's terms and the definitions of identifiers it names. The ranking combines four signals:
+  - paths named in the task, including traceback paths of an installed copy;
+  - dotted module names;
+  - definitions of named identifiers;
+  - BM25 over identifier tokens, with a prior against tests, docs and vendored code.
+- Codex worker prompts name the top five files inside the job's scope (`LIKELY RELEVANT FILES`). The job records them as `located`.
+- `dry_run` without paths names the likely files, so Claude can read them or scope the job without searching first.
+- New option `locate_hints` (default on).
+- Two benchmark scripts:
+  - `bench/locate-eval.js` measures accuracy on real issues at their base commits;
+  - `bench/locate-real.js` runs the paired provider experiment, hints off and on, for Codex and Claude. It spends quota and requires ceilings.
+- `bench/locate-fetch.js` downloads the data both scripts use.
+
+### Measured
+- SWE-bench Lite, 300 real issues in 12 repositories. Every choice was tuned on one half; the 147 held-out issues gave recall@1 0.408, recall@5 0.646 and recall@10 0.694, against 0.184, 0.374 and 0.503 for plain BM25 (BENCHMARKS.md §1f).
+- Cost on working trees: 0.3 s for sympy (2k files), 0.8 s for django (7k files) and 2.5 s for kubernetes (31k files). A worker prompt grows by about 60–120 tokens.
+- A first version that passed one `-e` per term took 11 s on django; a single alternation takes 0.35 s.
+
+### Fixed
+- `bench/bench.js` and `bench/locate-real.js` now stop when a usage limit suspends a job mid-run. Before, they only recognised `codex_unavailable` and kept starting runs. Found when the ChatGPT plan's Codex limit was reached during the first `locate-real` run: Tandem suspended the job with `rate_limited` and kept its state, and no credits were bought. The 37 runs after the limit used no tokens and were discarded.
+
+### Not measured yet
+- Whether the hints reduce Codex or Claude exploration tokens. `bench/locate-real.js` measures this. The first run on the user's subscription ended at the plan's usage limit after 3 runs, too few to report; it resumes from the same output directory after the limit resets. The Claude arms were not run: the Claude CLI on the development machine has an API key helper configured, so a run might bill API credits instead of the subscription.
+
 ## 2.0.0 — strategy, measurement and sandbox evidence (PR #7)
 
 ### Added

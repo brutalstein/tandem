@@ -18,6 +18,7 @@ Claude Code session (lead, the only UI)
            ├─ worktree.js    snapshot, isolated worktree, three-way integration
            ├─ verify.js      check detection, run, integrity fingerprints
            ├─ memory.js      shared project memory
+           ├─ locate.js      likely-relevant files for a task (git grep, no index; BENCHMARKS.md §1f)
            ├─ capabilities.js installed skills (Codex + Claude), task matching, pinned installs
            ├─ checkpoint.js  durable task state (objective, constraints, plan items)
            ├─ security.js    sanitise, redact, confine, frame
