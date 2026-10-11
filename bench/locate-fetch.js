@@ -19,6 +19,9 @@ const { execFileSync } = require('child_process');
   }
   // Gold files: those the merged fix (the dataset's `patch`, tests excluded) changes.
   const items = rows.map(r => ({ id: r.instance_id, repo: r.repo, base: r.base_commit, problem: r.problem_statement, files: [...r.patch.matchAll(/^diff --git a\/(\S+) b\//gm)].map(m => m[1]) }));
+  // Downloaded rows name clone URLs and paths: only well-formed repository names, commits and relative paths pass.
+  const bad = x => !/^[\w.-]+\/[\w.-]+$/.test(x.repo) || x.repo.includes('..') || !/^[0-9a-f]{40}$/.test(x.base) || typeof x.problem !== 'string' || x.files.some(p => p.startsWith('/') || p.split('/').includes('..'));
+  if (items.some(bad)) throw new Error(`malformed dataset rows: ${items.filter(bad).map(x => x.id).join(', ')}`);
   fs.writeFileSync(path.join(dir, 'swebench-lite.json'), JSON.stringify(items));
   console.log(`${items.length} instances`);
   for (const repo of [...new Set(items.map(x => x.repo))]) {

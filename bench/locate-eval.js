@@ -37,8 +37,10 @@ if (arg('--half')) items = items.filter(x => half(x.id) === arg('--half'));
 const cached = (it, q, make) => {
   if (!arg('--cache')) return make();
   const f = path.join(arg('--cache'), crypto.createHash('sha1').update(it.id + JSON.stringify([q.paths, q.dotted, q.code, [...q.terms]])).digest('hex') + '.json');
-  if (fs.existsSync(f)) { const x = JSON.parse(fs.readFileSync(f, 'utf8')); return { files: x.files, tf: new Map(x.tf.map(([p, m]) => [p, new Map(m)])), defs: new Map(x.defs.map(([p, n]) => [p, new Set(n)])) }; }
-  const x = make();
+  let x;
+  try { x = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  if (x) return { files: x.files, tf: new Map(x.tf.map(([p, m]) => [p, new Map(m)])), defs: new Map(x.defs.map(([p, n]) => [p, new Set(n)])) };
+  x = make();
   fs.mkdirSync(arg('--cache'), { recursive: true });
   fs.writeFileSync(f, JSON.stringify({ files: x.files, tf: [...x.tf].map(([p, m]) => [p, [...m]]), defs: [...x.defs].map(([p, n]) => [p, [...n]]) }));
   return x;
@@ -49,7 +51,8 @@ for (const it of items) {
   if (!fs.existsSync(gitDir)) { console.error('missing clone', gitDir); continue; }
   const t0 = process.hrtime.bigint();
   const q = L.query(it.problem);
-  const facts = cached(it, q, () => L.collect(q, { gitDir, tree: it.base, timeoutMs: 0 }));
+  let facts;
+  try { facts = cached(it, q, () => L.collect(q, { gitDir, tree: it.base, timeoutMs: 0 })); } catch (e) { console.error(`skipped ${it.id}: base commit not readable (${e.status ?? e.message})`); continue; }
   const collectMs = ms(t0);
   const gold = new Set(it.files);
   const row = { id: it.id, repo: it.repo, files: facts.files.length, half: half(it.id), collectMs, ranks: {}, top: null };
